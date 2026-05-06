@@ -1,0 +1,68 @@
+// 계산기 목록 및 메타정보 - 새 계산기 추가 시 여기에 1줄 추가
+
+export type CardTabKey = 'calculator' | 'overview' | 'intro' | 'examples' | 'validation';
+
+export interface CardTabSpec {
+  key: CardTabKey;
+  label: string;
+}
+
+// onSave 콜백 시그니처용 컨텍스트 타입
+export interface FieldContext {
+  inputs: Record<string, any>;
+  outputs: Record<string, any> | null;
+}
+
+export interface CalculatorMeta {
+  id: string;
+  title: string;
+  inputs: string;
+  outputs: string;
+  category: string;
+  tabs: CardTabSpec[];
+  inputTags?: string[];
+  outputTags?: string[];
+  nextCalculators?: string[];
+}
+
+export const calculators: CalculatorMeta[] = [
+  {
+    id: 'pipe-friction',
+    title: '관마찰손실계산기',
+    inputs: '유량, 관경, 관 길이, 재질',
+    outputs: '유속, 레이놀즈수, 마찰손실',
+    category: '배관설계',
+    tabs: [
+      { key: 'calculator', label: '계산' },
+      { key: 'overview',   label: '개요' },
+      { key: 'examples',   label: '예시' },
+    ],
+  },
+  {
+    id: 'pipe-sizing',
+    title: '관경 계산기',
+    inputs: '유량, 허용 압력강하, 배관 재질',
+    outputs: '적정 관경, 유속, 실제 마찰손실',
+    category: '배관설계',
+    tabs: [
+      { key: 'calculator', label: '계산' },
+      { key: 'overview',   label: '개요' },
+      { key: 'examples',   label: '예시' },
+    ],
+  },
+  {
+    id: 'pump-hvac',
+    title: 'HVAC 펌프 시스템',
+    inputs: '시스템 조건, 배관, 부속, 장비',
+    outputs: '총양정, NPSHa, 동력',
+    category: '펌프 시스템',
+    tabs: [
+      { key: 'calculator', label: '계산' },
+      { key: 'overview',   label: '개요' },
+      { key: 'examples',   label: '내 프로젝트' },
+    ],
+    inputTags: [],
+    outputTags: [],
+    nextCalculators: [],
+  },
+];

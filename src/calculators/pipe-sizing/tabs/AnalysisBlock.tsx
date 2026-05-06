@@ -1,0 +1,69 @@
+// 관경 계산기 — 선정 관경에 대한 권장 범위·유동 영역 분석 (pipe-friction 공용 시각화 활용)
+
+import Kpi from '../../../components/Kpi';
+import RangeGauge from '../../../components/RangeGauge';
+import FlowRegimeBar from '../../../components/FlowRegimeBar';
+import WarningList from '../../../components/WarningList';
+import {
+  RANGES, flowRegime, rangeStatus, warnings, formatRe, toRangeSpec,
+} from '../../pipe-friction/analysis';
+import { C } from '../styles';
+
+interface Props {
+  V: number;
+  Re: number;
+  unitLoss_Pa: number;
+}
+
+export default function AnalysisBlock({ V, Re, unitLoss_Pa }: Props) {
+  const regime = flowRegime(Re);
+  const rangeV = rangeStatus(V, RANGES.velocity);
+  const rangeU = rangeStatus(unitLoss_Pa, RANGES.unitLossPa);
+  const ctx = warnings(V, Re, unitLoss_Pa);
+
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <Kpi label="유속 V" value={V.toFixed(2)} unit="m/s"
+          accent={rangeV.color} size="lg" subLabel={rangeV.label} />
+        <Kpi label="Reynolds" value={formatRe(Re)}
+          accent={regime.color} size="lg" subLabel={regime.label} />
+        <Kpi label="단위 마찰손실" value={unitLoss_Pa.toFixed(0)} unit="Pa/m"
+          accent={rangeU.color} size="lg" subLabel={rangeU.label} />
+      </div>
+
+      <div style={{
+        backgroundColor: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 8, padding: '18px 20px',
+      }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.heading }}>권장 범위 대비 선정 관경</div>
+          <div style={{ fontSize: 11, color: C.text, marginTop: 2 }}>
+            한국 실무 관행 기준 · 회색 마커 = 선정 관경의 현재값
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <RangeGauge
+            label="유속 (V)" value={V}
+            range={toRangeSpec(RANGES.velocity)}
+            format={v => v.toString()}
+            status={{ label: rangeV.label, color: rangeV.color }}
+          />
+          <RangeGauge
+            label="단위 마찰손실" value={unitLoss_Pa}
+            range={toRangeSpec(RANGES.unitLossPa)}
+            format={v => v.toFixed(0)}
+            status={{ label: rangeU.label, color: rangeU.color }}
+          />
+        </div>
+
+        <div style={{ marginTop: 18 }}>
+          <FlowRegimeBar Re={Re} regime={{ label: regime.label, color: regime.color }} />
+        </div>
+      </div>
+
+      <WarningList items={ctx} />
+    </>
+  );
+}

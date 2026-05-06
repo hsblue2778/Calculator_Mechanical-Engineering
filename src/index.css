@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  min-height: 100vh;
+}
+
+body {
+  font-family: 'Pretendard', 'Inter', 'Noto Sans KR', 'Apple SD Gothic Neo',
+               'Malgun Gothic', system-ui, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* 입력 필드 숫자 스피너 제거 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ── 인쇄 전용 리포트 뷰 ─────────────────────────────────────────── */
+
+/* 화면에서는 인쇄 리포트 숨김 */
+@media screen {
+  .print-report,
+  .print-report-root {
+    display: none !important;
+  }
+}
+
+/* 인쇄 시: body 직계 자식 중 리포트 루트가 아닌 것은 숨기고 리포트만 표시 */
+/* position: absolute 기법 제거 → 정상 흐름 유지 → 자동 페이지 분할 동작 */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm 15mm 18mm 15mm;
+  }
+
+  /* body 직계 자식 중 리포트 루트가 아닌 것은 전부 숨김 */
+  body > *:not(.print-report-root) {
+    display: none !important;
+  }
+
+  /* 리포트 루트는 정상 흐름으로 표시 → 자동 페이지 분할 동작 */
+  .print-report-root {
+    display: block !important;
+    position: static !important;
+    width: 100%;
+    background: #fff;
+    color: #000;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+    font-family: 'Segoe UI', 'Noto Sans KR', sans-serif;
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  /* 관경별 비교표 헤더 반복 및 행 분리 방지 */
+  .print-report table {
+    page-break-inside: auto;
+  }
+
+  .print-report tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .print-report thead {
+    display: table-header-group;
+  }
+}
