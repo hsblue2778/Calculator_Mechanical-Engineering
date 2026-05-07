@@ -2,6 +2,9 @@
 
 기계설비 설계용 종합 계산기 웹앱입니다. React + TypeScript + Vite 기반.
 
+- 배포 사이트: https://hsblue2778.github.io/Calculator_Mechanical-Engineering/
+- GitHub 저장소: https://github.com/hsblue2778/Calculator_Mechanical-Engineering
+
 ## 포함 계산기
 
 - **펌프 시스템** — HVAC/Process 펌프 양정·동력 산정 (개방계/폐회로)

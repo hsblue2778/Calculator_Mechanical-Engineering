@@ -220,17 +220,17 @@ function DewpointGauge({
         {/* Ti / Ta — 상단 라벨 (게이지와 분리된 영역) */}
         <text x={xStart} y="14" fill="var(--text-tertiary)" fontSize="10"
           textAnchor="start">
-          Ti {Ti.toFixed(0)}°
+          Ti {Ti.toFixed(0)}° <tspan fill="var(--text-quaternary)">유체</tspan>
         </text>
         <text x={xEnd} y="14" fill="var(--text-tertiary)" fontSize="10"
           textAnchor="end">
-          Ta {Ta.toFixed(0)}°
+          Ta {Ta.toFixed(0)}° <tspan fill="var(--text-quaternary)">외기</tspan>
         </text>
 
         {/* Td 라벨 — 게이지 위 */}
         <text x={tdLabelX} y="44" fill="var(--state-error-text)" fontSize="11"
           textAnchor={tdAnchor} fontWeight="700">
-          Td {Td.toFixed(1)}°
+          Td {Td.toFixed(1)}° <tspan fontWeight="400" fontSize="10">노점</tspan>
         </text>
 
         {/* 게이지 배경 */}
@@ -249,11 +249,14 @@ function DewpointGauge({
         {/* Ts 마커 + 라벨 */}
         {tsX != null && Ts != null && (
           <>
-            <circle cx={tsX} cy={gaugeY + gaugeH/2} r="8" fill="var(--state-warn-text)"
-              stroke="var(--bg-surface)" strokeWidth="2" />
+            {/* Ts 세로선 — Td(빨강 점선)와 구분되도록 노랑 실선 */}
+            <line x1={tsX} y1={gaugeY - 8} x2={tsX} y2={gaugeY + gaugeH + 12}
+              stroke="var(--state-warn-text)" strokeWidth="2" />
+            {/* 게이지 중앙의 작은 점 — 위치 강조 */}
+            <circle cx={tsX} cy={gaugeY + gaugeH/2} r="3" fill="var(--state-warn-text)" />
             <text x={tsLabelX} y="120" fill="var(--text-primary)" fontSize="12"
               textAnchor={tsAnchor} fontWeight="700">
-              Ts {Ts.toFixed(1)}°C
+              Ts {Ts.toFixed(1)}°C <tspan fontWeight="400" fontSize="10" fill="var(--text-tertiary)">표면</tspan>
             </text>
             {margin != null && (
               <text x={tsLabelX} y="138" fill={marginColor} fontSize="11"
