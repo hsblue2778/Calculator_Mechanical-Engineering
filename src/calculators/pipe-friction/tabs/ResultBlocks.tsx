@@ -24,11 +24,15 @@ interface Props {
   inputMode?: 'Q' | 'v';
   Q_display?: number | null;
   flowUnitLabel?: string;
+  // 'full' = 모든 블록 출력 (기존 동작), 'secondary' = RangeCard + 경고 리스트만 출력
+  // 'secondary'는 우측 sticky 패널에 KPI/상세표가 별도로 표시될 때 사용
+  variant?: 'full' | 'secondary';
 }
 
 export default function ResultBlocks({
   res, pressDef, unitLossDisplay,
   inputMode = 'Q', Q_display = null, flowUnitLabel = '',
+  variant = 'full',
 }: Props) {
   const regime = flowRegime(res.Re);
   const rangeV = rangeStatus(res.V_ms, RANGES.velocity);
@@ -40,6 +44,19 @@ export default function ResultBlocks({
   const topKpiLabel = isV ? '유량 Q' : '유속 V';
   const topKpiValue = isV ? formatFlowValue(Q_display!) : res.V_ms.toFixed(2);
   const topKpiUnit = isV ? flowUnitLabel : 'm/s';
+
+  if (variant === 'secondary') {
+    return (
+      <>
+        <RangeCard
+          V={res.V_ms} Re={res.Re} unitLoss_Pa={res.unitLoss_Pa}
+          rangeV={rangeV} rangeU={rangeU} regime={regime}
+          isV={isV} Q_display={Q_display}
+        />
+        <WarningList items={ctx} />
+      </>
+    );
+  }
 
   return (
     <>

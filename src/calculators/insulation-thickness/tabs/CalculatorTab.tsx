@@ -9,6 +9,7 @@ import {
 import { buildInsulationReportHtml } from '../htmlReport';
 import { downloadHtmlFile } from '../../../utils/exportUtils';
 import { C, inputStyle, labelStyle } from '../styles';
+import InsulationVisuals from './InsulationVisuals';
 
 interface Props {
   state: InsulationInputs;
@@ -130,7 +131,18 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
       {validationErr ? (
         <ErrorBanner message={validationErr.message} />
       ) : result ? (
-        <ResultPanel result={result} />
+        <>
+          <ResultPanel result={result} />
+          <InsulationVisuals
+            pipe={PIPE_OD_TABLE[state.pipeIdx]}
+            k={isCustomK ? parseFloat(state.customK) : (mat.k as number)}
+            ho={parseFloat(state.ho)}
+            Ti={parseFloat(state.Ti)}
+            Ta={parseFloat(state.Ta)}
+            RH={parseFloat(state.RH)}
+            result={result}
+          />
+        </>
       ) : (
         <div style={{
           backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
@@ -180,7 +192,7 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
 
 function ResultPanel({ result }: { result: ReturnType<typeof calculate> }) {
   if (!result) return null;
-  const { Td, d_mm, d_safe_mm, d_recommended_mm, Ts, margin, grade, warnings } = result;
+  const { d_recommended_mm, grade, warnings } = result;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -207,19 +219,6 @@ function ResultPanel({ result }: { result: ReturnType<typeof calculate> }) {
         </div>
       </div>
 
-      <div style={{
-        backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
-        borderRadius: 8, padding: 16,
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px 24px' }}>
-          <ResultRow label="노점 온도 Td" value={`${Td.toFixed(1)} °C`} />
-          <ResultRow label="한계 두께" value={Number.isFinite(d_mm) ? `${d_mm.toFixed(1)} mm` : '∞'} />
-          <ResultRow label="안전 두께 (한계 × SF)" value={Number.isFinite(d_safe_mm) ? `${d_safe_mm.toFixed(1)} mm` : '∞'} />
-          <ResultRow label="시공 후 표면 온도 Ts" value={Ts != null ? `${Ts.toFixed(1)} °C` : '—'} />
-          <ResultRow label="노점 대비 여유" value={margin != null ? `${margin.toFixed(1)} °C` : '—'} highlight={margin != null} />
-        </div>
-      </div>
-
       {warnings.length > 0 && (
         <div style={{
           backgroundColor: 'var(--state-warn-bg)',
@@ -239,19 +238,6 @@ function ResultPanel({ result }: { result: ReturnType<typeof calculate> }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function ResultRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-      <span style={{ fontSize: 12, color: C.text }}>{label}</span>
-      <span style={{
-        fontSize: 14, fontWeight: highlight ? 700 : 600,
-        color: highlight ? C.blue : C.heading,
-        fontFamily: 'ui-monospace, monospace',
-      }}>{value}</span>
     </div>
   );
 }

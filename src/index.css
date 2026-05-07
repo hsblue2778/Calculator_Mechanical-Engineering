@@ -40,6 +40,17 @@ input[type="number"] {
 .workspace-overlay { display: none; }
 .mobile-menu-btn { display: none; }
 
+/* 보온 두께 — 시각자료 3카드 그리드 (데스크톱 3열, 좁아지면 1열) */
+.insulation-visuals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 900px) {
+  .insulation-visuals-grid { grid-template-columns: 1fr; }
+  .insulation-step-flow { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
 @media (max-width: 768px) {
   /* 사이드바·오버레이·햄버거 — 모바일에서는 완전히 숨김 (기록 미사용) */
   .workspace-sidebar { display: none !important; }
@@ -51,8 +62,11 @@ input[type="number"] {
 
   /* 펌프 워크스페이스 3-pane 레이아웃 — 세로로 적층 */
   .pump-workspace { flex-direction: column !important; }
+  /* 관마찰·관경 등 2-pane 워크스페이스 — 세로로 적층 */
+  .calc-workspace { flex-direction: column !important; }
   /* 실시간 결과 패널 — 본문 아래로 이동, 폭 100% */
-  .pump-sticky-results {
+  .pump-sticky-results,
+  .calc-sticky-results {
     width: 100% !important;
     max-height: none !important;
     position: static !important;
