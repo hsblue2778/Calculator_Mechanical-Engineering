@@ -79,7 +79,7 @@ function StepFlow({
           {recommended != null ? `★ ${recommended}mm` : '50mm 초과'}
         </div>
       </StepCard>
-      <StepCard idx={5} title="검산 Ts">
+      <StepCard idx={5} title="시공 후 표면 온도 검산">
         <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--state-success-text)' }}>
           {Ts != null ? `${Ts.toFixed(1)}°C` : '—'}
         </div>
@@ -176,63 +176,93 @@ function DewpointGauge({
   const tdPct = clamp01((Td - Ti) / span);
   const tsPct = Ts != null ? clamp01((Ts - Ti) / span) : null;
 
-  // SVG 좌표: x=20 ~ x=260, 너비 240
-  const xStart = 20;
-  const xEnd = 260;
+  // SVG 좌표 — 라벨 영역을 Y로 완전 분리해 절대 겹치지 않도록 설계
+  //   y=14:  Ti / Ta  (게이지 끝점 라벨)
+  //   y=44:  Td 라벨  (게이지 위)
+  //   y=58~85: 게이지 본체 + Td 세로선 + Ts 원
+  //   y=120: Ts 라벨  (게이지 아래)
+  //   y=138: 여유 라벨
+  const xStart = 30;
+  const xEnd = 250;
   const xWidth = xEnd - xStart;
   const tdX = xStart + tdPct * xWidth;
   const tsX = tsPct != null ? xStart + tsPct * xWidth : null;
 
+  const gaugeY = 64;
+  const gaugeH = 22;
+
+  // 동적 textAnchor — 라벨이 SVG 우측·좌측 끝에서 잘리지 않도록
+  function anchorFor(pct: number): 'start' | 'middle' | 'end' {
+    if (pct < 0.12) return 'start';
+    if (pct > 0.88) return 'end';
+    return 'middle';
+  }
+  // 좌우 끝에 가까울 때 라벨이 게이지 밖으로 튀어나가지 않도록 X 보정
+  function offsetX(pct: number, x: number): number {
+    if (pct < 0.12) return Math.max(xStart, x);
+    if (pct > 0.88) return Math.min(xEnd, x);
+    return x;
+  }
+  const tdAnchor = anchorFor(tdPct);
+  const tdLabelX = offsetX(tdPct, tdX);
+  const tsAnchor = tsPct != null ? anchorFor(tsPct) : 'middle';
+  const tsLabelX = tsPct != null && tsX != null ? offsetX(tsPct, tsX) : 0;
+
   const marginColor =
     margin == null ? 'var(--text-tertiary)' :
-    margin < 0 ? 'var(--state-error-text)' :
     margin < 1 ? 'var(--state-error-text)' :
     margin < 3 ? 'var(--state-warn-text)' :
     'var(--state-success-text)';
 
   return (
     <VizCard title="② 결로 안전 게이지">
-      <svg viewBox="0 0 280 240" style={{ width: '100%' }}>
-        {/* 게이지 배경 */}
-        <rect x={xStart} y="100" width={xWidth} height="22" rx="11"
-          fill="var(--bg-surface-3)" />
-        {/* Td 이하 (결로 영역) — 빨강 */}
-        <rect x={xStart} y="100" width={tdX - xStart} height="22" rx="11"
-          fill="var(--state-error)" opacity="0.3" />
-        {/* Td 위 (안전 영역) — 녹색 */}
-        <rect x={tdX} y="100" width={xEnd - tdX} height="22"
-          fill="var(--state-success)" opacity="0.18" />
-        {/* Td 세로선 */}
-        <line x1={tdX} y1="84" x2={tdX} y2="142"
-          stroke="var(--state-error-text)" strokeWidth="2" strokeDasharray="4,3" />
-        <text x={tdX} y="78" fill="var(--state-error-text)" fontSize="10"
-          textAnchor="middle" fontWeight="700">
+      <svg viewBox="0 0 280 160" style={{ width: '100%' }}>
+        {/* Ti / Ta — 상단 라벨 (게이지와 분리된 영역) */}
+        <text x={xStart} y="14" fill="var(--text-tertiary)" fontSize="10"
+          textAnchor="start">
+          Ti {Ti.toFixed(0)}°
+        </text>
+        <text x={xEnd} y="14" fill="var(--text-tertiary)" fontSize="10"
+          textAnchor="end">
+          Ta {Ta.toFixed(0)}°
+        </text>
+
+        {/* Td 라벨 — 게이지 위 */}
+        <text x={tdLabelX} y="44" fill="var(--state-error-text)" fontSize="11"
+          textAnchor={tdAnchor} fontWeight="700">
           Td {Td.toFixed(1)}°
         </text>
-        {/* Ts 마커 */}
+
+        {/* 게이지 배경 */}
+        <rect x={xStart} y={gaugeY} width={xWidth} height={gaugeH} rx={gaugeH/2}
+          fill="var(--bg-surface-3)" />
+        {/* Td 이하 (결로 영역) — 빨강 */}
+        <rect x={xStart} y={gaugeY} width={tdX - xStart} height={gaugeH} rx={gaugeH/2}
+          fill="var(--state-error)" opacity="0.3" />
+        {/* Td 위 (안전 영역) — 녹색 */}
+        <rect x={tdX} y={gaugeY} width={Math.max(0, xEnd - tdX)} height={gaugeH}
+          fill="var(--state-success)" opacity="0.18" />
+        {/* Td 세로선 */}
+        <line x1={tdX} y1={gaugeY - 8} x2={tdX} y2={gaugeY + gaugeH + 12}
+          stroke="var(--state-error-text)" strokeWidth="2" strokeDasharray="4,3" />
+
+        {/* Ts 마커 + 라벨 */}
         {tsX != null && Ts != null && (
           <>
-            <circle cx={tsX} cy="111" r="8" fill="var(--state-warn-text)"
+            <circle cx={tsX} cy={gaugeY + gaugeH/2} r="8" fill="var(--state-warn-text)"
               stroke="var(--bg-surface)" strokeWidth="2" />
-            <text x={tsX} y="160" fill="var(--text-primary)" fontSize="12"
-              textAnchor="middle" fontWeight="700">
+            <text x={tsLabelX} y="120" fill="var(--text-primary)" fontSize="12"
+              textAnchor={tsAnchor} fontWeight="700">
               Ts {Ts.toFixed(1)}°C
             </text>
             {margin != null && (
-              <text x={tsX} y="180" fill={marginColor} fontSize="11"
-                textAnchor="middle" fontWeight="700">
+              <text x={tsLabelX} y="138" fill={marginColor} fontSize="11"
+                textAnchor={tsAnchor} fontWeight="700">
                 여유 {margin >= 0 ? '+' : ''}{margin.toFixed(1)}°C
               </text>
             )}
           </>
         )}
-        <text x={xStart + 10} y="78" fill="var(--text-tertiary)" fontSize="9">
-          Ti {Ti.toFixed(0)}°
-        </text>
-        <text x={xEnd - 10} y="78" fill="var(--text-tertiary)" fontSize="9"
-          textAnchor="end">
-          Ta {Ta.toFixed(0)}°
-        </text>
       </svg>
     </VizCard>
   );
