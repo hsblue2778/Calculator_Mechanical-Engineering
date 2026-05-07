@@ -70,7 +70,7 @@ export const calculators: CalculatorMeta[] = [
     title: '냉수배관 보온재 선정',
     inputs: '관경, 외기 조건, 보온재',
     outputs: '한계 두께, 추천 시판 두께, 결로 위험 등급',
-    category: '단열·결로',
+    category: '배관설계',
     tabs: [
       { key: 'calculator', label: '계산' },
       { key: 'overview',   label: '개요' },
