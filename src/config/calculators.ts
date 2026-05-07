@@ -65,4 +65,16 @@ export const calculators: CalculatorMeta[] = [
     outputTags: [],
     nextCalculators: [],
   },
+  {
+    id: 'insulation-thickness',
+    title: '냉수배관 보온 두께',
+    inputs: '관경, 외기 조건, 보온재',
+    outputs: '한계 두께, 추천 시판 두께, 결로 위험 등급',
+    category: '단열·결로',
+    tabs: [
+      { key: 'calculator', label: '계산' },
+      { key: 'overview',   label: '개요' },
+      { key: 'examples',   label: '예시' },
+    ],
+  },
 ];

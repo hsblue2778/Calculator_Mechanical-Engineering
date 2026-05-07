@@ -16,6 +16,7 @@ import type { HistoryEntry } from './state/historyStore';
 import PipeFrictionCalculator from './calculators/pipe-friction';
 import PipeSizingCalculator from './calculators/pipe-sizing';
 import PumpSystemCalculator from './calculators/pump-system';
+import InsulationThicknessCalculator from './calculators/insulation-thickness';
 import ComparisonView from './calculators/pump-system/tabs/ComparisonView';
 import ChangelogButton from './components/ChangelogButton';
 import ChangelogContent from './components/ChangelogContent';
@@ -35,6 +36,7 @@ const calculatorComponents: Record<string, React.ComponentType<CalculatorCompone
   'pipe-friction': PipeFrictionCalculator,
   'pipe-sizing': PipeSizingCalculator,
   'pump-hvac': (props: CalculatorComponentProps) => <PumpSystemCalculator field="hvac" {...props} />,
+  'insulation-thickness': InsulationThicknessCalculator,
 };
 
 function genId(): string {
