@@ -89,7 +89,7 @@ export default function SystemConditionSection({
   }
 
   return (
-    <div style={sectionStyle}>
+    <div className="pump-section" style={sectionStyle}>
       <p style={sectionTitleStyle}>시스템 기본조건</p>
       <div style={{
         display: 'grid',
