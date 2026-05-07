@@ -16,6 +16,7 @@ export default function StickyResults({ result, headMarginPct, npshMargin, power
   if (!result) {
     return (
       <aside
+        className="pump-sticky-results"
         style={{
           width: 280, flexShrink: 0,
           borderLeft: '1px solid var(--border-subtle)',
@@ -61,6 +62,7 @@ export default function StickyResults({ result, headMarginPct, npshMargin, power
 
   return (
     <aside
+      className="pump-sticky-results"
       style={{
         width: 280, flexShrink: 0,
         borderLeft: '1px solid var(--border-subtle)',

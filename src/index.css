@@ -49,6 +49,21 @@ input[type="number"] {
   /* 펌프 시스템 섹션 스테퍼 — 모바일에서 숨김 (좁은 화면에서 본문 가림) */
   .pump-section-stepper { display: none !important; }
 
+  /* 펌프 워크스페이스 3-pane 레이아웃 — 세로로 적층 */
+  .pump-workspace { flex-direction: column !important; }
+  /* 실시간 결과 패널 — 본문 아래로 이동, 폭 100% */
+  .pump-sticky-results {
+    width: 100% !important;
+    max-height: none !important;
+    position: static !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border-subtle) !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+    margin-top: 16px !important;
+    padding-top: 14px !important;
+  }
+
   /* 헤더 — 패딩 축소, 부제·버튼 라벨 숨김 */
   .app-header { padding: 8px 12px !important; gap: 8px !important; }
   .app-header-subtitle { display: none; }
