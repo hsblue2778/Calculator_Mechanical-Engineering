@@ -310,7 +310,7 @@ function ThicknessComparison({
 
   return (
     <VizCard title="③ 시판 두께별 여유 (°C)">
-      <svg viewBox="0 0 280 240" style={{ width: '100%' }}>
+      <svg viewBox="0 0 280 248" style={{ width: '100%' }}>
         {/* 0 기준선 */}
         <line x1="35" y1={baseY} x2="265" y2={baseY}
           stroke="var(--text-tertiary)" strokeDasharray="3,3" />
@@ -350,6 +350,12 @@ function ThicknessComparison({
                 fontSize="9" textAnchor="middle" fontWeight="600">
                 {d.margin >= 0 ? '+' : ''}{d.margin.toFixed(1)}
               </text>
+              {d.margin >= 5 && (
+                <text x={x + 14} y="234" fill="var(--text-tertiary)"
+                  fontSize="8" textAnchor="middle" fontStyle="italic">
+                  과다
+                </text>
+              )}
             </g>
           );
         })}
