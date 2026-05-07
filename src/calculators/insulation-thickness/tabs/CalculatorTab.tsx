@@ -1,12 +1,13 @@
 // 냉수배관 보온 두께 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, AlertTriangle, Save, Check, ChevronDown } from 'lucide-react';
-import FormulaSection from '../../../components/FormulaSection';
+import { RotateCcw, AlertTriangle, Save, Check, ChevronDown, FileDown } from 'lucide-react';
 import {
-  PIPE_OD_TABLE, INSULATION_MATERIALS, ENV_PRESETS,
+  PIPE_OD_TABLE, INSULATION_MATERIALS,
   calculate, validate, type InsulationInputs, type Grade,
 } from '../calc';
+import { buildInsulationReportHtml } from '../htmlReport';
+import { downloadHtmlFile } from '../../../utils/exportUtils';
 import { C, inputStyle, labelStyle } from '../styles';
 
 interface Props {
@@ -31,10 +32,15 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
   const mat = INSULATION_MATERIALS[state.matIdx];
   const isCustomK = mat?.id === 'custom';
 
-  function applyPreset(presetId: string) {
-    const p = ENV_PRESETS.find(e => e.id === presetId);
-    if (!p) return;
-    setState({ Ta: String(p.Ta), RH: String(p.RH) });
+  function handleHtmlExport() {
+    if (!result) return;
+    const pipe = PIPE_OD_TABLE[state.pipeIdx];
+    const k = isCustomK ? parseFloat(state.customK) : (mat.k as number);
+    const html = buildInsulationReportHtml({
+      pipe, mat, k, inputs: state, result,
+    });
+    const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    downloadHtmlFile(`insulation-${pipe.nominalA}A_${ts}.html`, html);
   }
 
   return (
@@ -75,41 +81,20 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
         />
       )}
 
-      {/* 환경 프리셋 */}
-      <FormulaSection title="환경 조건">
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-          {ENV_PRESETS.map(p => (
-            <button
-              key={p.id}
-              onClick={() => applyPreset(p.id)}
-              style={{
-                padding: '6px 12px', fontSize: 12, fontWeight: 500,
-                color: C.textDark, backgroundColor: C.surface,
-                border: `1px solid ${C.borderInput}`, borderRadius: 6,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-              title={`Ta=${p.Ta}°C, RH=${p.RH}%`}
-            >
-              {p.nameKo} ({p.Ta}°C / {p.RH}%)
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
-          <FieldNumber
-            label={<>외기 온도 Tₐ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
-            value={state.Ta} onChange={v => setState({ Ta: v })}
-          />
-          <FieldNumber
-            label={<>관내 온도 Tᵢ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
-            value={state.Ti} onChange={v => setState({ Ti: v })}
-          />
-          <FieldNumber
-            label={<>상대습도 RH <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(%)</span></>}
-            value={state.RH} onChange={v => setState({ RH: v })}
-          />
-        </div>
-      </FormulaSection>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+        <FieldNumber
+          label={<>외기 온도 Tₐ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
+          value={state.Ta} onChange={v => setState({ Ta: v })}
+        />
+        <FieldNumber
+          label={<>관내 온도 Tᵢ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
+          value={state.Ti} onChange={v => setState({ Ti: v })}
+        />
+        <FieldNumber
+          label={<>상대습도 RH <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(%)</span></>}
+          value={state.RH} onChange={v => setState({ RH: v })}
+        />
+      </div>
 
       {/* 고급 옵션 (접힘) */}
       <details
@@ -157,8 +142,25 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={canSave} />}
+        <button
+          onClick={handleHtmlExport}
+          disabled={!result}
+          title="편집 가능한 HTML 산출서 파일 다운로드"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '10px 16px', fontSize: 13, fontWeight: 500,
+            color: result ? C.textDark : 'var(--text-quaternary)',
+            backgroundColor: C.surface,
+            border: `1px solid ${result ? C.borderInput : C.border}`,
+            borderRadius: 8,
+            cursor: result ? 'pointer' : 'not-allowed',
+            fontFamily: 'inherit',
+          }}
+        >
+          <FileDown size={14} /> HTML 산출서
+        </button>
         <button
           onClick={onReset}
           style={{
