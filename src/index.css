@@ -40,6 +40,17 @@ input[type="number"] {
 .workspace-overlay { display: none; }
 .mobile-menu-btn { display: none; }
 
+/* 보온 두께 — 시각자료 3카드 그리드 (데스크톱 3열, 좁아지면 1열) */
+.insulation-visuals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 900px) {
+  .insulation-visuals-grid { grid-template-columns: 1fr; }
+  .insulation-step-flow { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
 @media (max-width: 768px) {
   /* 사이드바·오버레이·햄버거 — 모바일에서는 완전히 숨김 (기록 미사용) */
   .workspace-sidebar { display: none !important; }

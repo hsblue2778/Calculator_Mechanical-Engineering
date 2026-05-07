@@ -9,6 +9,7 @@ import {
 import { buildInsulationReportHtml } from '../htmlReport';
 import { downloadHtmlFile } from '../../../utils/exportUtils';
 import { C, inputStyle, labelStyle } from '../styles';
+import InsulationVisuals from './InsulationVisuals';
 
 interface Props {
   state: InsulationInputs;
@@ -130,7 +131,18 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
       {validationErr ? (
         <ErrorBanner message={validationErr.message} />
       ) : result ? (
-        <ResultPanel result={result} />
+        <>
+          <ResultPanel result={result} />
+          <InsulationVisuals
+            pipe={PIPE_OD_TABLE[state.pipeIdx]}
+            k={isCustomK ? parseFloat(state.customK) : (mat.k as number)}
+            ho={parseFloat(state.ho)}
+            Ti={parseFloat(state.Ti)}
+            Ta={parseFloat(state.Ta)}
+            RH={parseFloat(state.RH)}
+            result={result}
+          />
+        </>
       ) : (
         <div style={{
           backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
