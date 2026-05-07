@@ -23,7 +23,7 @@ export default function AnalysisBlock({ V, Re, unitLoss_Pa }: Props) {
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         <Kpi label="유속 V" value={V.toFixed(2)} unit="m/s"
           accent={rangeV.color} size="lg" subLabel={rangeV.label} />
         <Kpi label="Reynolds" value={formatRe(Re)}
@@ -43,7 +43,7 @@ export default function AnalysisBlock({ V, Re, unitLoss_Pa }: Props) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
           <RangeGauge
             label="유속 (V)" value={V}
             range={toRangeSpec(RANGES.velocity)}

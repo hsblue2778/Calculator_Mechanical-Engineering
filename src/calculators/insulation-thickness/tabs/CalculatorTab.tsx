@@ -40,7 +40,7 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* 관경 + 보온재 — 한 줄 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
         <FieldSelect
           label="관경 (KS 강관)"
           value={state.pipeIdx}
@@ -95,7 +95,7 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
           <FieldNumber
             label={<>외기 온도 Tₐ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
             value={state.Ta} onChange={v => setState({ Ta: v })}
@@ -128,7 +128,7 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
           <ChevronDown size={14} style={{ transform: advancedOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }} />
           고급 옵션 (표면 열전달률 · 안전계수)
         </summary>
-        <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+        <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
           <FieldNumber
             label={<>표면 열전달률 hₒ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(W/m²·K)</span></>}
             value={state.ho} onChange={v => setState({ ho: v })}
@@ -209,7 +209,7 @@ function ResultPanel({ result }: { result: ReturnType<typeof calculate> }) {
         backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
         borderRadius: 8, padding: 16,
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px 24px' }}>
           <ResultRow label="노점 온도 Td" value={`${Td.toFixed(1)} °C`} />
           <ResultRow label="한계 두께" value={Number.isFinite(d_mm) ? `${d_mm.toFixed(1)} mm` : '∞'} />
           <ResultRow label="안전 두께 (한계 × SF)" value={Number.isFinite(d_safe_mm) ? `${d_safe_mm.toFixed(1)} mm` : '∞'} />

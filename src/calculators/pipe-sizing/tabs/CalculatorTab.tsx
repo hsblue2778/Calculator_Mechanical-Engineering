@@ -131,7 +131,7 @@ export default function CalculatorTab({
           출처: 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
           <FieldNumber
             label={<>유량 Q <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>({flowUnitLabel})</span></>}
             value={Q} onChange={setQ}

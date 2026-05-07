@@ -44,7 +44,7 @@ export function ResultPanel({ selected, noSolution, mat, pressureUnit }: Summary
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 20 }}>
         <div>
           <div style={labelStyle}>선정 관경</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>

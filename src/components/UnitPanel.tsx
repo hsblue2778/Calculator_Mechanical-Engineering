@@ -33,7 +33,7 @@ export default function UnitPanel({
           textTransform: 'uppercase', letterSpacing: '0.04em',
         }}>단위 설정</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         <UnitRadios
           label={flowLabel}
           options={flowOptions}

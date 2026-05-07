@@ -1,7 +1,7 @@
 // 앱 헤더 — 로고·앱명·(컨텍스트 크럼) + 우측 액션(인쇄·도움말·단위계·테마)
 
 import { useState } from 'react';
-import { HelpCircle, Printer } from 'lucide-react';
+import { HelpCircle, Printer, Menu } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import UnitSystemToggle from './UnitSystemToggle';
 import type { Theme } from '../state/themeStore';
@@ -17,15 +17,17 @@ interface Props {
   currentField?: string;
   onHome?: () => void;
   onPrint?: () => void;
+  onMobileMenuToggle?: () => void;
 }
 
 export default function AppHeader({
   theme, onThemeChange, onShowOnboarding,
   unitSystem, onUnitSystemChange,
-  currentField, onHome, onPrint,
+  currentField, onHome, onPrint, onMobileMenuToggle,
 }: Props) {
   return (
     <header
+      className="app-header"
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 22px',
@@ -35,7 +37,22 @@ export default function AppHeader({
         gap: 16,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        {onMobileMenuToggle && (
+          <button
+            className="mobile-menu-btn"
+            onClick={onMobileMenuToggle}
+            aria-label="메뉴 열기"
+            style={{
+              width: 32, height: 32,
+              alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', border: 'none',
+              borderRadius: 6, cursor: 'pointer', color: 'var(--text-secondary)',
+            }}
+          >
+            <Menu size={18} />
+          </button>
+        )}
         <button
           onClick={onHome}
           disabled={!onHome}
@@ -43,12 +60,12 @@ export default function AppHeader({
             display: 'flex', alignItems: 'center', gap: 8,
             background: 'transparent', border: 'none',
             cursor: onHome ? 'pointer' : 'default',
-            padding: 0, color: 'var(--text-primary)',
+            padding: 0, color: 'var(--text-primary)', minWidth: 0,
           }}
         >
           <div
             style={{
-              width: 28, height: 28, borderRadius: 8,
+              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
               background: 'linear-gradient(135deg, #3B82F6, #0EA5E9)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#FFF', fontWeight: 700,
@@ -56,9 +73,9 @@ export default function AppHeader({
           >
             S
           </div>
-          <div style={{ textAlign: 'left' }}>
+          <div style={{ textAlign: 'left', minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>종합 계산기</div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            <div className="app-header-subtitle" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
               기계설비 설계 도구
             </div>
           </div>
@@ -69,6 +86,7 @@ export default function AppHeader({
             <span
               style={{
                 fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}
             >
               {currentField}
@@ -77,7 +95,7 @@ export default function AppHeader({
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         {onPrint && (
           <HeaderButton onClick={onPrint} icon={<Printer size={14} />} label="산출서 인쇄" />
         )}
@@ -123,7 +141,7 @@ function HeaderButton({
       }}
     >
       {icon}
-      {label}
+      <span className="app-header-btn-label">{label}</span>
     </button>
   );
 }
