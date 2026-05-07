@@ -65,7 +65,7 @@ export default function WorkspaceLayout({
   }, [sections]);
 
   return (
-    <div style={{ display: 'flex', minHeight: 0, gap: 0 }}>
+    <div className="pump-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
       <SectionStepper items={sections} activeId={activeId} onJump={jumpTo} />
       <main
         ref={mainRef}
