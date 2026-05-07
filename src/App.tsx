@@ -16,6 +16,7 @@ import type { HistoryEntry } from './state/historyStore';
 import PipeFrictionCalculator from './calculators/pipe-friction';
 import PipeSizingCalculator from './calculators/pipe-sizing';
 import PumpSystemCalculator from './calculators/pump-system';
+import InsulationThicknessCalculator from './calculators/insulation-thickness';
 import ComparisonView from './calculators/pump-system/tabs/ComparisonView';
 import ChangelogButton from './components/ChangelogButton';
 import ChangelogContent from './components/ChangelogContent';
@@ -35,6 +36,7 @@ const calculatorComponents: Record<string, React.ComponentType<CalculatorCompone
   'pipe-friction': PipeFrictionCalculator,
   'pipe-sizing': PipeSizingCalculator,
   'pump-hvac': (props: CalculatorComponentProps) => <PumpSystemCalculator field="hvac" {...props} />,
+  'insulation-thickness': InsulationThicknessCalculator,
 };
 
 function genId(): string {
@@ -50,6 +52,7 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [showChangelog, setShowChangelog] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // 비교 모달 상태 (pump-hvac 등 펌프 시스템 계열 한정 사용)
   const [compareEntries, setCompareEntries] = useState<HistoryEntry[] | null>(null);
@@ -343,9 +346,10 @@ export default function App() {
         onUnitSystemChange={handleUnitSystemChange}
         currentField={activeCalc?.title}
         onHome={goHome}
+        onMobileMenuToggle={() => setMobileSidebarOpen(o => !o)}
       />
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
         <WorkspaceSidebar
           instances={instances}
           activeId={activeId}
@@ -354,12 +358,14 @@ export default function App() {
           onRename={renameInstance}
           onRemove={removeInstance}
           hideInstances={supportsHistory}
+          mobileOpen={mobileSidebarOpen}
+          onMobileItemSelect={() => setMobileSidebarOpen(false)}
           extraPanel={
             supportsHistory && activeCalc ? (
               <HistoryPanel
                 calculatorId={activeCalc.id}
                 refreshKey={historyRefreshKey}
-                onLoadEntry={handleLoadEntry}
+                onLoadEntry={(entry) => { handleLoadEntry(entry); setMobileSidebarOpen(false); }}
                 onChanged={handleHistoryChanged}
                 selectable={supportsCompare}
                 selectedIds={selectedHistoryIds}
@@ -374,9 +380,15 @@ export default function App() {
           }
         />
 
+        <div
+          className={`workspace-overlay${mobileSidebarOpen ? ' is-open' : ''}`}
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden
+        />
+
         <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           {activeInstance && ActiveComponent && (
-            <div style={{ padding: '20px 24px 60px' }}>
+            <div className="workspace-main" style={{ padding: '20px 24px 60px' }}>
               <ActiveComponent
                 key={`${activeInstance.id}-${unitSystem}-${instanceLoadEpoch[activeInstance.id] ?? 0}`}
                 initialTab="calculator"

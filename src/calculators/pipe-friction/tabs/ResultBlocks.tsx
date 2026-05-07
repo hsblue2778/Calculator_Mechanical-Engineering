@@ -43,7 +43,7 @@ export default function ResultBlocks({
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         <Kpi label={topKpiLabel} value={topKpiValue} unit={topKpiUnit}
           accent={rangeV.color} size="lg" subLabel={rangeV.label} />
         <Kpi label="총 마찰손실 ΔP"
@@ -69,7 +69,7 @@ export default function ResultBlocks({
         backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
         borderRadius: 8, padding: 14,
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
           <Mini label="단위 마찰손실"
             value={unitLossDisplay !== null ? unitLossDisplay.toFixed(pressDef.dpM) : '—'}
             unit={`${pressDef.label}/m`} />
@@ -208,7 +208,7 @@ function RangeCard({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
         <RangeGauge
           label={vGaugeLabel} value={vGaugeValue}
           range={toRangeSpec(RANGES.velocity)}

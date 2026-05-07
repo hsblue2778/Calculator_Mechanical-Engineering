@@ -21,15 +21,23 @@ interface Props {
   extraPanel?: React.ReactNode;
   // 인스턴스 섹션을 숨김 — extraPanel만 표시 (펌프 시스템처럼 기록 기반 워크플로우용)
   hideInstances?: boolean;
+  // 모바일 슬라이드오버 — 열림 상태 + 항목 선택 시 자동 닫힘 콜백
+  mobileOpen?: boolean;
+  onMobileItemSelect?: () => void;
 }
 
 export default function WorkspaceSidebar({
   instances, activeId, onSelect, onAdd, onRename, onRemove, extraPanel, hideInstances,
+  mobileOpen, onMobileItemSelect,
 }: Props) {
+  function wrapSelect(id: string) {
+    onSelect(id);
+    onMobileItemSelect?.();
+  }
   return (
     <aside
+      className={`workspace-sidebar${mobileOpen ? ' is-open' : ''}`}
       style={{
-        width: 220, flexShrink: 0,
         background: 'var(--bg-surface)',
         borderRight: '1px solid var(--border-subtle)',
         padding: '14px 12px',
@@ -78,7 +86,7 @@ export default function WorkspaceSidebar({
                 inst={inst}
                 active={inst.id === activeId}
                 canRemove={instances.length > 1}
-                onSelect={() => onSelect(inst.id)}
+                onSelect={() => wrapSelect(inst.id)}
                 onRename={(name) => onRename(inst.id, name)}
                 onRemove={() => onRemove(inst.id)}
               />
