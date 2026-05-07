@@ -20,6 +20,7 @@ import {
 } from '../calc';
 import { flowRegime, rangeStatus, RANGES, formatRe } from '../analysis';
 import ResultBlocks from './ResultBlocks';
+import StickyResults from './StickyResults';
 import { downloadCsv, printToPdf } from '../../../utils/exportUtils';
 import { C, inputStyle, labelStyle } from '../styles';
 import PrintReport from '../../../components/PrintReport';
@@ -72,7 +73,8 @@ export default function CalculatorTab({
   const Q_display = (res && inputMode === 'v') ? res.Q_m3s * flowUnitDivisor : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
         <div style={{ position: 'relative' }}>
           <label style={labelStyle}>배관 재질</label>
@@ -178,17 +180,9 @@ export default function CalculatorTab({
         <ResultBlocks
           res={res} pressDef={pressDef} unitLossDisplay={unitLossDisplay}
           inputMode={inputMode} Q_display={Q_display} flowUnitLabel={flowUnitLabel}
+          variant="secondary"
         />
-      ) : (
-        <div style={{
-          backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
-          borderRadius: 8, padding: '24px', textAlign: 'center',
-        }}>
-          <p style={{ fontSize: 13, color: C.text, margin: 0 }}>
-            재질·유량·관 내경·배관 길이를 모두 입력하면 결과가 표시됩니다.
-          </p>
-        </div>
-      )}
+      ) : null}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
@@ -226,6 +220,15 @@ export default function CalculatorTab({
           />
         </PrintReport>
       )}
+      </main>
+      <StickyResults
+        res={inputErr ? null : res}
+        pressDef={pressDef}
+        unitLossDisplay={unitLossDisplay}
+        inputMode={inputMode}
+        Q_display={Q_display}
+        flowUnitLabel={flowUnitLabel}
+      />
     </div>
   );
 }
