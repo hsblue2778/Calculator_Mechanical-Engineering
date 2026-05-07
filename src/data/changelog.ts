@@ -14,4 +14,5 @@ export const changelog: ChangelogEntry[] = [
   { date: '2026-04-29', status: 'planned',  title: '응축수량 계산기 추가 예정' },
   { date: '2026-04-29', status: 'planned',  title: '보온재 선정 계산기 추가 예정' },
   { date: '2026-04-29', status: 'planned',  title: '하수도 급수량에 따른 메인관경 계산기 추가 예정' },
+  { date: '2026-05-07', status: 'planned',  title: '미국식 단위계 활성화 시 단위 토글 동작 점검 (현재 한국식만 적용)' },
 ];

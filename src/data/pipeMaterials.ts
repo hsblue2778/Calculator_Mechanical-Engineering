@@ -1,3 +1,19 @@
+// 재질별 마찰계수 단일 출처 (Single Source of Truth).
+//
+// 한 곳에서만 정의하고 PIPE_MATERIALS·PIPE_MATERIALS_V2·PIPE_SIZE_MATERIALS
+// 모두 이 상수를 참조한다. 마찰계수 변경 시 이 객체만 고치면 세 계산기
+// (pipe-friction · pipe-sizing · pump-hvac) 결과가 동시에 일관 갱신된다.
+//
+// 출처: 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p —
+// 재질별 고정 f 값 (정통 Darcy-Weisbach).
+export const FRICTION_FACTORS = {
+  carbonSteel:    0.03,
+  stainlessSteel: 0.02,
+  pvcCpvc:        0.02,
+  copper:         0.02,
+  pvdf:           0.02,
+} as const;
+
 export interface PipeMaterial {
   id: string;
   nameKo: string;
@@ -16,7 +32,7 @@ export const PIPE_MATERIALS: PipeMaterial[] = [
     abbreviation: 'SPPS, SPP',
     roughnessMin: 0.045,
     roughnessMax: 0.05,
-    frictionFactor: 0.03,
+    frictionFactor: FRICTION_FACTORS.carbonSteel,
   },
   {
     id: 'stainless-steel',
@@ -25,7 +41,7 @@ export const PIPE_MATERIALS: PipeMaterial[] = [
     abbreviation: 'STS 304, 316',
     roughnessMin: 0.015,
     roughnessMax: 0.015,
-    frictionFactor: 0.02,
+    frictionFactor: FRICTION_FACTORS.stainlessSteel,
   },
   {
     id: 'pvc-cpvc',
@@ -34,7 +50,7 @@ export const PIPE_MATERIALS: PipeMaterial[] = [
     abbreviation: null,
     roughnessMin: 0.0015,
     roughnessMax: 0.007,
-    frictionFactor: 0.02,
+    frictionFactor: FRICTION_FACTORS.pvcCpvc,
   },
   {
     id: 'copper',
@@ -43,7 +59,7 @@ export const PIPE_MATERIALS: PipeMaterial[] = [
     abbreviation: 'Copper',
     roughnessMin: 0.0015,
     roughnessMax: 0.003,
-    frictionFactor: 0.02,
+    frictionFactor: FRICTION_FACTORS.copper,
   },
   {
     id: 'pvdf',
@@ -52,7 +68,7 @@ export const PIPE_MATERIALS: PipeMaterial[] = [
     abbreviation: null,
     roughnessMin: 0.007,
     roughnessMax: 0.007,
-    frictionFactor: 0.02,
+    frictionFactor: FRICTION_FACTORS.pvdf,
   },
 ];
 

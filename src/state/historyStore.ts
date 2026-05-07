@@ -1,11 +1,17 @@
 // 계산 기록 저장소 — localStorage 기반, 계산기별 분리
 // key 형식: calc-history:<calculatorId>
+//
+// 스키마 버전 — 입력 형식이 바뀌면 CURRENT_HISTORY_VERSION 을 올린다.
+// 읽을 때 version 이 다르면 조용히 건너뛴다 (구버전 기록은 별도 마이그레이션
+// 함수가 추가되기 전까지는 무시). 새로 저장되는 항목엔 항상 현재 버전이 박힘.
+export const CURRENT_HISTORY_VERSION = 1;
 
 export interface HistoryEntry {
   id: string;
   calculatorId: string;
   title: string;
   timestamp: number;
+  version: number;
   inputs: Record<string, any>;
   outputs: Record<string, any> | null;
   parentEntryId?: string;
@@ -22,7 +28,11 @@ function readAll(calculatorId: string): HistoryEntry[] {
     const raw = localStorage.getItem(storageKey(calculatorId));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // 버전 미일치 항목은 조용히 제외 — 깨진 형식의 결과를 복원하지 않기 위함
+    return parsed.filter((e): e is HistoryEntry =>
+      e && typeof e === 'object' && e.version === CURRENT_HISTORY_VERSION
+    );
   } catch {
     return [];
   }
@@ -75,6 +85,7 @@ export function save(params: SaveParams): HistoryEntry {
     calculatorId: params.calculatorId,
     title,
     timestamp: Date.now(),
+    version: CURRENT_HISTORY_VERSION,
     inputs: params.inputs,
     outputs: params.outputs,
     parentEntryId: params.parentEntryId,
