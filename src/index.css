@@ -51,8 +51,11 @@ input[type="number"] {
 
   /* 펌프 워크스페이스 3-pane 레이아웃 — 세로로 적층 */
   .pump-workspace { flex-direction: column !important; }
+  /* 관마찰·관경 등 2-pane 워크스페이스 — 세로로 적층 */
+  .calc-workspace { flex-direction: column !important; }
   /* 실시간 결과 패널 — 본문 아래로 이동, 폭 100% */
-  .pump-sticky-results {
+  .pump-sticky-results,
+  .calc-sticky-results {
     width: 100% !important;
     max-height: none !important;
     position: static !important;

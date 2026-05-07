@@ -20,8 +20,9 @@ import {
 import {
   displayToMmAq, mmAqToDisplay, convertFlowToLpm,
 } from '../units';
-import { ResultPanel, SizingDetailTable } from './ResultPanel';
+import { SizingDetailTable } from './ResultPanel';
 import AnalysisBlock from './AnalysisBlock';
+import StickyResults from './StickyResults';
 import { downloadCsv, printToPdf } from '../../../utils/exportUtils';
 import { C, inputStyle, labelStyle, PA_PER_MM_AQ } from '../styles';
 import PrintReport from '../../../components/PrintReport';
@@ -78,7 +79,8 @@ export default function CalculatorTab({
   const noSolution = ok !== null && !ok.selected;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
       {/* 재질 선택 — 단독 한 줄 */}
       <div>
         <div style={{ position: 'relative' }}>
@@ -147,18 +149,12 @@ export default function CalculatorTab({
         <ErrorBanner message={inputErr.message} />
       ) : ok ? (
         <>
-          <ResultPanel
-            selected={ok.selected ?? null}
-            noSolution={noSolution}
-            mat={mat}
-            pressureUnit={pressureUnit}
-          />
-
           {ok.analysis && ok.selected && (
             <AnalysisBlock
               V={ok.analysis.V}
               Re={ok.analysis.Re}
               unitLoss_Pa={ok.analysis.unitLoss_Pa}
+              variant="secondary"
             />
           )}
 
@@ -171,16 +167,7 @@ export default function CalculatorTab({
             </details>
           )}
         </>
-      ) : (
-        <div style={{
-          backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
-          borderRadius: 8, padding: '24px', textAlign: 'center',
-        }}>
-          <p style={{ fontSize: 13, color: C.text, margin: 0 }}>
-            유량과 허용 압력강하를 모두 입력하면 결과가 표시됩니다.
-          </p>
-        </div>
-      )}
+      ) : null}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
@@ -215,6 +202,13 @@ export default function CalculatorTab({
           />
         </PrintReport>
       )}
+      </main>
+      <StickyResults
+        selected={ok?.selected ?? null}
+        noSolution={noSolution}
+        mat={mat}
+        pressureUnit={pressureUnit}
+      />
     </div>
   );
 }

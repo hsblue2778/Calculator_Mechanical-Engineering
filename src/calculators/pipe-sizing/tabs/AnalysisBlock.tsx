@@ -13,9 +13,11 @@ interface Props {
   V: number;
   Re: number;
   unitLoss_Pa: number;
+  // 'full' = KPI 그리드 포함 (기존 동작), 'secondary' = RangeCard + 경고만 (KPI는 우측 sticky에서 표시)
+  variant?: 'full' | 'secondary';
 }
 
-export default function AnalysisBlock({ V, Re, unitLoss_Pa }: Props) {
+export default function AnalysisBlock({ V, Re, unitLoss_Pa, variant = 'full' }: Props) {
   const regime = flowRegime(Re);
   const rangeV = rangeStatus(V, RANGES.velocity);
   const rangeU = rangeStatus(unitLoss_Pa, RANGES.unitLossPa);
@@ -23,14 +25,16 @@ export default function AnalysisBlock({ V, Re, unitLoss_Pa }: Props) {
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-        <Kpi label="유속 V" value={V.toFixed(2)} unit="m/s"
-          accent={rangeV.color} size="lg" subLabel={rangeV.label} />
-        <Kpi label="Reynolds" value={formatRe(Re)}
-          accent={regime.color} size="lg" subLabel={regime.label} />
-        <Kpi label="단위 마찰손실" value={unitLoss_Pa.toFixed(0)} unit="Pa/m"
-          accent={rangeU.color} size="lg" subLabel={rangeU.label} />
-      </div>
+      {variant === 'full' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+          <Kpi label="유속 V" value={V.toFixed(2)} unit="m/s"
+            accent={rangeV.color} size="lg" subLabel={rangeV.label} />
+          <Kpi label="Reynolds" value={formatRe(Re)}
+            accent={regime.color} size="lg" subLabel={regime.label} />
+          <Kpi label="단위 마찰손실" value={unitLoss_Pa.toFixed(0)} unit="Pa/m"
+            accent={rangeU.color} size="lg" subLabel={rangeU.label} />
+        </div>
+      )}
 
       <div style={{
         backgroundColor: C.surface, border: `1px solid ${C.border}`,
