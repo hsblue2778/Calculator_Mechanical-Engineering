@@ -46,6 +46,9 @@ input[type="number"] {
   .workspace-overlay { display: none !important; }
   .mobile-menu-btn { display: none !important; }
 
+  /* 펌프 시스템 섹션 스테퍼 — 모바일에서 숨김 (좁은 화면에서 본문 가림) */
+  .pump-section-stepper { display: none !important; }
+
   /* 헤더 — 패딩 축소, 부제·버튼 라벨 숨김 */
   .app-header { padding: 8px 12px !important; gap: 8px !important; }
   .app-header-subtitle { display: none; }

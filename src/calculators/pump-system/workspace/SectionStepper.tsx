@@ -21,6 +21,7 @@ interface Props {
 export default function SectionStepper({ items, activeId, onJump }: Props) {
   return (
     <aside
+      className="pump-section-stepper"
       style={{
         width: 200, flexShrink: 0,
         borderRight: '1px solid var(--border-subtle)',

@@ -43,19 +43,6 @@ export const INSULATION_MATERIALS: InsulationMaterial[] = [
   { id: 'custom',    nameKo: '직접 입력',            k: null,  recommended: true },
 ];
 
-export interface EnvPreset {
-  id: string; nameKo: string;
-  Ta: number; RH: number;
-}
-
-// 환경 프리셋 (사양서 §3-4)
-export const ENV_PRESETS: EnvPreset[] = [
-  { id: 'office',    nameKo: '일반 사무실',  Ta: 26, RH: 50 },
-  { id: 'bath',      nameKo: '주방·욕실',   Ta: 28, RH: 70 },
-  { id: 'parking',   nameKo: '지하 주차장', Ta: 30, RH: 80 },
-  { id: 'machine',   nameKo: '기계실',      Ta: 35, RH: 85 },
-];
-
 // 시판 두께 라인업 (사양서 §5-3)
 export const COMMERCIAL_THICKNESS_MM = [13, 19, 25, 32, 38, 50] as const;
 
