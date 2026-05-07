@@ -8,15 +8,13 @@ import { SaveBtn } from './FormComponents';
 import { PipeMultiTable } from './PipeMultiTable';
 import HeadPressureSection from './HeadPressureSection';
 import SystemConditionSection from './SystemConditionSection';
-import { PIPE_MATERIALS_V2, getMaterialFrictionFactor, getMaterialLabel } from '../../../data/pipeSizes';
 import type { ScheduleId } from '../../../data/pipeSizes';
 import { FITTING_K_VALUES } from '../../../data/fitting-k-values';
 import {
-  FLOW_UNITS_PUMP, LENGTH_UNITS, PRESSURE_UNITS_PUMP, POWER_UNITS,
+  FLOW_UNITS_PUMP, PRESSURE_UNITS_PUMP, POWER_UNITS,
   type FlowUnitPumpKey, type LengthUnitKey, type PressureUnitPumpKey, type PowerUnitKey,
 } from '../units';
-import { computePumpHvac, generatePumpCurveFamily, findOperatingPoint, type FittingRow, type EquipRow, type EquipKind, type SystemMode, type PumpCurveAtHz } from '../calc';
-import type { FluidType } from '../../../data/glycol-properties';
+import { generatePumpCurveFamily, findOperatingPoint, type EquipKind, type SystemMode, type PumpCurveAtHz, type PumpHvacResult } from '../calc';
 import type { PumpFieldConfig, FluidId } from '../configs/types';
 import { C } from '../styles';
 import { downloadHtmlFile } from '../../../utils/exportUtils';
@@ -25,14 +23,6 @@ import ResultSection from './ResultSection';
 import { FittingTable, EquipTable } from './FittingEquipTables';
 import WorkspaceLayout from '../workspace/WorkspaceLayout';
 import type { SectionItem } from '../workspace/SectionStepper';
-
-// K값·이름 맵
-const FITTING_K_MAP: Record<string, number> = Object.fromEntries(
-  FITTING_K_VALUES.map(f => [f.id, f.K]),
-);
-const FITTING_NAME_MAP: Record<string, string> = Object.fromEntries(
-  FITTING_K_VALUES.map(f => [f.id, f.nameKo]),
-);
 
 // ── 공개 타입 ─────────────────────────────────────────────────────
 export interface PipeRowState {
@@ -147,6 +137,10 @@ interface Props {
   operatingHzList: number[];
   setOperatingHzList: (v: number[]) => void;
 
+  // 부모(index.tsx)에서 단일 useMemo로 계산한 결과를 그대로 전달받는다.
+  // 화면용·저장용 계산이 갈리지 않도록 내부에서 재계산하지 않는다.
+  result: PumpHvacResult | null;
+
   onSave?: () => void;
   canSave?: boolean;
 }
@@ -172,6 +166,7 @@ export default function CalculatorTab(props: Props) {
     bepQStr, setBepQStr,
     catalogHzStr, setCatalogHzStr,
     operatingHzList, setOperatingHzList,
+    result,
     onSave, canSave,
   } = props;
 
@@ -182,98 +177,10 @@ export default function CalculatorTab(props: Props) {
     ? Q_num * (FLOW_UNITS_PUMP.find(u => u.key === flowUnit)?.toM3s ?? 0)
     : 0;
 
-  function lenToM(str: string, unit: LengthUnitKey): number {
-    const n = parseFloat(str);
-    if (!Number.isFinite(n) || n <= 0) return 0;
-    return n * (LENGTH_UNITS.find(u => u.key === unit)?.toM ?? 1);
-  }
-
-  const Pres_Pa_val = (() => {
-    const n = parseFloat(PresStr);
-    if (!Number.isFinite(n) || n < 0) return 0;
-    return n * (PRESSURE_UNITS_PUMP.find(u => u.key === presUnit)?.toPa ?? 1000);
-  })();
-
-  function equipToPa(row: EquipRowState): number {
-    const n = parseFloat(row.dP);
-    if (!Number.isFinite(n) || n <= 0) return 0;
-    const unit = PRESSURE_UNITS_PUMP.find(u => u.key === row.dPUnit);
-    return n * (unit?.toPa ?? 1000);
-  }
-
+  // 결과(result)는 부모에서 계산해 prop으로 받음. headMargin/npshMargin 만
+  // 표시·섹션 진행도 판단에 직접 쓰이므로 여기서 다시 파싱한다.
   const headMargin = parseFloat(headMarginStr);
-  const powerMargin = parseFloat(powerMarginStr);
   const npshMargin = parseFloat(npshMarginStr);
-
-  // 배관 → PipeSegment 변환 헬퍼 (V2: materialId+scheduleId+nominalA → id_mm)
-  function rowsToPipeSegments(rows: PipeRowState[], side: 'suction' | 'discharge') {
-    return rows.map(row => {
-      const matV2 = PIPE_MATERIALS_V2.find(m => m.id === row.materialId);
-      const schedSpec = matV2?.schedules.find(s => s.id === row.scheduleId) ?? matV2?.schedules[0];
-      const sizeSpec = schedSpec?.sizes.find(s => s.nominalA === row.nominalA) ?? schedSpec?.sizes[0];
-      const L_m = lenToM(row.lStr, row.lUnit);
-      if (!sizeSpec || !schedSpec || L_m <= 0) return null;
-      return {
-        side,
-        materialId: row.materialId,
-        scheduleId: schedSpec.id,
-        scheduleLabel: schedSpec.label,
-        nominalA: sizeSpec.nominalA,
-        id_mm: sizeSpec.id_mm,
-        L_m,
-        f: getMaterialFrictionFactor(row.materialId),
-        materialNameKo: getMaterialLabel(row.materialId),
-      };
-    });
-  }
-
-  const sucSegments = rowsToPipeSegments(sucPipeRows, 'suction');
-  const disSegments = rowsToPipeSegments(disPipeRows, 'discharge');
-
-  const fittingsForCalc: FittingRow[] = fittingRows
-    .filter(r => r.fittingId && r.qty > 0)
-    .map(r => ({
-      fittingId: r.fittingId,
-      pipeRefIndex: r.pipeRefIndex,
-      pipeRefSide: r.pipeRefSide,
-      qty: r.qty,
-    }));
-
-  const equipForCalc: EquipRow[] = equipRows
-    .filter(r => r.name.trim())
-    .map(r => ({
-      name: r.name,
-      dP_Pa: equipToPa(r),
-      pipeRefIndex: r.pipeRefIndex,
-      pipeRefSide: r.pipeRefSide,
-      kind: r.kind ?? 'other',
-      dirtyMargin: r.dirtyMargin ?? false,
-    }));
-
-  const canCompute =
-    Q_m3s > 0 &&
-    sucSegments.length > 0 && sucSegments.every(s => s !== null) &&
-    disSegments.length > 0 && disSegments.every(s => s !== null) &&
-    Number.isFinite(headMargin) && Number.isFinite(powerMargin);
-
-  const result = canCompute ? computePumpHvac(
-    {
-      systemMode,
-      fluid: fluid as FluidType, concPct: 0, tempC: parseFloat(tempC) || 20,
-      sucPipes: sucSegments as NonNullable<typeof sucSegments[0]>[],
-      disPipes: disSegments as NonNullable<typeof disSegments[0]>[],
-      Q_m3s, fittings: fittingsForCalc, equipItems: equipForCalc,
-      Hs_m: parseFloat(HsStr) || 0,
-      Hd_m: systemMode === 'closed' ? 0 : (parseFloat(HdStr) || 0),
-      Pres_Pa: Pres_Pa_val,
-      Patm_Pa: (parseFloat(PatmStr) || 101.325) * 1000,
-      headMarginPct: headMargin, powerMarginFactor: powerMargin,
-      npshMargin_m: npshMargin || 0,
-      NPSHr_m: parseFloat(npshrStr) || 0,
-      eta: 0.65,
-    },
-    FITTING_K_MAP, FITTING_NAME_MAP,
-  ) : null;
 
   const powerFactor = POWER_UNITS.find(u => u.key === powerUnit)?.fromW ?? (1 / 1000);
 

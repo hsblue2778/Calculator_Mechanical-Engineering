@@ -1,6 +1,6 @@
 // 펌프 시스템 계산기 — 메인 컴포넌트 (계산 + 개요 + 예시)
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PIPE_MATERIALS_V2, getMaterialFrictionFactor, getMaterialLabel } from '../../data/pipeSizes';
 import type { ScheduleId } from '../../data/pipeSizes';
 import type { PumpFieldId, FluidId } from './configs/types';
@@ -159,87 +159,95 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
     catalogHzStr, operatingHzList,
   };
 
-  // outputs 계산 (onSave용)
-  function getOutputs() {
+  // outputs 계산 — 화면 표시·저장 모두에서 공유. 입력 변환을 한 곳에서만 수행해
+  // 두 경로 사이의 미묘한 차이(예: Patm 기본값)로 결과가 갈리는 일을 막는다.
+  const result = useMemo(() => {
     const Q_num = parseFloat(Q);
     if (!Number.isFinite(Q_num) || Q_num <= 0) return null;
-    const flowUnitFactor = FLOW_UNITS_PUMP.find(u => u.key === flowUnit)?.toM3s ?? (1 / 3600);
+    const flowUnitFactor = FLOW_UNITS_PUMP.find(u => u.key === flowUnit)?.toM3s ?? 0;
     const Q_m3s = Q_num * flowUnitFactor;
 
     const headMargin = parseFloat(headMarginStr);
     const powerMargin = parseFloat(powerMarginStr);
     if (!Number.isFinite(headMargin) || !Number.isFinite(powerMargin)) return null;
 
-    const Pres_toPa = PRESSURE_UNITS_PUMP.find(u => u.key === presUnit)?.toPa ?? 1000;
+    const presToPa = PRESSURE_UNITS_PUMP.find(u => u.key === presUnit)?.toPa ?? 1000;
+    const Pres_n = parseFloat(PresStr);
+    const Pres_Pa = (!Number.isFinite(Pres_n) || Pres_n < 0) ? 0 : Pres_n * presToPa;
 
-    // 흡입 배관 변환 (V2: materialId+scheduleId+nominalA → id_mm)
-    const sucPipesForCalc = sucPipeRows.map(row => {
-      const matV2 = PIPE_MATERIALS_V2.find(m => m.id === row.materialId);
-      const schedSpec = matV2?.schedules.find(s => s.id === row.scheduleId) ?? matV2?.schedules[0];
-      const sizeSpec = schedSpec?.sizes.find(s => s.nominalA === row.nominalA) ?? schedSpec?.sizes[0];
-      const L_m = parseFloat(row.lStr) * (LENGTH_UNITS.find(u => u.key === row.lUnit)?.toM ?? 1);
-      if (!sizeSpec || !schedSpec || !Number.isFinite(L_m) || L_m <= 0) return null;
-      return {
-        side: 'suction' as const,
-        materialId: row.materialId,
-        scheduleId: schedSpec.id,
-        scheduleLabel: schedSpec.label,
-        nominalA: sizeSpec.nominalA,
-        id_mm: sizeSpec.id_mm,
-        L_m,
-        f: getMaterialFrictionFactor(row.materialId),
-        materialNameKo: getMaterialLabel(row.materialId),
-      };
-    });
-    if (sucPipesForCalc.some(p => p === null)) return null;
+    function lenToM(str: string, unit: typeof LENGTH_UNITS[number]['key']): number {
+      const n = parseFloat(str);
+      if (!Number.isFinite(n) || n <= 0) return 0;
+      return n * (LENGTH_UNITS.find(u => u.key === unit)?.toM ?? 1);
+    }
 
-    // 토출 배관 변환 (V2)
-    const disPipesForCalc = disPipeRows.map(row => {
-      const matV2 = PIPE_MATERIALS_V2.find(m => m.id === row.materialId);
-      const schedSpec = matV2?.schedules.find(s => s.id === row.scheduleId) ?? matV2?.schedules[0];
-      const sizeSpec = schedSpec?.sizes.find(s => s.nominalA === row.nominalA) ?? schedSpec?.sizes[0];
-      const L_m = parseFloat(row.lStr) * (LENGTH_UNITS.find(u => u.key === row.lUnit)?.toM ?? 1);
-      if (!sizeSpec || !schedSpec || !Number.isFinite(L_m) || L_m <= 0) return null;
-      return {
-        side: 'discharge' as const,
-        materialId: row.materialId,
-        scheduleId: schedSpec.id,
-        scheduleLabel: schedSpec.label,
-        nominalA: sizeSpec.nominalA,
-        id_mm: sizeSpec.id_mm,
-        L_m,
-        f: getMaterialFrictionFactor(row.materialId),
-        materialNameKo: getMaterialLabel(row.materialId),
-      };
-    });
-    if (disPipesForCalc.some(p => p === null)) return null;
+    function rowsToSegments(rows: PipeRowState[], side: 'suction' | 'discharge') {
+      return rows.map(row => {
+        const matV2 = PIPE_MATERIALS_V2.find(m => m.id === row.materialId);
+        const schedSpec = matV2?.schedules.find(s => s.id === row.scheduleId) ?? matV2?.schedules[0];
+        const sizeSpec = schedSpec?.sizes.find(s => s.nominalA === row.nominalA) ?? schedSpec?.sizes[0];
+        const L_m = lenToM(row.lStr, row.lUnit);
+        if (!sizeSpec || !schedSpec || L_m <= 0) return null;
+        return {
+          side,
+          materialId: row.materialId,
+          scheduleId: schedSpec.id,
+          scheduleLabel: schedSpec.label,
+          nominalA: sizeSpec.nominalA,
+          id_mm: sizeSpec.id_mm,
+          L_m,
+          f: getMaterialFrictionFactor(row.materialId),
+          materialNameKo: getMaterialLabel(row.materialId),
+        };
+      });
+    }
+
+    const sucSegments = rowsToSegments(sucPipeRows, 'suction');
+    const disSegments = rowsToSegments(disPipeRows, 'discharge');
+    if (
+      sucSegments.length === 0 || sucSegments.some(s => s === null) ||
+      disSegments.length === 0 || disSegments.some(s => s === null)
+    ) return null;
+
+    const fittingsForCalc = fittingRows
+      .filter(r => r.fittingId && r.qty > 0)
+      .map(r => ({
+        fittingId: r.fittingId,
+        pipeRefIndex: r.pipeRefIndex,
+        pipeRefSide: r.pipeRefSide,
+        qty: r.qty,
+      }));
+
+    const equipForCalc = equipRows
+      .filter(r => r.name.trim())
+      .map(r => {
+        const n = parseFloat(r.dP);
+        const unit = PRESSURE_UNITS_PUMP.find(u => u.key === r.dPUnit);
+        const dP_Pa = (!Number.isFinite(n) || n <= 0) ? 0 : n * (unit?.toPa ?? 1000);
+        return {
+          name: r.name,
+          dP_Pa,
+          pipeRefIndex: r.pipeRefIndex,
+          pipeRefSide: r.pipeRefSide,
+          kind: r.kind ?? 'other',
+          dirtyMargin: r.dirtyMargin ?? false,
+        };
+      });
 
     return computePumpHvac(
       {
         systemMode,
         fluid: fluid as FluidType,
         concPct: 0, tempC: parseFloat(tempC) || 20,
-        sucPipes: sucPipesForCalc as NonNullable<typeof sucPipesForCalc[0]>[],
-        disPipes: disPipesForCalc as NonNullable<typeof disPipesForCalc[0]>[],
+        sucPipes: sucSegments as NonNullable<typeof sucSegments[0]>[],
+        disPipes: disSegments as NonNullable<typeof disSegments[0]>[],
         Q_m3s,
-        fittings: fittingRows.filter(r => r.fittingId && r.qty > 0).map(r => ({
-          fittingId: r.fittingId,
-          pipeRefIndex: r.pipeRefIndex,
-          pipeRefSide: r.pipeRefSide,
-          qty: r.qty,
-        })),
-        equipItems: equipRows.filter(r => r.name.trim()).map(r => ({
-          name: r.name,
-          dP_Pa: parseFloat(r.dP) * Pres_toPa,
-          pipeRefIndex: r.pipeRefIndex,
-          pipeRefSide: r.pipeRefSide,
-          kind: r.kind ?? 'other',
-          dirtyMargin: r.dirtyMargin ?? false,
-        })),
+        fittings: fittingsForCalc,
+        equipItems: equipForCalc,
         Hs_m: parseFloat(HsStr) || 0,
         Hd_m: systemMode === 'closed' ? 0 : (parseFloat(HdStr) || 0),
-        Pres_Pa: parseFloat(PresStr) * Pres_toPa,
-        Patm_Pa: parseFloat(PatmStr) * 1000,
+        Pres_Pa,
+        Patm_Pa: (parseFloat(PatmStr) || 101.325) * 1000,
         headMarginPct: headMargin,
         powerMarginFactor: powerMargin,
         npshMargin_m: parseFloat(npshMarginStr) || 0,
@@ -248,7 +256,12 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
       },
       FITTING_K_MAP, FITTING_NAME_MAP,
     );
-  }
+  }, [
+    systemMode, fluid, tempC, Q, flowUnit,
+    sucPipeRows, disPipeRows, fittingRows, equipRows,
+    HsStr, HdStr, PresStr, presUnit, PatmStr,
+    headMarginStr, powerMarginStr, npshMarginStr, npshrStr,
+  ]);
 
   // 예시 탭 프리셋 적용
   // loadPreset fallback: 분야 허용 범위 밖 값은 fieldConfig.default 로 정규화
@@ -368,8 +381,9 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
           bepQStr={bepQStr} setBepQStr={setBepQStr}
           catalogHzStr={catalogHzStr} setCatalogHzStr={setCatalogHzStr}
           operatingHzList={operatingHzList} setOperatingHzList={setOperatingHzList}
-          onSave={onSave ? () => onSave({ inputs, outputs: getOutputs() }) : undefined}
-          canSave={!!getOutputs()}
+          result={result}
+          onSave={onSave ? () => onSave({ inputs, outputs: result }) : undefined}
+          canSave={!!result}
         />
       )}
       {tab === 'overview' && <OverviewTab fieldLabel={fieldConfig.fieldLabel} />}
