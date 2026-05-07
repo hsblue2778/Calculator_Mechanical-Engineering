@@ -96,7 +96,7 @@ export function PipeSectionBlock({
 }) {
   const sizes = PIPE_SIZE_MATERIALS.find(m => m.id === matId)?.sizes ?? [];
   return (
-    <div style={sectionStyle}>
+    <div className="pump-section" style={sectionStyle}>
       <p style={sectionTitleStyle}>{title}</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
         <div>

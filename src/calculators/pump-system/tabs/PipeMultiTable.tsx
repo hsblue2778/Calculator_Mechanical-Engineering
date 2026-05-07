@@ -88,7 +88,7 @@ export function PipeMultiTable({ title, prefix, rows, onChange }: Props) {
   }
 
   return (
-    <div style={sectionStyle}>
+    <div className="pump-section" style={sectionStyle}>
       <p style={sectionTitleStyle}>{title}</p>
       {rows.length > 0 && (
         <div style={{ overflowX: 'auto', marginBottom: 8 }}>

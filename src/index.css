@@ -63,6 +63,9 @@ input[type="number"] {
     margin-top: 16px !important;
     padding-top: 14px !important;
   }
+  /* 펌프 섹션 박스 — 가장 넓은 시스템조건 그리드(660px+)에 폭을 통일해
+     섹션 간 가로 길이 차이로 들쭉날쭉해 보이지 않도록 함 */
+  .pump-section { min-width: 720px; }
 
   /* 헤더 — 패딩 축소, 부제·버튼 라벨 숨김 */
   .app-header { padding: 8px 12px !important; gap: 8px !important; }

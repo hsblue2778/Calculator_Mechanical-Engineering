@@ -33,7 +33,7 @@ interface FittingTableProps {
 
 export function FittingTable({ rows, pipeRefOptions, onAdd, onRemove, onUpdate }: FittingTableProps) {
   return (
-    <div style={sectionStyle}>
+    <div className="pump-section" style={sectionStyle}>
       <p style={sectionTitleStyle}>부속류 (흡입·토출 합산)</p>
       <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, marginTop: 0 }}>
         K값 출처: Perry's Chemical Engineers' Handbook 8th Ed (2008) — 난류 기준 단일 K.
@@ -163,7 +163,7 @@ interface EquipTableProps {
 
 export function EquipTable({ rows, pipeRefOptions, onAdd, onRemove, onUpdate }: EquipTableProps) {
   return (
-    <div style={sectionStyle}>
+    <div className="pump-section" style={sectionStyle}>
       <p style={sectionTitleStyle}>장비류 (선택)</p>
       <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, marginTop: 0 }}>
         배관 참조는 위치 표시·PDF 출력용입니다. 압력강하는 입력값 그대로 합산됩니다.

@@ -83,7 +83,7 @@ export default function ResultSection({
   const isClosed = r.systemMode === 'closed';
 
   return (
-    <div style={{ ...sectionStyle, borderColor: 'var(--accent-primary-bg)', backgroundColor: 'var(--accent-primary-bg-soft)' }}>
+    <div className="pump-section" style={{ ...sectionStyle, borderColor: 'var(--accent-primary-bg)', backgroundColor: 'var(--accent-primary-bg-soft)' }}>
       <p style={{ ...sectionTitleStyle, borderBottomColor: 'var(--accent-primary-bg)', color: C.blue }}>계산 결과</p>
 
       {/* 손실 항목 표 — 다중 배관 행 */}
@@ -443,7 +443,7 @@ function HeadCompositionCard({ result }: { result: NonNullable<ReturnType<typeof
   ].filter(it => it.value > 0);
 
   return (
-    <div style={{ ...sectionStyle, marginTop: 12 }}>
+    <div className="pump-section" style={{ ...sectionStyle, marginTop: 12 }}>
       <p style={{ ...sectionTitleStyle, color: C.blue }}>
         양정 구성 분석 (TDH {TDH.toFixed(2)} m)
       </p>

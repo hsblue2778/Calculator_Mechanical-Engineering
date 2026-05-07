@@ -54,7 +54,7 @@ export default function HeadPressureSection({
   return (
     <>
       {/* §6 정수두·잔류압력 */}
-      <div style={sectionStyle}>
+      <div className="pump-section" style={sectionStyle}>
         <p style={sectionTitleStyle}>정수두 · 잔류압력</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
           <FieldNum label={hsLabel} hint={hsHint} value={HsStr} onChange={setHsStr} allowNegative />
@@ -82,7 +82,7 @@ export default function HeadPressureSection({
       </div>
 
       {/* §7 안전율 프리셋 */}
-      <div style={sectionStyle}>
+      <div className="pump-section" style={sectionStyle}>
         <p style={sectionTitleStyle}>안전율 프리셋 ({fieldLabel})</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <PresetField label="양정 여유 (%)" value={headMarginStr}
