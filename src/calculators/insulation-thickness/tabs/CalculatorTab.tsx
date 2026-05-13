@@ -1,13 +1,13 @@
 // 냉수배관 보온 두께 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, ChevronDown } from 'lucide-react';
+import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, ChevronDown, FileDown } from 'lucide-react';
 import {
   PIPE_OD_TABLE, INSULATION_MATERIALS,
   calculate, validate, type InsulationInputs,
 } from '../calc';
 import { buildInsulationReportHtml } from '../htmlReport';
-import { downloadCsv, downloadHtmlFile } from '../../../utils/exportUtils';
+import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
 import { C, inputStyle, labelStyle } from '../styles';
 import InsulationVisuals from './InsulationVisuals';
 import StickyResults from './StickyResults';
@@ -34,15 +34,27 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
   const mat = INSULATION_MATERIALS[state.matIdx];
   const isCustomK = mat?.id === 'custom';
 
-  function handlePdfReport() {
-    if (!result) return;
+  function buildHtml(): string | null {
+    if (!result) return null;
     const pipe = PIPE_OD_TABLE[state.pipeIdx];
     const k = isCustomK ? parseFloat(state.customK) : (mat.k as number);
-    const html = buildInsulationReportHtml({
+    return buildInsulationReportHtml({
       pipe, mat, k, inputs: state, result,
     });
+  }
+
+  function handleHtmlSave() {
+    const html = buildHtml();
+    if (!html) return;
+    const pipe = PIPE_OD_TABLE[state.pipeIdx];
     const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     downloadHtmlFile(`insulation-${pipe.nominalA}A_${ts}.html`, html);
+  }
+
+  function handlePdfPrint() {
+    const html = buildHtml();
+    if (!html) return;
+    printHtmlReport(html);
   }
 
   function handleCsvExport() {
@@ -184,7 +196,8 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
           onSave={onSave} canSave={canSave}
           canExport={!!result}
           onCsv={handleCsvExport}
-          onPdf={handlePdfReport}
+          onHtmlSave={handleHtmlSave}
+          onPdf={handlePdfPrint}
           onReset={onReset}
         />
       </main>
@@ -200,7 +213,8 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
         onSave={onSave} canSave={canSave}
         canExport={!!result}
         onCsv={handleCsvExport}
-        onPdf={handlePdfReport}
+        onHtmlSave={handleHtmlSave}
+        onPdf={handlePdfPrint}
         onReset={onReset}
       />
     </div>
@@ -208,12 +222,12 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
 }
 
 function ActionBar({
-  className, onSave, canSave, canExport, onCsv, onPdf, onReset,
+  className, onSave, canSave, canExport, onCsv, onHtmlSave, onPdf, onReset,
 }: {
   className: string;
   onSave?: () => void; canSave: boolean;
   canExport: boolean;
-  onCsv: () => void; onPdf: () => void; onReset: () => void;
+  onCsv: () => void; onHtmlSave: () => void; onPdf: () => void; onReset: () => void;
 }) {
   return (
     <div
@@ -226,9 +240,14 @@ function ActionBar({
         enabled={canExport} onClick={onCsv}
       />
       <ExportBtn
+        icon={<FileDown size={14} />} label="HTML로 저장하기"
+        enabled={canExport} onClick={onHtmlSave}
+        title="편집 가능한 HTML 산출서 파일 다운로드"
+      />
+      <ExportBtn
         icon={<Printer size={14} />} label="PDF로 저장"
         enabled={canExport} onClick={onPdf}
-        title="HTML 산출서 다운로드 (브라우저에서 PDF로 저장 가능)"
+        title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택"
       />
       <button
         onClick={onReset}

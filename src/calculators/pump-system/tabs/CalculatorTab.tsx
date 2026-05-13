@@ -3,7 +3,7 @@
 //       부속류 / 장비류 / 정수두잔류압력 / 안전율프리셋 / 결과 / PDF
 
 import { useId } from 'react';
-import { FileDown } from 'lucide-react';
+import { FileDown, Printer } from 'lucide-react';
 import { SaveBtn } from './FormComponents';
 import { PipeMultiTable } from './PipeMultiTable';
 import HeadPressureSection from './HeadPressureSection';
@@ -17,7 +17,7 @@ import {
 import { generatePumpCurveFamily, findOperatingPoint, type EquipKind, type SystemMode, type PumpCurveAtHz, type PumpHvacResult } from '../calc';
 import type { PumpFieldConfig, FluidId } from '../configs/types';
 import { C } from '../styles';
-import { downloadHtmlFile } from '../../../utils/exportUtils';
+import { downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
 import { buildPumpHvacReportHtml } from '../htmlReport/index';
 import ResultSection from './ResultSection';
 import { FittingTable, EquipTable } from './FittingEquipTables';
@@ -638,52 +638,82 @@ export default function CalculatorTab(props: Props) {
       {/* §7 버튼 영역 */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
-        <button
-          disabled={!result}
+        <PumpReportBtn
+          icon={<FileDown size={14} />} label="HTML로 저장하기"
+          title="편집 가능한 HTML 산출서 파일 다운로드"
+          enabled={!!result}
           onClick={() => {
             if (!result) return;
-            const html = buildPumpHvacReportHtml({
-              result,
-              systemMode,
-              fluid,
-              tempC: parseFloat(tempC) || 20,
-              Q_m3s,
-              Q_display: Q,
-              flowUnitLabel: FLOW_UNITS_PUMP.find(u => u.key === flowUnit)?.label ?? '',
-              HsStr,
-              HdStr,
-              PresStr,
-              presUnit,
-              PatmStr,
-              headMarginStr,
-              powerMarginStr,
-              npshMarginStr,
-              presetApplied,
-              fieldLabel,
-              fieldConfig,
-              npshrStr,
-              pumpCurve: parsedPumpCurve,
-              BEP_Q_m3h: parsedBepQ,
-              operatingPoint,
-              pumpCurveFamily,
-              catalogHz: validCatalogHz,
-            });
-            downloadHtmlFile(`${pdfTitle}.html`, html);
+            const html = buildPumpHvacHtml();
+            if (html) downloadHtmlFile(`${pdfTitle}.html`, html);
           }}
-          title="편집 가능한 HTML 산출서 파일 다운로드"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '10px 16px', fontSize: 13, fontWeight: 500,
-            color: result ? C.textDark : 'var(--text-quaternary)',
-            backgroundColor: C.surface,
-            border: `1px solid ${result ? C.borderInput : C.border}`,
-            borderRadius: 8, cursor: result ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+        />
+        <PumpReportBtn
+          icon={<Printer size={14} />} label="PDF로 저장"
+          title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택"
+          enabled={!!result}
+          onClick={() => {
+            const html = buildPumpHvacHtml();
+            if (html) printHtmlReport(html);
           }}
-        >
-          <FileDown size={14} /> HTML 산출서 다운로드
-        </button>
+        />
       </div>
     </div>
+  );
+
+  function buildPumpHvacHtml(): string | null {
+    if (!result) return null;
+    return buildPumpHvacReportHtml({
+      result,
+      systemMode,
+      fluid,
+      tempC: parseFloat(tempC) || 20,
+      Q_m3s,
+      Q_display: Q,
+      flowUnitLabel: FLOW_UNITS_PUMP.find(u => u.key === flowUnit)?.label ?? '',
+      HsStr,
+      HdStr,
+      PresStr,
+      presUnit,
+      PatmStr,
+      headMarginStr,
+      powerMarginStr,
+      npshMarginStr,
+      presetApplied,
+      fieldLabel,
+      fieldConfig,
+      npshrStr,
+      pumpCurve: parsedPumpCurve,
+      BEP_Q_m3h: parsedBepQ,
+      operatingPoint,
+      pumpCurveFamily,
+      catalogHz: validCatalogHz,
+    });
+  }
+}
+
+function PumpReportBtn({
+  icon, label, title, enabled, onClick,
+}: {
+  icon: React.ReactNode; label: string; title: string;
+  enabled: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      disabled={!enabled}
+      onClick={onClick}
+      title={title}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '10px 16px', fontSize: 13, fontWeight: 500,
+        color: enabled ? C.textDark : 'var(--text-quaternary)',
+        backgroundColor: C.surface,
+        border: `1px solid ${enabled ? C.borderInput : C.border}`,
+        borderRadius: 8, cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+      }}
+    >
+      {icon} {label}
+    </button>
   );
 }
 

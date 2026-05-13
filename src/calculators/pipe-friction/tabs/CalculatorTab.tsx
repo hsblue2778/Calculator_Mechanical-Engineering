@@ -1,7 +1,7 @@
 // 관마찰손실 — 계산 탭
 
 import { useState } from 'react';
-import { RotateCcw, Printer, Download, AlertTriangle, Save, Check } from 'lucide-react';
+import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileDown } from 'lucide-react';
 import Frac from '../../../components/Frac';
 import FIn from '../../../components/FIn';
 import FormulaSection from '../../../components/FormulaSection';
@@ -21,7 +21,7 @@ import {
 import { flowRegime, rangeStatus, RANGES, formatRe } from '../analysis';
 import ResultBlocks from './ResultBlocks';
 import StickyResults from './StickyResults';
-import { downloadCsv, downloadHtmlFile } from '../../../utils/exportUtils';
+import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
 import { buildPipeFrictionReportHtml } from '../htmlReport';
 import { C, inputStyle, labelStyle } from '../styles';
 
@@ -192,7 +192,8 @@ export default function CalculatorTab({
           inputMode === 'v' && Q_display !== null ? Q_display.toFixed(2) : Q,
           D, L, flowUnit, pressDef, unitLossDisplay,
         )}
-        onPdf={() => res && handleHtmlReport(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit)}
+        onHtmlSave={() => res && handleHtmlSave(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit)}
+        onPdf={() => res && handlePdfPrint(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit)}
         onReset={onReset}
       />
       </main>
@@ -213,34 +214,56 @@ export default function CalculatorTab({
           inputMode === 'v' && Q_display !== null ? Q_display.toFixed(2) : Q,
           D, L, flowUnit, pressDef, unitLossDisplay,
         )}
-        onPdf={() => res && handleHtmlReport(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit)}
+        onHtmlSave={() => res && handleHtmlSave(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit)}
+        onPdf={() => res && handlePdfPrint(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit)}
         onReset={onReset}
       />
     </div>
   );
 }
 
-function handleHtmlReport(
+function buildHtml(
+  res: NonNullable<ReturnType<typeof computeFriction>>,
+  mat: PipeMaterial,
+  inputMode: 'Q' | 'v',
+  Q: string, v: string, D: string, L: string, fOverride: string,
+  flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
+): string {
+  return buildPipeFrictionReportHtml({
+    res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit,
+  });
+}
+
+function handleHtmlSave(
   res: NonNullable<ReturnType<typeof computeFriction>>,
   mat: PipeMaterial,
   inputMode: 'Q' | 'v',
   Q: string, v: string, D: string, L: string, fOverride: string,
   flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
 ) {
-  const html = buildPipeFrictionReportHtml({
-    res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit,
-  });
+  const html = buildHtml(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit);
   const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   downloadHtmlFile(`pipe-friction_${ts}.html`, html);
 }
 
+function handlePdfPrint(
+  res: NonNullable<ReturnType<typeof computeFriction>>,
+  mat: PipeMaterial,
+  inputMode: 'Q' | 'v',
+  Q: string, v: string, D: string, L: string, fOverride: string,
+  flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
+) {
+  const html = buildHtml(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit);
+  printHtmlReport(html);
+}
+
 function ActionBar({
-  className, onSave, canSave, canExport, onCsv, onPdf, onReset,
+  className, onSave, canSave, canExport, onCsv, onHtmlSave, onPdf, onReset,
 }: {
   className: string;
   onSave?: () => void; canSave?: boolean;
   canExport: boolean;
-  onCsv: () => void; onPdf: () => void; onReset: () => void;
+  onCsv: () => void; onHtmlSave: () => void; onPdf: () => void; onReset: () => void;
 }) {
   return (
     <div
@@ -250,9 +273,12 @@ function ActionBar({
       {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
       <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
         enabled={canExport} onClick={onCsv} />
+      <ActionBtn icon={<FileDown size={14} />} label="HTML로 저장하기"
+        enabled={canExport} onClick={onHtmlSave}
+        title="편집 가능한 HTML 산출서 파일 다운로드" />
       <ActionBtn icon={<Printer size={14} />} label="PDF로 저장"
         enabled={canExport} onClick={onPdf}
-        title="브라우저 인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />
+        title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />
       <button
         onClick={onReset}
         style={{
