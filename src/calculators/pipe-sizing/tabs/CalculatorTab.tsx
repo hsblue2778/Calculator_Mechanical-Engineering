@@ -1,7 +1,7 @@
 // 관경 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, Printer, Download, AlertTriangle, Save, Check } from 'lucide-react';
+import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileDown } from 'lucide-react';
 import Frac from '../../../components/Frac';
 import FormulaSection from '../../../components/FormulaSection';
 import UnitPanel from '../../../components/UnitPanel';
@@ -23,7 +23,7 @@ import {
 import { SizingDetailTable } from './ResultPanel';
 import AnalysisBlock from './AnalysisBlock';
 import StickyResults from './StickyResults';
-import { downloadCsv, downloadHtmlFile } from '../../../utils/exportUtils';
+import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
 import { buildPipeSizingReportHtml } from '../htmlReport';
 import { C, inputStyle, labelStyle, PA_PER_MM_AQ } from '../styles';
 
@@ -173,7 +173,8 @@ export default function CalculatorTab({
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef)}
-        onPdf={() => ok?.selected && handleSizingHtmlReport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit)}
+        onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit)}
+        onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit)}
         onReset={onReset}
       />
       </main>
@@ -188,14 +189,28 @@ export default function CalculatorTab({
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef)}
-        onPdf={() => ok?.selected && handleSizingHtmlReport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit)}
+        onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit)}
+        onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit)}
         onReset={onReset}
       />
     </div>
   );
 }
 
-function handleSizingHtmlReport(
+function buildSizingHtml(
+  selected: SizingRow,
+  rows: SizingRow[],
+  analysis: { V: number; Re: number; unitLoss_Pa: number } | null,
+  mat: PipeMaterialSize,
+  Q: string, dP: string,
+  flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
+): string {
+  return buildPipeSizingReportHtml({
+    selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit,
+  });
+}
+
+function handleSizingHtmlSave(
   selected: SizingRow,
   rows: SizingRow[],
   analysis: { V: number; Re: number; unitLoss_Pa: number } | null,
@@ -203,20 +218,30 @@ function handleSizingHtmlReport(
   Q: string, dP: string,
   flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
 ) {
-  const html = buildPipeSizingReportHtml({
-    selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit,
-  });
+  const html = buildSizingHtml(selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit);
   const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   downloadHtmlFile(`pipe-sizing_${ts}.html`, html);
 }
 
+function handleSizingPdfPrint(
+  selected: SizingRow,
+  rows: SizingRow[],
+  analysis: { V: number; Re: number; unitLoss_Pa: number } | null,
+  mat: PipeMaterialSize,
+  Q: string, dP: string,
+  flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
+) {
+  const html = buildSizingHtml(selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit);
+  printHtmlReport(html);
+}
+
 function ActionBar({
-  className, onSave, canSave, canExport, onCsv, onPdf, onReset,
+  className, onSave, canSave, canExport, onCsv, onHtmlSave, onPdf, onReset,
 }: {
   className: string;
   onSave?: () => void; canSave?: boolean;
   canExport: boolean;
-  onCsv: () => void; onPdf: () => void; onReset: () => void;
+  onCsv: () => void; onHtmlSave: () => void; onPdf: () => void; onReset: () => void;
 }) {
   return (
     <div
@@ -226,9 +251,12 @@ function ActionBar({
       {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
       <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
         enabled={canExport} onClick={onCsv} />
+      <ActionBtn icon={<FileDown size={14} />} label="HTML로 저장하기"
+        enabled={canExport} onClick={onHtmlSave}
+        title="편집 가능한 HTML 산출서 파일 다운로드" />
       <ActionBtn icon={<Printer size={14} />} label="PDF로 저장"
         enabled={canExport} onClick={onPdf}
-        title="브라우저 인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />
+        title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />
       <button
         onClick={onReset}
         style={{

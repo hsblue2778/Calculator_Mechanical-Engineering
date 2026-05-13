@@ -56,6 +56,51 @@ export function downloadHtmlFile(filename: string, htmlContent: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// ── HTML 산출서 → PDF 인쇄 ────────────────────────────────────────
+/**
+ * 완성된 HTML 문자열을 숨김 iframe에서 렌더 후 인쇄 다이얼로그를 자동 호출.
+ * 사용자는 다이얼로그에서 "대상: PDF로 저장"을 선택해 PDF 파일을 받는다.
+ * HTML 산출서의 @media print CSS가 그대로 적용되므로 깔끔한 페이지 분할.
+ */
+export function printHtmlReport(htmlContent: string): void {
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '-10000px';
+  iframe.style.bottom = '-10000px';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument;
+  if (!doc) {
+    iframe.remove();
+    return;
+  }
+  doc.open();
+  doc.write(htmlContent);
+  doc.close();
+
+  // 외부 폰트·이미지 로딩이 끝나도록 load 이벤트 대기. 이미 캐시되어 즉시
+  // 끝나는 경우를 위해 fallback timeout도 함께 건다.
+  let printed = false;
+  const trigger = () => {
+    if (printed) return;
+    printed = true;
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } finally {
+      // 인쇄 다이얼로그가 닫힌 직후 iframe 제거. 다이얼로그 열림은 동기 호출이 아니라
+      // 브라우저별로 다르므로 넉넉히 대기.
+      setTimeout(() => iframe.remove(), 1000);
+    }
+  };
+  iframe.addEventListener('load', trigger);
+  setTimeout(trigger, 500);
+}
+
 // ── PDF (브라우저 인쇄) ──────────────────────────────────────────
 /**
  * 브라우저 인쇄 다이얼로그 호출. 사용자가 "대상: PDF로 저장" 선택하면 PDF 생성.
