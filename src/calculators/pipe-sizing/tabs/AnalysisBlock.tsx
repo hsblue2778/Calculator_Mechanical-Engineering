@@ -2,7 +2,6 @@
 
 import Kpi from '../../../components/Kpi';
 import RangeGauge from '../../../components/RangeGauge';
-import FlowRegimeBar from '../../../components/FlowRegimeBar';
 import WarningList from '../../../components/WarningList';
 import {
   RANGES, flowRegime, rangeStatus, warnings, formatRe, toRangeSpec,
@@ -60,10 +59,6 @@ export default function AnalysisBlock({ V, Re, unitLoss_Pa, variant = 'full' }: 
             format={v => v.toFixed(0)}
             status={{ label: rangeU.label, color: rangeU.color }}
           />
-        </div>
-
-        <div style={{ marginTop: 18 }}>
-          <FlowRegimeBar Re={Re} regime={{ label: regime.label, color: regime.color }} />
         </div>
       </div>
 

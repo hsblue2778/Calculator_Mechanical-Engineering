@@ -132,7 +132,11 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
         <ErrorBanner message={validationErr.message} />
       ) : result ? (
         <>
-          <ResultPanel result={result} />
+          <ResultPanel
+            result={result}
+            Ta={parseFloat(state.Ta)}
+            RH={parseFloat(state.RH)}
+          />
           <InsulationVisuals
             pipe={PIPE_OD_TABLE[state.pipeIdx]}
             k={isCustomK ? parseFloat(state.customK) : (mat.k as number)}
@@ -190,33 +194,74 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
   );
 }
 
-function ResultPanel({ result }: { result: ReturnType<typeof calculate> }) {
+function ResultPanel({
+  result, Ta, RH,
+}: {
+  result: ReturnType<typeof calculate>;
+  Ta: number; RH: number;
+}) {
   if (!result) return null;
-  const { d_recommended_mm, grade, warnings } = result;
+  const { d_recommended_mm, grade, warnings, Td, d_mm, Ts, margin } = result;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Hero — 최종 보온재 두께 (시판) */}
       <div style={{
-        background: gradeBg(grade), border: `1px solid ${gradeColor(grade)}`,
-        borderLeft: `4px solid ${gradeColor(grade)}`,
-        borderRadius: 8, padding: '14px 16px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: 'var(--bg-surface-2)',
+        borderRadius: 14, padding: '20px 16px',
+        border: `1px solid ${gradeColor(grade)}`,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', gap: 8,
       }}>
-        <div>
-          <div style={{ fontSize: 11, color: C.text, marginBottom: 2,
-            textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-            결로 위험 등급
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: gradeColor(grade) }}>
-            {grade}
-          </div>
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+          최종 보온재 두께 (시판)
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 11, color: C.text, marginBottom: 2 }}>추천 시판 두께</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: C.heading }}>
-            {d_recommended_mm != null ? `${d_recommended_mm} mm` : '50 mm 초과'}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{
+            fontSize: 44, fontWeight: 700, color: 'var(--text-primary)',
+            letterSpacing: '-0.02em', lineHeight: 1,
+          }}>
+            {d_recommended_mm != null ? d_recommended_mm : '50+'}
+          </span>
+          <span style={{ fontSize: 16, color: 'var(--text-tertiary)', fontWeight: 500 }}>
+            mm
+          </span>
         </div>
+        <div style={{
+          padding: '3px 12px', borderRadius: 999,
+          fontSize: 12, fontWeight: 600,
+          background: gradeBg(grade), color: gradeColor(grade),
+        }}>
+          {grade}
+        </div>
+      </div>
+
+      {/* 작은 KPI 박스 — 외기 / 노점 / 한계 / 시공 후 표면 */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+        gap: 8,
+      }}>
+        <InfoBox
+          label="외기"
+          value={`${Number.isFinite(Ta) ? Ta.toFixed(0) : '—'}°C`}
+          sub={`RH ${Number.isFinite(RH) ? RH.toFixed(0) : '—'}%`}
+        />
+        <InfoBox
+          label="노점 Td"
+          value={Number.isFinite(Td) ? `${Td.toFixed(1)}°C` : '—'}
+          color="var(--state-error-text)"
+        />
+        <InfoBox
+          label="한계 두께"
+          value={Number.isFinite(d_mm) ? `${d_mm.toFixed(1)} mm` : '∞'}
+        />
+        <InfoBox
+          label="시공 후 표면 Ts"
+          value={Ts != null ? `${Ts.toFixed(1)}°C` : '—'}
+          sub={margin != null ? `여유 ${margin >= 0 ? '+' : ''}${margin.toFixed(1)}°C` : undefined}
+          color={Ts != null ? 'var(--state-success-text)' : undefined}
+        />
       </div>
 
       {warnings.length > 0 && (
@@ -236,6 +281,40 @@ function ResultPanel({ result }: { result: ReturnType<typeof calculate> }) {
               <span>{w}</span>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoBox({
+  label, value, sub, color,
+}: {
+  label: string; value: string; sub?: string; color?: string;
+}) {
+  return (
+    <div style={{
+      background: 'var(--bg-surface-2)',
+      border: '1px solid var(--border-subtle)',
+      borderRadius: 8, padding: 10,
+      display: 'flex', flexDirection: 'column', gap: 3,
+    }}>
+      <div style={{
+        fontSize: 10, fontWeight: 600,
+        color: 'var(--text-tertiary)',
+        letterSpacing: 0.3, textTransform: 'uppercase',
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 15, fontWeight: 700,
+        color: color ?? 'var(--text-primary)',
+      }}>
+        {value}
+      </div>
+      {sub && (
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+          {sub}
         </div>
       )}
     </div>

@@ -347,6 +347,7 @@ export default function App() {
         currentField={activeCalc?.title}
         onHome={goHome}
         onMobileMenuToggle={() => setMobileSidebarOpen(o => !o)}
+        hideTools
       />
 
       <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>

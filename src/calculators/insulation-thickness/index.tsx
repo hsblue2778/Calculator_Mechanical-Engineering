@@ -21,7 +21,7 @@ const DEFAULT_STATE: InsulationInputs = {
   pipeIdx: 5,           // 50A
   matIdx: 0,            // 고무발포
   customK: '',
-  Ti: '7', Ta: '30', RH: '80',
+  Ti: '', Ta: '', RH: '',
   ho: '9.3', safetyFactor: '1.2',
 };
 
