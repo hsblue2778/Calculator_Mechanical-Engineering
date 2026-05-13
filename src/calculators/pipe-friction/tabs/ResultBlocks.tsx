@@ -3,7 +3,6 @@
 import Kpi from '../../../components/Kpi';
 import Mini from '../../../components/Mini';
 import RangeGauge from '../../../components/RangeGauge';
-import FlowRegimeBar from '../../../components/FlowRegimeBar';
 import WarningList from '../../../components/WarningList';
 import {
   RANGES, flowRegime, rangeStatus, warnings, formatRe, toRangeSpec,
@@ -49,8 +48,8 @@ export default function ResultBlocks({
     return (
       <>
         <RangeCard
-          V={res.V_ms} Re={res.Re} unitLoss_Pa={res.unitLoss_Pa}
-          rangeV={rangeV} rangeU={rangeU} regime={regime}
+          V={res.V_ms} unitLoss_Pa={res.unitLoss_Pa}
+          rangeV={rangeV} rangeU={rangeU}
           isV={isV} Q_display={Q_display}
         />
         <WarningList items={ctx} />
@@ -77,8 +76,8 @@ export default function ResultBlocks({
       />
 
       <RangeCard
-        V={res.V_ms} Re={res.Re} unitLoss_Pa={res.unitLoss_Pa}
-        rangeV={rangeV} rangeU={rangeU} regime={regime}
+        V={res.V_ms} unitLoss_Pa={res.unitLoss_Pa}
+        rangeV={rangeV} rangeU={rangeU}
         isV={isV} Q_display={Q_display}
       />
 
@@ -203,11 +202,11 @@ function regimeBg(key: RegimeInfo['key']): string {
 }
 
 function RangeCard({
-  V, Re, unitLoss_Pa, rangeV, rangeU, regime,
+  V, unitLoss_Pa, rangeV, rangeU,
   isV, Q_display,
 }: {
-  V: number; Re: number; unitLoss_Pa: number;
-  rangeV: RangeStatus; rangeU: RangeStatus; regime: RegimeInfo;
+  V: number; unitLoss_Pa: number;
+  rangeV: RangeStatus; rangeU: RangeStatus;
   isV: boolean;
   Q_display: number | null;
 }) {
@@ -238,10 +237,6 @@ function RangeCard({
           format={v => v.toFixed(0)}
           status={{ label: rangeU.label, color: rangeU.color }}
         />
-      </div>
-
-      <div style={{ marginTop: 18 }}>
-        <FlowRegimeBar Re={Re} regime={{ label: regime.label, color: regime.color }} />
       </div>
 
       <Legend />

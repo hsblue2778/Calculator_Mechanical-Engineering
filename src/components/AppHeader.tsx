@@ -18,12 +18,15 @@ interface Props {
   onHome?: () => void;
   onPrint?: () => void;
   onMobileMenuToggle?: () => void;
+  // true 시 우측 도구 버튼(도움말·단위계·테마) 숨김 — 계산기 모달 진입 시 사용
+  hideTools?: boolean;
 }
 
 export default function AppHeader({
   theme, onThemeChange, onShowOnboarding,
   unitSystem, onUnitSystemChange,
   currentField, onHome, onPrint, onMobileMenuToggle,
+  hideTools,
 }: Props) {
   return (
     <header
@@ -99,14 +102,18 @@ export default function AppHeader({
         {onPrint && (
           <HeaderButton onClick={onPrint} icon={<Printer size={14} />} label="산출서 인쇄" />
         )}
-        <HeaderButton
-          onClick={onShowOnboarding}
-          icon={<HelpCircle size={14} />}
-          label="도움말"
-          variant="ghost"
-        />
-        <UnitSystemToggle unitSystem={unitSystem} onChange={onUnitSystemChange} />
-        <ThemeToggle theme={theme} onChange={onThemeChange} />
+        {!hideTools && (
+          <>
+            <HeaderButton
+              onClick={onShowOnboarding}
+              icon={<HelpCircle size={14} />}
+              label="도움말"
+              variant="ghost"
+            />
+            <UnitSystemToggle unitSystem={unitSystem} onChange={onUnitSystemChange} />
+            <ThemeToggle theme={theme} onChange={onThemeChange} />
+          </>
+        )}
       </div>
     </header>
   );

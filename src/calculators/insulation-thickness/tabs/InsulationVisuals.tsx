@@ -16,106 +16,24 @@ interface VisualsProps {
 }
 
 export default function InsulationVisuals({
-  pipe, k, ho, Ti, Ta, RH, result,
+  pipe, k, ho, Ti, Ta, RH: _RH, result,
 }: VisualsProps) {
-  const { Td, d_mm, d_recommended_mm, Ts, margin } = result;
+  const { Td, d_recommended_mm, Ts, margin } = result;
   const recommended = d_recommended_mm ?? null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <StepFlow
-        Ta={Ta} RH={RH}
-        Td={Td}
-        d_mm={d_mm}
+    <div className="insulation-visuals-grid">
+      <PipeCrossSection od_mm={pipe.od_mm} thickness_mm={recommended} />
+      <DewpointGauge Ti={Ti} Ta={Ta} Td={Td} Ts={Ts} margin={margin} />
+      <ThicknessComparison
+        pipe={pipe} k={k} ho={ho} Ti={Ti} Ta={Ta} Td={Td}
         recommended={recommended}
-        Ts={Ts}
       />
-      <div className="insulation-visuals-grid">
-        <PipeCrossSection od_mm={pipe.od_mm} thickness_mm={recommended} />
-        <DewpointGauge Ti={Ti} Ta={Ta} Td={Td} Ts={Ts} margin={margin} />
-        <ThicknessComparison
-          pipe={pipe} k={k} ho={ho} Ti={Ti} Ta={Ta} Td={Td}
-          recommended={recommended}
-        />
-      </div>
     </div>
   );
 }
 
-// ── ① 5단계 흐름 카드 ─────────────────────────────────────────
-
-function StepFlow({
-  Ta, RH, Td, d_mm, recommended, Ts,
-}: {
-  Ta: number; RH: number; Td: number; d_mm: number;
-  recommended: number | null; Ts: number | null;
-}) {
-  return (
-    <div
-      className="insulation-step-flow"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
-        gap: 8,
-      }}
-    >
-      <StepCard idx={1} title="외기">
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-          {Ta.toFixed(0)}°C / {RH.toFixed(0)}%
-        </div>
-      </StepCard>
-      <StepCard idx={2} title="노점 Td">
-        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--state-error-text)' }}>
-          {Td.toFixed(1)}°C
-        </div>
-      </StepCard>
-      <StepCard idx={3} title="한계 d">
-        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
-          {Number.isFinite(d_mm) ? `${d_mm.toFixed(1)}mm` : '∞'}
-        </div>
-      </StepCard>
-      <StepCard idx={4} title="시판" highlight>
-        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--state-warn-text)' }}>
-          {recommended != null ? `★ ${recommended}mm` : '50mm 초과'}
-        </div>
-      </StepCard>
-      <StepCard idx={5} title="시공 후 표면 온도 검산">
-        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--state-success-text)' }}>
-          {Ts != null ? `${Ts.toFixed(1)}°C` : '—'}
-        </div>
-      </StepCard>
-    </div>
-  );
-}
-
-function StepCard({
-  idx, title, children, highlight,
-}: {
-  idx: number; title: string; children: React.ReactNode; highlight?: boolean;
-}) {
-  return (
-    <div style={{
-      background: 'var(--bg-surface-2)',
-      border: `1px solid ${highlight ? 'var(--state-warn-text)' : 'var(--border-subtle)'}`,
-      borderRadius: 8, padding: 10,
-      display: 'flex', flexDirection: 'column', gap: 2,
-    }}>
-      <div style={{
-        fontSize: 10, fontWeight: 700,
-        color: highlight ? 'var(--state-warn-text)' : 'var(--accent-primary)',
-        letterSpacing: 1.5,
-      }}>
-        STEP {idx}
-      </div>
-      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 2 }}>
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-// ── ② 배관 단면도 ─────────────────────────────────────────────
+// ── 배관 단면도 ─────────────────────────────────────────────
 
 function PipeCrossSection({
   od_mm, thickness_mm,

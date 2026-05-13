@@ -169,28 +169,14 @@ export default function CalculatorTab({
         </>
       ) : null}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-        {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
-        <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
-          enabled={!!ok?.selected}
-          onClick={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef)} />
-        <ActionBtn icon={<Printer size={14} />} label="PDF로 저장"
-          enabled={!!ok?.selected}
-          onClick={() => printToPdf('관경 선정 계산결과')}
-          title="브라우저 인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />
-        <button
-          onClick={onReset}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '10px 20px', fontSize: 14, fontWeight: 500,
-            color: C.text, backgroundColor: 'transparent',
-            border: `1px solid ${C.borderInput}`, borderRadius: 8,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          <RotateCcw size={14} /> 초기화
-        </button>
-      </div>
+      <ActionBar
+        className="calc-actions calc-actions-desktop"
+        onSave={onSave} canSave={canSave}
+        canExport={!!ok?.selected}
+        onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef)}
+        onPdf={() => printToPdf('관경 선정 계산결과')}
+        onReset={onReset}
+      />
 
       {ok?.selected && (
         <PrintReport title="관경 선정 계산결과">
@@ -209,6 +195,49 @@ export default function CalculatorTab({
         mat={mat}
         pressureUnit={pressureUnit}
       />
+      <ActionBar
+        className="calc-actions calc-actions-mobile"
+        onSave={onSave} canSave={canSave}
+        canExport={!!ok?.selected}
+        onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef)}
+        onPdf={() => printToPdf('관경 선정 계산결과')}
+        onReset={onReset}
+      />
+    </div>
+  );
+}
+
+function ActionBar({
+  className, onSave, canSave, canExport, onCsv, onPdf, onReset,
+}: {
+  className: string;
+  onSave?: () => void; canSave?: boolean;
+  canExport: boolean;
+  onCsv: () => void; onPdf: () => void; onReset: () => void;
+}) {
+  return (
+    <div
+      className={className}
+      style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
+    >
+      {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
+      <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
+        enabled={canExport} onClick={onCsv} />
+      <ActionBtn icon={<Printer size={14} />} label="PDF로 저장"
+        enabled={canExport} onClick={onPdf}
+        title="브라우저 인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />
+      <button
+        onClick={onReset}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '10px 20px', fontSize: 14, fontWeight: 500,
+          color: C.text, backgroundColor: 'transparent',
+          border: `1px solid ${C.borderInput}`, borderRadius: 8,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >
+        <RotateCcw size={14} /> 초기화
+      </button>
     </div>
   );
 }

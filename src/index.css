@@ -40,6 +40,9 @@ input[type="number"] {
 .workspace-overlay { display: none; }
 .mobile-menu-btn { display: none; }
 
+/* 액션 버튼 — 데스크탑은 main 안, 모바일은 sticky-results 다음 */
+.calc-actions-mobile { display: none; }
+
 /* 보온 두께 — 시각자료 3카드 그리드 (데스크톱 3열, 좁아지면 1열) */
 .insulation-visuals-grid {
   display: grid;
@@ -48,7 +51,6 @@ input[type="number"] {
 }
 @media (max-width: 900px) {
   .insulation-visuals-grid { grid-template-columns: 1fr; }
-  .insulation-step-flow { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
 @media (max-width: 768px) {
@@ -88,6 +90,10 @@ input[type="number"] {
 
   /* 워크스페이스 본문 패딩 축소 */
   .workspace-main { padding: 14px 14px 60px !important; }
+
+  /* 액션 버튼 — 모바일은 sticky-results 다음(=가장 하단)에 표시 */
+  .calc-actions-desktop { display: none !important; }
+  .calc-actions-mobile { display: flex !important; margin-top: 16px; }
 }
 
 /* ── 인쇄 전용 리포트 뷰 ─────────────────────────────────────────── */
