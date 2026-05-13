@@ -4,12 +4,13 @@ import { useMemo, useState } from 'react';
 import { RotateCcw, AlertTriangle, Save, Check, ChevronDown, FileDown } from 'lucide-react';
 import {
   PIPE_OD_TABLE, INSULATION_MATERIALS,
-  calculate, validate, type InsulationInputs, type Grade,
+  calculate, validate, type InsulationInputs,
 } from '../calc';
 import { buildInsulationReportHtml } from '../htmlReport';
 import { downloadHtmlFile } from '../../../utils/exportUtils';
 import { C, inputStyle, labelStyle } from '../styles';
 import InsulationVisuals from './InsulationVisuals';
+import StickyResults from './StickyResults';
 
 interface Props {
   state: InsulationInputs;
@@ -45,98 +46,93 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* 관경 + 보온재 — 한 줄 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
-        <FieldSelect
-          label="관경 (KS 강관)"
-          value={state.pipeIdx}
-          onChange={v => setState({ pipeIdx: v })}
-        >
-          {PIPE_OD_TABLE.map((p, i) => (
-            <option key={p.nominalA} value={i}>
-              {p.nominalA}A — 외경 {p.od_mm.toFixed(1)} mm
-            </option>
-          ))}
-        </FieldSelect>
+    <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
+        {/* 관경 + 보온재 — 한 줄 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
+          <FieldSelect
+            label="관경 (KS 강관)"
+            value={state.pipeIdx}
+            onChange={v => setState({ pipeIdx: v })}
+          >
+            {PIPE_OD_TABLE.map((p, i) => (
+              <option key={p.nominalA} value={i}>
+                {p.nominalA}A — 외경 {p.od_mm.toFixed(1)} mm
+              </option>
+            ))}
+          </FieldSelect>
 
-        <FieldSelect
-          label="보온재 종류"
-          value={state.matIdx}
-          onChange={v => setState({ matIdx: v })}
-        >
-          {INSULATION_MATERIALS.map((m, i) => (
-            <option key={m.id} value={i}>
-              {m.nameKo}{m.k != null ? ` — k = ${m.k}` : ''}
-            </option>
-          ))}
-        </FieldSelect>
-      </div>
+          <FieldSelect
+            label="보온재 종류"
+            value={state.matIdx}
+            onChange={v => setState({ matIdx: v })}
+          >
+            {INSULATION_MATERIALS.map((m, i) => (
+              <option key={m.id} value={i}>
+                {m.nameKo}{m.k != null ? ` — k = ${m.k}` : ''}
+              </option>
+            ))}
+          </FieldSelect>
+        </div>
 
-      {/* 직접 입력 k */}
-      {isCustomK && (
-        <FieldNumber
-          label={<>열전도율 k <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(W/m·K)</span></>}
-          value={state.customK}
-          onChange={v => setState({ customK: v })}
-        />
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
-        <FieldNumber
-          label={<>외기 온도 Tₐ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
-          value={state.Ta} onChange={v => setState({ Ta: v })}
-        />
-        <FieldNumber
-          label={<>관내 온도 Tᵢ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
-          value={state.Ti} onChange={v => setState({ Ti: v })}
-        />
-        <FieldNumber
-          label={<>상대습도 RH <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(%)</span></>}
-          value={state.RH} onChange={v => setState({ RH: v })}
-        />
-      </div>
-
-      {/* 고급 옵션 (접힘) */}
-      <details
-        open={advancedOpen}
-        onToggle={e => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
-        style={{
-          backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
-          borderRadius: 8, padding: '12px 16px',
-        }}
-      >
-        <summary style={{
-          cursor: 'pointer', fontSize: 13, fontWeight: 600, color: C.textDark,
-          display: 'flex', alignItems: 'center', gap: 6,
-          listStyle: 'none',
-        }}>
-          <ChevronDown size={14} style={{ transform: advancedOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }} />
-          고급 옵션 (표면 열전달률 · 안전계수)
-        </summary>
-        <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
+        {/* 직접 입력 k */}
+        {isCustomK && (
           <FieldNumber
-            label={<>표면 열전달률 hₒ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(W/m²·K)</span></>}
-            value={state.ho} onChange={v => setState({ ho: v })}
-            hint="자연대류 실내 표준 9.3"
+            label={<>열전도율 k <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(W/m·K)</span></>}
+            value={state.customK}
+            onChange={v => setState({ customK: v })}
+          />
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+          <FieldNumber
+            label={<>외기 온도 Tₐ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
+            value={state.Ta} onChange={v => setState({ Ta: v })}
           />
           <FieldNumber
-            label={<>안전계수 <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(배수)</span></>}
-            value={state.safetyFactor} onChange={v => setState({ safetyFactor: v })}
-            hint="통상 1.0 ~ 1.5"
+            label={<>관내 온도 Tᵢ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(°C)</span></>}
+            value={state.Ti} onChange={v => setState({ Ti: v })}
+          />
+          <FieldNumber
+            label={<>상대습도 RH <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(%)</span></>}
+            value={state.RH} onChange={v => setState({ RH: v })}
           />
         </div>
-      </details>
 
-      {validationErr ? (
-        <ErrorBanner message={validationErr.message} />
-      ) : result ? (
-        <>
-          <ResultPanel
-            result={result}
-            Ta={parseFloat(state.Ta)}
-            RH={parseFloat(state.RH)}
-          />
+        {/* 고급 옵션 (접힘) */}
+        <details
+          open={advancedOpen}
+          onToggle={e => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
+          style={{
+            backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
+            borderRadius: 8, padding: '12px 16px',
+          }}
+        >
+          <summary style={{
+            cursor: 'pointer', fontSize: 13, fontWeight: 600, color: C.textDark,
+            display: 'flex', alignItems: 'center', gap: 6,
+            listStyle: 'none',
+          }}>
+            <ChevronDown size={14} style={{ transform: advancedOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }} />
+            고급 옵션 (표면 열전달률 · 안전계수)
+          </summary>
+          <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
+            <FieldNumber
+              label={<>표면 열전달률 hₒ <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(W/m²·K)</span></>}
+              value={state.ho} onChange={v => setState({ ho: v })}
+              hint="자연대류 실내 표준 9.3"
+            />
+            <FieldNumber
+              label={<>안전계수 <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>(배수)</span></>}
+              value={state.safetyFactor} onChange={v => setState({ safetyFactor: v })}
+              hint="통상 1.0 ~ 1.5"
+            />
+          </div>
+        </details>
+
+        {validationErr ? (
+          <ErrorBanner message={validationErr.message} />
+        ) : result ? (
           <InsulationVisuals
             pipe={PIPE_OD_TABLE[state.pipeIdx]}
             k={isCustomK ? parseFloat(state.customK) : (mat.k as number)}
@@ -146,190 +142,88 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
             RH={parseFloat(state.RH)}
             result={result}
           />
-        </>
-      ) : (
-        <div style={{
-          backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
-          borderRadius: 8, padding: 24, textAlign: 'center',
-        }}>
-          <p style={{ fontSize: 13, color: C.text, margin: 0 }}>
-            외기 온도 · 관내 온도 · 상대습도를 입력하면 결과가 표시됩니다.
-          </p>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-        {onSave && <SaveBtn onClick={onSave} enabled={canSave} />}
-        <button
-          onClick={handleHtmlExport}
-          disabled={!result}
-          title="편집 가능한 HTML 산출서 파일 다운로드"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '10px 16px', fontSize: 13, fontWeight: 500,
-            color: result ? C.textDark : 'var(--text-quaternary)',
-            backgroundColor: C.surface,
-            border: `1px solid ${result ? C.borderInput : C.border}`,
-            borderRadius: 8,
-            cursor: result ? 'pointer' : 'not-allowed',
-            fontFamily: 'inherit',
-          }}
-        >
-          <FileDown size={14} /> HTML 산출서
-        </button>
-        <button
-          onClick={onReset}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '10px 20px', fontSize: 14, fontWeight: 500,
-            color: C.text, backgroundColor: 'transparent',
-            border: `1px solid ${C.borderInput}`, borderRadius: 8,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          <RotateCcw size={14} /> 초기화
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ResultPanel({
-  result, Ta, RH,
-}: {
-  result: ReturnType<typeof calculate>;
-  Ta: number; RH: number;
-}) {
-  if (!result) return null;
-  const { d_recommended_mm, grade, warnings, Td, d_mm, Ts, margin } = result;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Hero — 최종 보온재 두께 (시판) */}
-      <div style={{
-        background: 'var(--bg-surface-2)',
-        borderRadius: 14, padding: '20px 16px',
-        border: `1px solid ${gradeColor(grade)}`,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', gap: 8,
-      }}>
-        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600 }}>
-          최종 보온재 두께 (시판)
-        </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{
-            fontSize: 44, fontWeight: 700, color: 'var(--text-primary)',
-            letterSpacing: '-0.02em', lineHeight: 1,
+        ) : (
+          <div style={{
+            backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
+            borderRadius: 8, padding: 24, textAlign: 'center',
           }}>
-            {d_recommended_mm != null ? d_recommended_mm : '50+'}
-          </span>
-          <span style={{ fontSize: 16, color: 'var(--text-tertiary)', fontWeight: 500 }}>
-            mm
-          </span>
-        </div>
-        <div style={{
-          padding: '3px 12px', borderRadius: 999,
-          fontSize: 12, fontWeight: 600,
-          background: gradeBg(grade), color: gradeColor(grade),
-        }}>
-          {grade}
-        </div>
-      </div>
+            <p style={{ fontSize: 13, color: C.text, margin: 0 }}>
+              외기 온도 · 관내 온도 · 상대습도를 입력하면 결과가 표시됩니다.
+            </p>
+          </div>
+        )}
 
-      {/* 작은 KPI 박스 — 외기 / 노점 / 한계 / 시공 후 표면 */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-        gap: 8,
-      }}>
-        <InfoBox
-          label="외기"
-          value={`${Number.isFinite(Ta) ? Ta.toFixed(0) : '—'}°C`}
-          sub={`RH ${Number.isFinite(RH) ? RH.toFixed(0) : '—'}%`}
+        <ActionBar
+          className="calc-actions calc-actions-desktop"
+          onSave={onSave} canSave={canSave}
+          canExport={!!result}
+          onHtmlExport={handleHtmlExport}
+          onReset={onReset}
         />
-        <InfoBox
-          label="노점 Td"
-          value={Number.isFinite(Td) ? `${Td.toFixed(1)}°C` : '—'}
-          color="var(--state-error-text)"
-        />
-        <InfoBox
-          label="한계 두께"
-          value={Number.isFinite(d_mm) ? `${d_mm.toFixed(1)} mm` : '∞'}
-        />
-        <InfoBox
-          label="시공 후 표면 Ts"
-          value={Ts != null ? `${Ts.toFixed(1)}°C` : '—'}
-          sub={margin != null ? `여유 ${margin >= 0 ? '+' : ''}${margin.toFixed(1)}°C` : undefined}
-          color={Ts != null ? 'var(--state-success-text)' : undefined}
-        />
-      </div>
+      </main>
 
-      {warnings.length > 0 && (
-        <div style={{
-          backgroundColor: 'var(--state-warn-bg)',
-          border: '1px solid var(--state-warn-text)',
-          borderLeft: '3px solid var(--state-warn)',
-          borderRadius: 6, padding: '10px 14px',
-        }}>
-          {warnings.map((w, i) => (
-            <div key={i} style={{
-              fontSize: 12, color: C.warn, lineHeight: 1.55,
-              display: 'flex', gap: 6, alignItems: 'flex-start',
-              marginTop: i === 0 ? 0 : 4,
-            }}>
-              <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span>{w}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <StickyResults
+        result={validationErr ? null : result}
+        Ta={parseFloat(state.Ta)}
+        RH={parseFloat(state.RH)}
+      />
+
+      <ActionBar
+        className="calc-actions calc-actions-mobile"
+        onSave={onSave} canSave={canSave}
+        canExport={!!result}
+        onHtmlExport={handleHtmlExport}
+        onReset={onReset}
+      />
     </div>
   );
 }
 
-function InfoBox({
-  label, value, sub, color,
+function ActionBar({
+  className, onSave, canSave, canExport, onHtmlExport, onReset,
 }: {
-  label: string; value: string; sub?: string; color?: string;
+  className: string;
+  onSave?: () => void; canSave: boolean;
+  canExport: boolean;
+  onHtmlExport: () => void; onReset: () => void;
 }) {
   return (
-    <div style={{
-      background: 'var(--bg-surface-2)',
-      border: '1px solid var(--border-subtle)',
-      borderRadius: 8, padding: 10,
-      display: 'flex', flexDirection: 'column', gap: 3,
-    }}>
-      <div style={{
-        fontSize: 10, fontWeight: 600,
-        color: 'var(--text-tertiary)',
-        letterSpacing: 0.3, textTransform: 'uppercase',
-      }}>
-        {label}
-      </div>
-      <div style={{
-        fontSize: 15, fontWeight: 700,
-        color: color ?? 'var(--text-primary)',
-      }}>
-        {value}
-      </div>
-      {sub && (
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-          {sub}
-        </div>
-      )}
+    <div
+      className={className}
+      style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
+    >
+      {onSave && <SaveBtn onClick={onSave} enabled={canSave} />}
+      <button
+        onClick={onHtmlExport}
+        disabled={!canExport}
+        title="편집 가능한 HTML 산출서 파일 다운로드"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '10px 16px', fontSize: 13, fontWeight: 500,
+          color: canExport ? C.textDark : 'var(--text-quaternary)',
+          backgroundColor: C.surface,
+          border: `1px solid ${canExport ? C.borderInput : C.border}`,
+          borderRadius: 8,
+          cursor: canExport ? 'pointer' : 'not-allowed',
+          fontFamily: 'inherit',
+        }}
+      >
+        <FileDown size={14} /> HTML 산출서
+      </button>
+      <button
+        onClick={onReset}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '10px 20px', fontSize: 14, fontWeight: 500,
+          color: C.text, backgroundColor: 'transparent',
+          border: `1px solid ${C.borderInput}`, borderRadius: 8,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >
+        <RotateCcw size={14} /> 초기화
+      </button>
     </div>
   );
-}
-
-function gradeColor(g: Grade): string {
-  if (g === '안전') return 'var(--state-success-text)';
-  if (g === '주의') return 'var(--state-warn-text)';
-  return 'var(--state-error-text)';
-}
-function gradeBg(g: Grade): string {
-  if (g === '안전') return 'var(--state-success-bg)';
-  if (g === '주의') return 'var(--state-warn-bg)';
-  return 'var(--state-error-bg)';
 }
 
 function FieldSelect({

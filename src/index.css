@@ -40,8 +40,9 @@ input[type="number"] {
 .workspace-overlay { display: none; }
 .mobile-menu-btn { display: none; }
 
-/* 액션 버튼 — 데스크탑은 main 안, 모바일은 sticky-results 다음 */
-.calc-actions-mobile { display: none; }
+/* 액션 버튼 — 데스크탑은 main 안, 모바일은 sticky-results 다음.
+   ActionBar inline style(display:flex)를 덮어쓰기 위해 !important 사용 */
+.calc-actions-mobile { display: none !important; }
 
 /* 보온 두께 — 시각자료 3카드 그리드 (데스크톱 3열, 좁아지면 1열) */
 .insulation-visuals-grid {
