@@ -21,10 +21,9 @@ import {
 import { flowRegime, rangeStatus, RANGES, formatRe } from '../analysis';
 import ResultBlocks from './ResultBlocks';
 import StickyResults from './StickyResults';
-import { downloadCsv, printToPdf } from '../../../utils/exportUtils';
+import { downloadCsv, downloadHtmlFile } from '../../../utils/exportUtils';
+import { buildPipeFrictionReportHtml } from '../htmlReport';
 import { C, inputStyle, labelStyle } from '../styles';
-import PrintReport from '../../../components/PrintReport';
-import PrintReportContent from '../PrintReportContent';
 
 interface Props {
   inputMode: 'Q' | 'v';
@@ -193,19 +192,9 @@ export default function CalculatorTab({
           inputMode === 'v' && Q_display !== null ? Q_display.toFixed(2) : Q,
           D, L, flowUnit, pressDef, unitLossDisplay,
         )}
-        onPdf={() => printToPdf('관마찰손실 계산결과')}
+        onPdf={() => res && handleHtmlReport(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit)}
         onReset={onReset}
       />
-
-      {res && (
-        <PrintReport title="관마찰손실 계산결과">
-          <PrintReportContent
-            res={res} mat={mat} inputMode={inputMode}
-            Q={Q} v={v} D={D} L={L} fOverride={fOverride}
-            flowUnit={flowUnit} pressureUnit={pressureUnit}
-          />
-        </PrintReport>
-      )}
       </main>
       <StickyResults
         res={inputErr ? null : res}
@@ -224,11 +213,25 @@ export default function CalculatorTab({
           inputMode === 'v' && Q_display !== null ? Q_display.toFixed(2) : Q,
           D, L, flowUnit, pressDef, unitLossDisplay,
         )}
-        onPdf={() => printToPdf('관마찰손실 계산결과')}
+        onPdf={() => res && handleHtmlReport(res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit)}
         onReset={onReset}
       />
     </div>
   );
+}
+
+function handleHtmlReport(
+  res: NonNullable<ReturnType<typeof computeFriction>>,
+  mat: PipeMaterial,
+  inputMode: 'Q' | 'v',
+  Q: string, v: string, D: string, L: string, fOverride: string,
+  flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
+) {
+  const html = buildPipeFrictionReportHtml({
+    res, mat, inputMode, Q, v, D, L, fOverride, flowUnit, pressureUnit,
+  });
+  const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  downloadHtmlFile(`pipe-friction_${ts}.html`, html);
 }
 
 function ActionBar({

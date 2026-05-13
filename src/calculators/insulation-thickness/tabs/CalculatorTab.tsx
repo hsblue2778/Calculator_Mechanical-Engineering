@@ -1,13 +1,13 @@
 // 냉수배관 보온 두께 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, AlertTriangle, Save, Check, ChevronDown, FileDown } from 'lucide-react';
+import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, ChevronDown } from 'lucide-react';
 import {
   PIPE_OD_TABLE, INSULATION_MATERIALS,
   calculate, validate, type InsulationInputs,
 } from '../calc';
 import { buildInsulationReportHtml } from '../htmlReport';
-import { downloadHtmlFile } from '../../../utils/exportUtils';
+import { downloadCsv, downloadHtmlFile } from '../../../utils/exportUtils';
 import { C, inputStyle, labelStyle } from '../styles';
 import InsulationVisuals from './InsulationVisuals';
 import StickyResults from './StickyResults';
@@ -34,7 +34,7 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
   const mat = INSULATION_MATERIALS[state.matIdx];
   const isCustomK = mat?.id === 'custom';
 
-  function handleHtmlExport() {
+  function handlePdfReport() {
     if (!result) return;
     const pipe = PIPE_OD_TABLE[state.pipeIdx];
     const k = isCustomK ? parseFloat(state.customK) : (mat.k as number);
@@ -43,6 +43,32 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
     });
     const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     downloadHtmlFile(`insulation-${pipe.nominalA}A_${ts}.html`, html);
+  }
+
+  function handleCsvExport() {
+    if (!result) return;
+    const pipe = PIPE_OD_TABLE[state.pipeIdx];
+    const k = isCustomK ? parseFloat(state.customK) : (mat.k as number);
+    const rows: (string | number)[][] = [
+      ['항목', '값', '단위', '비고'],
+      ['계산기', '냉수배관 보온재 선정', '', ''],
+      ['관경 (호칭)', `${pipe.nominalA}A`, '', `외경 ${pipe.od_mm.toFixed(1)} mm`],
+      ['보온재', mat.nameKo, '', `k = ${k} W/(m·K)`],
+      ['외기 온도 Tₐ', state.Ta, '°C', ''],
+      ['관내 유체 온도 Tᵢ', state.Ti, '°C', ''],
+      ['상대습도 RH', state.RH, '%', ''],
+      ['표면 열전달률 hₒ', state.ho, 'W/(m²·K)', '자연대류 실내 표준'],
+      ['안전계수 SF', state.safetyFactor, '배수', ''],
+      ['', '', '', ''],
+      ['노점 온도 Tᴅ', Number.isFinite(result.Td) ? result.Td.toFixed(2) : '', '°C', 'Magnus 식'],
+      ['한계 두께 d', Number.isFinite(result.d_mm) ? result.d_mm.toFixed(2) : '', 'mm', 'Tˢ = Tᴅ 되는 이론 최소'],
+      ['안전 두께 (× SF)', Number.isFinite(result.d_safe_mm) ? result.d_safe_mm.toFixed(2) : '', 'mm', `한계 × ${state.safetyFactor}`],
+      ['추천 시판 두께', result.d_recommended_mm != null ? result.d_recommended_mm : '50 mm 초과', 'mm', '시판 라인업 [13·19·25·32·38·50]'],
+      ['시공 후 표면 온도 Tˢ', result.Ts != null ? result.Ts.toFixed(2) : '', '°C', '추천 두께 적용 시 검산'],
+      ['노점 대비 여유', result.margin != null ? result.margin.toFixed(2) : '', '°C', `등급 「${result.grade}」`],
+    ];
+    const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    downloadCsv(`insulation-${pipe.nominalA}A_${ts}.csv`, rows);
   }
 
   return (
@@ -157,7 +183,8 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
           className="calc-actions calc-actions-desktop"
           onSave={onSave} canSave={canSave}
           canExport={!!result}
-          onHtmlExport={handleHtmlExport}
+          onCsv={handleCsvExport}
+          onPdf={handlePdfReport}
           onReset={onReset}
         />
       </main>
@@ -172,7 +199,8 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
         className="calc-actions calc-actions-mobile"
         onSave={onSave} canSave={canSave}
         canExport={!!result}
-        onHtmlExport={handleHtmlExport}
+        onCsv={handleCsvExport}
+        onPdf={handlePdfReport}
         onReset={onReset}
       />
     </div>
@@ -180,12 +208,12 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
 }
 
 function ActionBar({
-  className, onSave, canSave, canExport, onHtmlExport, onReset,
+  className, onSave, canSave, canExport, onCsv, onPdf, onReset,
 }: {
   className: string;
   onSave?: () => void; canSave: boolean;
   canExport: boolean;
-  onHtmlExport: () => void; onReset: () => void;
+  onCsv: () => void; onPdf: () => void; onReset: () => void;
 }) {
   return (
     <div
@@ -193,23 +221,15 @@ function ActionBar({
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
       {onSave && <SaveBtn onClick={onSave} enabled={canSave} />}
-      <button
-        onClick={onHtmlExport}
-        disabled={!canExport}
-        title="편집 가능한 HTML 산출서 파일 다운로드"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '10px 16px', fontSize: 13, fontWeight: 500,
-          color: canExport ? C.textDark : 'var(--text-quaternary)',
-          backgroundColor: C.surface,
-          border: `1px solid ${canExport ? C.borderInput : C.border}`,
-          borderRadius: 8,
-          cursor: canExport ? 'pointer' : 'not-allowed',
-          fontFamily: 'inherit',
-        }}
-      >
-        <FileDown size={14} /> HTML 산출서
-      </button>
+      <ExportBtn
+        icon={<Download size={14} />} label="CSV 내보내기"
+        enabled={canExport} onClick={onCsv}
+      />
+      <ExportBtn
+        icon={<Printer size={14} />} label="PDF로 저장"
+        enabled={canExport} onClick={onPdf}
+        title="HTML 산출서 다운로드 (브라우저에서 PDF로 저장 가능)"
+      />
       <button
         onClick={onReset}
         style={{
@@ -223,6 +243,33 @@ function ActionBar({
         <RotateCcw size={14} /> 초기화
       </button>
     </div>
+  );
+}
+
+function ExportBtn({
+  icon, label, enabled, onClick, title,
+}: {
+  icon: React.ReactNode; label: string; enabled: boolean;
+  onClick: () => void; title?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!enabled}
+      title={title}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '10px 16px', fontSize: 13, fontWeight: 500,
+        color: enabled ? C.textDark : 'var(--text-quaternary)',
+        backgroundColor: C.surface,
+        border: `1px solid ${enabled ? C.borderInput : C.border}`,
+        borderRadius: 8,
+        cursor: enabled ? 'pointer' : 'not-allowed',
+        fontFamily: 'inherit',
+      }}
+    >
+      {icon} {label}
+    </button>
   );
 }
 
