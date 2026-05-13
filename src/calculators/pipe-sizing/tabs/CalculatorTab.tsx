@@ -23,10 +23,9 @@ import {
 import { SizingDetailTable } from './ResultPanel';
 import AnalysisBlock from './AnalysisBlock';
 import StickyResults from './StickyResults';
-import { downloadCsv, printToPdf } from '../../../utils/exportUtils';
+import { downloadCsv, downloadHtmlFile } from '../../../utils/exportUtils';
+import { buildPipeSizingReportHtml } from '../htmlReport';
 import { C, inputStyle, labelStyle, PA_PER_MM_AQ } from '../styles';
-import PrintReport from '../../../components/PrintReport';
-import PrintReportContent from '../PrintReportContent';
 
 interface Props {
   Q: string; dP: string;
@@ -174,20 +173,9 @@ export default function CalculatorTab({
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef)}
-        onPdf={() => printToPdf('관경 선정 계산결과')}
+        onPdf={() => ok?.selected && handleSizingHtmlReport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit)}
         onReset={onReset}
       />
-
-      {ok?.selected && (
-        <PrintReport title="관경 선정 계산결과">
-          <PrintReportContent
-            selected={ok.selected} rows={ok.rows ?? []} analysis={ok.analysis ?? null}
-            mat={mat}
-            Q={Q} dP={dP}
-            flowUnit={flowUnit} pressureUnit={pressureUnit}
-          />
-        </PrintReport>
-      )}
       </main>
       <StickyResults
         selected={ok?.selected ?? null}
@@ -200,11 +188,26 @@ export default function CalculatorTab({
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef)}
-        onPdf={() => printToPdf('관경 선정 계산결과')}
+        onPdf={() => ok?.selected && handleSizingHtmlReport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit)}
         onReset={onReset}
       />
     </div>
   );
+}
+
+function handleSizingHtmlReport(
+  selected: SizingRow,
+  rows: SizingRow[],
+  analysis: { V: number; Re: number; unitLoss_Pa: number } | null,
+  mat: PipeMaterialSize,
+  Q: string, dP: string,
+  flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
+) {
+  const html = buildPipeSizingReportHtml({
+    selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit,
+  });
+  const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  downloadHtmlFile(`pipe-sizing_${ts}.html`, html);
 }
 
 function ActionBar({
