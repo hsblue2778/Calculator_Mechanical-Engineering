@@ -1,6 +1,6 @@
 // 관마찰손실 — HTML 산출서 (펌프 양식 채용, 표지 페이지 없음)
 // 디자인 출처: pump-system/htmlReport (REPORT_CSS, pageHeader/pageFooter/secHeader)
-// 내용: 조건·물성 산출 → 마찰계수 산출 과정(영역 판정·Colebrook 반복) → D-W 대입 → H-W 비교 → 다단위 결과
+// 내용: 조건·물성 산출 → 마찰계수 산출 과정(영역 판정·Colebrook 반복) → D-W 대입 → 최종 결과 → 출처
 
 import logoDataUrl from '../../assets/report-logo.png?inline';
 import { REPORT_CSS } from '../pump-system/htmlReport/styles';
@@ -16,14 +16,6 @@ import { PRESSURE_UNITS } from './units';
 import type { PipeFrictionController } from './usePipeFrictionState.ts';
 
 const TOTAL_PAGES = 2;
-
-const MULTI_UNITS = [
-  { label: 'mmAq',   factor: 1 / 9.80665,  dp: 1, dpM: 2 },
-  { label: 'kPa',    factor: 1 / 1000,     dp: 2, dpM: 3 },
-  { label: 'kg/cm²', factor: 1 / 98066.5,  dp: 4, dpM: 5 },
-  { label: 'bar',    factor: 1 / 100000,   dp: 4, dpM: 5 },
-  { label: 'Pa',     factor: 1,            dp: 0, dpM: 1 },
-] as const;
 
 export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string {
   const { st, res, mat, fluidMeta, derivedField, triDisplay, epsDefault, cDefault } = pf;
@@ -110,26 +102,7 @@ export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string 
     `단위 마찰손실 = ΔP/L = ${res.deltaP_per_m_Pa.toFixed(2)} Pa/m`,
   ];
 
-  // §5 H-W 비교
-  const hwBlock = res.hw
-    ? `
-  <table class="k">
-    <colgroup><col style="width:30%"><col style="width:24%"><col style="width:23%"><col style="width:23%"></colgroup>
-    <tr><th>공식</th><th>수두 hL (m)</th><th>ΔP (Pa)</th><th>단위손실 (Pa/m)</th></tr>
-    <tr class="hl"><td>Darcy-Weisbach (기준)</td><td class="num">${res.hL_m.toFixed(4)}</td><td class="num">${Math.round(res.deltaP_Pa).toLocaleString()}</td><td class="num">${res.deltaP_per_m_Pa.toFixed(2)}</td></tr>
-    <tr><td>Hazen-Williams (C=${res.hw.C})</td><td class="num">${res.hw.hL_m.toFixed(4)}</td><td class="num">${Math.round(res.hw.deltaP_Pa).toLocaleString()}</td><td class="num">${(res.rho_kgm3 * PF_G * res.hw.hL_per_m).toFixed(2)}</td></tr>
-  </table>
-  <div class="note">hL(H-W) = 10.67·L·Q¹·⁸⁵²/(C¹·⁸⁵²·D⁴·⁸⁷¹) · D-W 대비 ${(100 * (res.hw.hL_m - res.hL_m) / res.hL_m).toFixed(1)}% — 두 식의 차이는 통상 ±10% 내외</div>`
-    : '<div class="note">Hazen-Williams 미적용 — 상온 물 전용 경험식으로, 현재 유체에 적용 시 큰 오차(최대 50%)가 발생합니다.</div>';
-
-  // §6 최종 결과 (다단위)
-  const multiRows = MULTI_UNITS.map(u => `
-    <tr>
-      <td class="c">${u.label}</td>
-      <td class="num">${(res.deltaP_Pa * u.factor).toFixed(u.dp)}</td>
-      <td class="num">${(res.deltaP_per_m_Pa * u.factor).toFixed(u.dpM)}</td>
-    </tr>`).join('');
-
+  // §5 최종 결과
   const resultRows: [string, string, string, string][] = [
     ['유량 Q', `${convertSIToPFFlow(res.Q_m3s, st.flowUnit).toFixed(2)}`, flowLabel, auto('Q')],
     ['유속 V', res.V_ms.toFixed(3), 'm/s', isWater ? rangeV.label : '—'],
@@ -188,20 +161,12 @@ export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string 
     ${dwItems.map((s, i) => `<tr><td class="c">${i + 1}</td><td><code>${s}</code></td></tr>`).join('')}
   </table>
 
-  ${secHeader('5.', 'Hazen-Williams 비교')}
-  ${hwBlock}
-
-  ${secHeader('6.', '최종 결과')}
+  ${secHeader('5.', '최종 결과')}
   <table class="k">
     <colgroup><col style="width:30%"><col style="width:24%"><col style="width:14%"><col style="width:32%"></colgroup>
     <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
     ${resultRows.map(r => `<tr${r[0] === '총 마찰손실 ΔP' ? ' class="hl"' : ''}>
       <td>${esc(r[0])}</td><td class="num">${esc(r[1])}</td><td class="c">${esc(r[2])}</td><td class="c">${esc(r[3])}</td></tr>`).join('')}
-  </table>
-  <table class="k">
-    <colgroup><col style="width:30%"><col style="width:35%"><col style="width:35%"></colgroup>
-    <tr><th>단위</th><th>총 마찰손실 ΔP</th><th>단위 마찰손실 (/m)</th></tr>
-    ${multiRows}
   </table>
   ${warns.length > 0 ? `
   <table class="k">
@@ -210,11 +175,10 @@ export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string 
     ${warnRows}
   </table>` : '<div class="note">권장 범위 내 — 추가 경고 없음</div>'}
 
-  ${secHeader('7.', '적용 표준 · 출처')}
+  ${secHeader('6.', '적용 표준 · 출처')}
   <ul class="refs">
     <li><b>Darcy-Weisbach · Colebrook-White(1939) · Swamee-Jain(1976)</b> — 마찰손실·마찰계수</li>
     <li><b>천이역 3차 보간</b> — EPANET 2 천이역 보간 방식 준용 (경계 2,300/4,000)</li>
-    <li><b>Hazen-Williams</b> — 물 전용 경험식 (ASHRAE Fundamentals Ch.22)</li>
     <li><b>물성</b> — 참조 엑셀 '마찰손실 계산기' ν표 · NIST WebBook(물 ρ) · 설비공학 문헌 표 2(공기)·표 5(기타 유체) · 이상기체</li>
     <li><b>ε · C값</b> — Moody(1944) · ASHRAE Fundamentals Ch.22 · NFPA 13 · KDS 57 · GF SYGEF Handbook · PPI(1971)</li>
     <li><b>SAREK 설비편람</b> — 권장 유속 / 단위 마찰손실 범위 (물 배관)</li>
