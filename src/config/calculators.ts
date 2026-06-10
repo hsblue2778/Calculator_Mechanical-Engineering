@@ -29,14 +29,17 @@ export const calculators: CalculatorMeta[] = [
   {
     id: 'pipe-friction',
     title: '관마찰손실계산기',
-    inputs: '유량, 관경, 관 길이, 재질',
-    outputs: '유속, 레이놀즈수, 마찰손실',
+    inputs: '유체·온도, 재질·상태, 유량·유속·관경 중 2개, 길이',
+    outputs: '나머지 1개 자동, 레이놀즈수, 마찰계수, D-W·H-W 손실',
     category: '배관설계',
     tabs: [
       { key: 'calculator', label: '계산' },
       { key: 'overview',   label: '개요' },
       { key: 'examples',   label: '예시' },
     ],
+    inputTags: [],
+    outputTags: [],
+    nextCalculators: [],
   },
   {
     id: 'pipe-sizing',

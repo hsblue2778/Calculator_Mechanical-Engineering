@@ -1,4 +1,6 @@
-// 관마찰손실 계산기 — 순수 계산 함수
+// [legacy] 관마찰손실 — 고정 f 기반 순수 계산 함수
+// 신규 관마찰손실 UI는 engine.ts(영역별 마찰계수)를 사용한다. 이 파일은
+// pump-system(computeFriction)·pipe-sizing(NU)이 import하는 동결 export 전용 — 시그니처·동작 변경 금지.
 // 공식 출처: 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p — Darcy-Weisbach
 //   hf = 8 × f × L × Q² / (π² × g × D⁵)
 
@@ -67,54 +69,6 @@ export function computeFriction(input: FrictionInput): FrictionResult | null {
   const Re = V_ms * D_m / NU;
   const hf_m = 8 * input.f * input.L_m * Q_m3s * Q_m3s
     / (Math.PI * Math.PI * G * Math.pow(D_m, 5));
-  const deltaP_Pa = RHO_WATER * G * hf_m;
-  const unitLoss_Pa = deltaP_Pa / input.L_m;
-
-  return {
-    Q_m3s, D_m, V_ms, Re, f: input.f,
-    hf_m, deltaP_Pa, unitLoss_Pa,
-  };
-}
-
-// v 입력형 — 유속 직접 입력
-// v형 Darcy-Weisbach: hf = f·(L/D)·v²/(2g)
-// Q형(hf = 8fLQ²/π²gD⁵)과 수학적 동등 (Q = v·A 대입 시 일치). 일본 건축기술자협회 매뉴얼 213p.
-export interface FrictionInputV {
-  v_str: string;
-  D_mm: number;
-  L_m: number;
-  f: number;
-}
-
-export function validateFrictionInputV(
-  v_str: string, D_mm: number, L_m: number, f: number,
-): InputError | null {
-  const v_num = parseFloat(v_str);
-  if (!Number.isFinite(v_num) || v_num <= 0) {
-    return { field: 'v', message: '유속 v는 0보다 큰 값을 입력해야 합니다.' };
-  }
-  if (!Number.isFinite(D_mm) || D_mm <= 0) {
-    return { field: 'D', message: '관 내경 D는 0보다 큰 값을 입력해야 합니다.' };
-  }
-  if (!Number.isFinite(L_m) || L_m <= 0) {
-    return { field: 'L', message: '배관 길이 L은 0보다 큰 값을 입력해야 합니다.' };
-  }
-  if (!Number.isFinite(f) || f <= 0) {
-    return { field: 'f', message: '마찰계수 f는 0보다 큰 값을 입력해야 합니다.' };
-  }
-  return null;
-}
-
-export function computeFrictionFromV(input: FrictionInputV): FrictionResult | null {
-  const err = validateFrictionInputV(input.v_str, input.D_mm, input.L_m, input.f);
-  if (err) return null;
-
-  const V_ms = parseFloat(input.v_str);
-  const D_m = input.D_mm / 1000;
-  const A_m2 = Math.PI * D_m * D_m / 4;
-  const Q_m3s = V_ms * A_m2;                              // Q = v·A (역환산, 결과 표시용)
-  const Re = V_ms * D_m / NU;
-  const hf_m = input.f * (input.L_m / D_m) * V_ms * V_ms / (2 * G);
   const deltaP_Pa = RHO_WATER * G * hf_m;
   const unitLoss_Pa = deltaP_Pa / input.L_m;
 
