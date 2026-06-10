@@ -20,11 +20,13 @@ export default function OverviewTab({ fieldLabel }: Props) {
           <div>
             <p style={{ fontWeight: 600, marginBottom: 4 }}>① 배관 마찰손실 (Darcy-Weisbach)</p>
             <pre style={{ fontFamily: 'monospace', fontSize: 13, backgroundColor: 'var(--bg-surface-2)', border: '1px solid var(--border-subtle)', padding: '8px 12px', borderRadius: 6, whiteSpace: 'pre-wrap', margin: 0 }}>
-{`hf = 8 · f · L · Q²  /  (π² · g · D⁵)   [m]
+{`hf = f · (L/D) · V² / (2g)   [m]
 
-  f : 마찰계수 (재질 고정값)
+  f : 마찰계수 — 유동 영역별 자동 산출
+      층류(Re<2,300) 64/Re · 천이(≤4,000) 3차 보간 · 난류 Colebrook-White 반복해
+  ε : 절대조도 — 재질×신관/노후 (Moody·ASHRAE Ch.22·NFPA 13·KDS 57)
+  Re: V·D/ν — 실제 유체 ν(T) 적용
   L : 배관 길이 [m]   (다중 구간 시 구간별 적용)
-  Q : 유량 [m³/s]
   D : 관 내경 [m]
   g : 9.81 m/s²`}
             </pre>
@@ -181,7 +183,7 @@ NPSHa = (P_fill - P_vapor) / (ρ·g) + Hs - Σhf_suc - Σh_fit_suc   [m]
         </h3>
         <ul style={{ paddingLeft: 18, margin: 0, lineHeight: 1.8, fontSize: 13 }}>
           <li>운전 유체는 <strong>청수·온수만</strong> 계산 가능 (EG/PG: Phase 1.5)</li>
-          <li>마찰계수 f는 재질별 고정값 사용 (온도·Re 의존성 미반영)</li>
+          <li>마찰계수 f는 유동 영역별 자동 산출 (Colebrook-White 기준) — 절대조도 ε는 재질×신관/노후 기본값 사용 (개별 수정은 관마찰손실 계산기에서 가능)</li>
           <li>펌프 효율 η = 0.65 고정 (실제 펌프 곡선 미적용)</li>
           <li>부속류 K값은 난류(Re &gt; 4,000) 기준 단일 상수 — 층류 구간 사용 금지</li>
           <li>NPSHr(필요 흡입수두)은 펌프 선정 단계에서 제조사 자료와 별도 비교 필요</li>

@@ -1,48 +1,20 @@
-// 관마찰손실 — 우측 sticky 실시간 결과 패널 (펌프 시스템 StickyResults 스타일 차용)
+// 관마찰손실 — 우측 sticky 실시간 결과 패널 (신규 엔진 PipeFrictionResult 기준)
 
-import type { FrictionResult } from '../calc';
+import { flowRegime, formatRe, rangeStatus, RANGES, type RegimeInfo } from '../analysis';
+import { fMethodLabel } from '../interpret.ts';
+import { pfFlowUnitDef, convertSIToPFFlow } from '../pfUnits.ts';
 import type { PRESSURE_UNITS } from '../units';
-import {
-  RANGES, flowRegime, rangeStatus, formatRe,
-  type RegimeInfo,
-} from '../analysis';
+import type { PipeFrictionController } from '../usePipeFrictionState.ts';
 
 type PressDef = typeof PRESSURE_UNITS[number];
 
-interface Props {
-  res: FrictionResult | null;
-  pressDef: PressDef;
-  unitLossDisplay: number | null;
-  inputMode: 'Q' | 'v';
-  Q_display: number | null;
-  flowUnitLabel: string;
-}
+export default function StickyResults({ pf, pressDef }: { pf: PipeFrictionController; pressDef: PressDef }) {
+  const { res, st, derivedField } = pf;
 
-export default function StickyResults({
-  res, pressDef, unitLossDisplay, inputMode, Q_display, flowUnitLabel,
-}: Props) {
   if (!res) {
     return (
-      <aside
-        className="calc-sticky-results"
-        style={{
-          width: 280, flexShrink: 0,
-          borderLeft: '1px solid var(--border-subtle)',
-          paddingLeft: 14, marginLeft: 12,
-          position: 'sticky', top: 0, alignSelf: 'flex-start',
-          maxHeight: 'calc(90vh - 120px)', overflowY: 'auto',
-        }}
-      >
-        <div
-          style={{
-            fontSize: 11, fontWeight: 600,
-            color: 'var(--text-tertiary)',
-            letterSpacing: 0.5, textTransform: 'uppercase',
-            padding: '0 4px 12px',
-          }}
-        >
-          실시간 결과
-        </div>
+      <aside className="calc-sticky-results" style={asideStyle}>
+        <PanelTitle />
         <div
           style={{
             background: 'var(--bg-surface-2)',
@@ -52,59 +24,70 @@ export default function StickyResults({
             color: 'var(--text-quaternary)', fontSize: 12,
           }}
         >
-          입력을 시작하면<br/>결과가 표시됩니다
+          유량·유속·관경 중 2개와<br/>길이를 입력하면<br/>결과가 표시됩니다
         </div>
       </aside>
     );
   }
 
+  const isWater = st.fluid === 'water';
   const regime = flowRegime(res.Re);
   const rangeV = rangeStatus(res.V_ms, RANGES.velocity);
-  const rangeU = rangeStatus(res.unitLoss_Pa, RANGES.unitLossPa);
+  const rangeU = rangeStatus(res.deltaP_per_m_Pa, RANGES.unitLossPa);
   const deltaP_unit = res.deltaP_Pa * pressDef.factor;
-  const isV = inputMode === 'v' && Q_display !== null;
+  const unitLoss_unit = res.deltaP_per_m_Pa * pressDef.factor;
+  const flowLabel = pfFlowUnitDef(st.flowUnit).label;
+  const Q_disp = convertSIToPFFlow(res.Q_m3s, st.flowUnit);
+
+  const derivedKpi = derivedField === 'V'
+    ? { label: '유속 V (자동)', value: res.V_ms.toFixed(3), unit: 'm/s' }
+    : derivedField === 'D'
+      ? { label: '관경 D (자동)', value: (res.D_m * 1000).toFixed(1), unit: 'mm' }
+      : { label: '유량 Q (자동)', value: formatFlowValue(Q_disp), unit: flowLabel };
 
   return (
-    <aside
-      className="calc-sticky-results"
-      style={{
-        width: 280, flexShrink: 0,
-        borderLeft: '1px solid var(--border-subtle)',
-        paddingLeft: 14, marginLeft: 12,
-        position: 'sticky', top: 0, alignSelf: 'flex-start',
-        maxHeight: 'calc(90vh - 120px)', overflowY: 'auto',
-        display: 'flex', flexDirection: 'column', gap: 12,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 11, fontWeight: 600,
-          color: 'var(--text-tertiary)',
-          letterSpacing: 0.5, textTransform: 'uppercase',
-          padding: '0 4px',
-        }}
-      >
-        실시간 결과
-      </div>
+    <aside className="calc-sticky-results" style={{ ...asideStyle, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <PanelTitle />
 
       {/* 히어로 — 총 마찰손실 */}
-      <ResultHero
-        deltaP={deltaP_unit}
-        deltaPUnit={pressDef.label}
-        deltaPDp={pressDef.dp}
-        regime={regime}
-      />
+      <div
+        style={{
+          background: 'var(--bg-surface-2)',
+          borderRadius: 14, padding: 16,
+          border: '1px solid var(--border-subtle)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: 6,
+        }}
+      >
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 500 }}>
+          총 마찰손실 ΔP (Darcy-Weisbach)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{
+            fontSize: 32, fontWeight: 700, color: 'var(--text-primary)',
+            letterSpacing: '-0.01em',
+          }}>
+            {Number.isFinite(deltaP_unit) ? deltaP_unit.toFixed(pressDef.dp) : '—'}
+          </span>
+          <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500 }}>
+            {pressDef.label}
+          </span>
+        </div>
+        <div
+          style={{
+            padding: '3px 10px', borderRadius: 999,
+            fontSize: 11, fontWeight: 600,
+            background: regimeBg(regime.key),
+            color: regime.color,
+          }}
+        >
+          {regime.label}
+        </div>
+      </div>
 
-      {/* KPI 그리드 — 유속/Re/단위손실/수두 */}
+      {/* KPI 그리드 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <Kpi
-          label={isV ? '유량 Q' : '유속 V'}
-          value={isV ? formatFlowValue(Q_display!) : res.V_ms.toFixed(2)}
-          unit={isV ? flowUnitLabel : 'm/s'}
-          accent={rangeV.color}
-          subLabel={rangeV.label}
-          subBg={rangeV.bg}
-        />
+        <Kpi label={derivedKpi.label} value={derivedKpi.value} unit={derivedKpi.unit} accent="var(--accent-primary)" />
         <Kpi
           label="Reynolds"
           value={formatRe(res.Re)}
@@ -114,13 +97,19 @@ export default function StickyResults({
         />
         <Kpi
           label="단위 마찰손실"
-          value={unitLossDisplay !== null ? unitLossDisplay.toFixed(pressDef.dpM) : '—'}
+          value={unitLoss_unit.toFixed(pressDef.dpM)}
           unit={`${pressDef.label}/m`}
-          accent={rangeU.color}
-          subLabel={rangeU.label}
-          subBg={rangeU.bg}
+          accent={isWater ? rangeU.color : undefined}
+          subLabel={isWater ? rangeU.label : undefined}
+          subBg={isWater ? rangeU.bg : undefined}
         />
-        <Kpi label="수두 hf" value={res.hf_m.toFixed(3)} unit="m" />
+        <Kpi
+          label="마찰계수 f"
+          value={res.f.toFixed(5)}
+          subLabel={fMethodLabel(res.fMethod)}
+          subBg="var(--accent-primary-bg-soft)"
+          accent="var(--text-primary)"
+        />
       </div>
 
       {/* 계산 결과 상세 */}
@@ -141,63 +130,50 @@ export default function StickyResults({
         >
           계산 결과 상세
         </div>
-        {isV
-          ? <DetailRow label="유량 (Q)" value={`${formatFlowValue(Q_display!)} ${flowUnitLabel}`} />
-          : <DetailRow label="유속 (V)" value={`${res.V_ms.toFixed(2)} m/s`} />}
-        <DetailRow label="레이놀즈수 (Re)" value={formatRe(res.Re)} />
-        <DetailRow label="총 마찰손실 (ΔP)" value={`${deltaP_unit.toFixed(pressDef.dp)} ${pressDef.label}`} />
+        <DetailRow label="유량 (Q)" value={`${formatFlowValue(Q_disp)} ${flowLabel}`} />
         <DetailRow
-          label="단위 마찰손실"
-          value={unitLossDisplay !== null
-            ? `${unitLossDisplay.toFixed(pressDef.dpM)} ${pressDef.label}/m`
-            : '—'}
+          label="유속 (V)"
+          value={`${res.V_ms.toFixed(2)} m/s`}
+          badge={isWater ? { label: rangeV.label, color: rangeV.color, bg: rangeV.bg } : undefined}
         />
-        <DetailRow label="수두 (hf)" value={`${res.hf_m.toFixed(3)} m`} muted />
-        <DetailRow label="적용 마찰계수 (f)" value={res.f.toFixed(4)} muted />
+        <DetailRow label="관 내경 (D)" value={`${(res.D_m * 1000).toFixed(1)} mm`} />
+        <DetailRow label="동점성계수 (ν)" value={`${(res.nu_m2s * 1e6).toPrecision(4)}×10⁻⁶ m²/s`} muted />
+        <DetailRow label="밀도 (ρ)" value={`${res.rho_kgm3 < 10 ? res.rho_kgm3.toFixed(4) : res.rho_kgm3.toFixed(1)} kg/m³`} muted />
+        <DetailRow label="상대조도 (ε/D)" value={res.relRough.toExponential(2)} muted />
+        <DetailRow label="마찰계수 (f)" value={`${res.f.toFixed(5)} · ${fMethodLabel(res.fMethod)}`} />
+        <DetailRow
+          label="S-J 검산"
+          value={res.fSwameeJain !== null ? res.fSwameeJain.toFixed(5) : '적용범위 외'}
+          muted
+        />
+        <DetailRow label="수두 (hL)" value={`${res.hL_m.toFixed(3)} m`} muted />
+        {res.hw && (
+          <DetailRow label={`H-W 수두 (C=${res.hw.C})`} value={`${res.hw.hL_m.toFixed(3)} m`} muted />
+        )}
       </div>
     </aside>
   );
 }
 
-function ResultHero({
-  deltaP, deltaPUnit, deltaPDp, regime,
-}: {
-  deltaP: number; deltaPUnit: string; deltaPDp: number; regime: RegimeInfo;
-}) {
+const asideStyle: React.CSSProperties = {
+  width: 280, flexShrink: 0,
+  borderLeft: '1px solid var(--border-subtle)',
+  paddingLeft: 14, marginLeft: 12,
+  position: 'sticky', top: 0, alignSelf: 'flex-start',
+  maxHeight: 'calc(90vh - 120px)', overflowY: 'auto',
+};
+
+function PanelTitle() {
   return (
     <div
       style={{
-        background: 'var(--bg-surface-2)',
-        borderRadius: 14, padding: 16,
-        border: '1px solid var(--border-subtle)',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', gap: 6,
+        fontSize: 11, fontWeight: 600,
+        color: 'var(--text-tertiary)',
+        letterSpacing: 0.5, textTransform: 'uppercase',
+        padding: '0 4px 12px',
       }}
     >
-      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 500 }}>
-        총 마찰손실 ΔP
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{
-          fontSize: 32, fontWeight: 700, color: 'var(--text-primary)',
-          letterSpacing: '-0.01em',
-        }}>
-          {Number.isFinite(deltaP) ? deltaP.toFixed(deltaPDp) : '—'}
-        </span>
-        <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500 }}>
-          {deltaPUnit}
-        </span>
-      </div>
-      <div
-        style={{
-          padding: '3px 10px', borderRadius: 999,
-          fontSize: 11, fontWeight: 600,
-          background: regimeBg(regime.key),
-          color: regime.color,
-        }}
-      >
-        {regime.label}
-      </div>
+      실시간 결과
     </div>
   );
 }
@@ -258,23 +234,33 @@ function Kpi({
 }
 
 function DetailRow({
-  label, value, muted,
+  label, value, muted, badge,
 }: {
   label: string; value: string; muted?: boolean;
+  badge?: { label: string; color: string; bg: string };
 }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: 11.5 }}>
-      <span style={{ color: muted ? 'var(--text-quaternary)' : 'var(--text-secondary)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', fontSize: 11.5, gap: 6 }}>
+      <span style={{ color: muted ? 'var(--text-quaternary)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
         {label}
       </span>
-      <span
-        style={{
-          color: muted ? 'var(--text-tertiary)' : 'var(--text-primary)',
-          fontWeight: muted ? 500 : 600,
-          fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-        }}
-      >
-        {value}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        {badge && (
+          <span style={{
+            padding: '1px 7px', borderRadius: 999, fontSize: 10, fontWeight: 600,
+            color: badge.color, background: badge.bg, whiteSpace: 'nowrap',
+          }}>{badge.label}</span>
+        )}
+        <span
+          style={{
+            color: muted ? 'var(--text-tertiary)' : 'var(--text-primary)',
+            fontWeight: muted ? 500 : 600,
+            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+            textAlign: 'right',
+          }}
+        >
+          {value}
+        </span>
       </span>
     </div>
   );

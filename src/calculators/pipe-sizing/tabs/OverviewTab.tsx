@@ -14,23 +14,24 @@ export default function OverviewTab() {
 
       <InfoBlock title="사용 공식">
         <ul style={{ paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
-          <li>• <b>Darcy-Weisbach (정통)</b>: hf/L = 8 × f × Q² / (π² × g × D⁵) × 1,000  [mmAq/m]</li>
-          <li style={{ paddingLeft: 14, color: C.text }}>Q [m³/s] = Q[LPM] / 60,000 · D [m] = ID[mm] / 1,000 · g = 9.81 m/s² · f: 재질별 고정값</li>
-          <li>• <b>재질별 마찰계수 f</b>: 탄소강관 0.030, 스테인리스강관 0.020, 동관 0.020, PVC / C-PVC 0.020</li>
+          <li>• <b>Darcy-Weisbach + 영역별 마찰계수</b>: ΔP/L = ρ(T) × g × f × (1/D) × V²/(2g)  [Pa/m] → mmAq/m = ΔP/L ÷ 9.80665</li>
+          <li style={{ paddingLeft: 14, color: C.text }}>f: 층류(Re&lt;2,300) 64/Re · 천이(≤4,000) 3차 보간 · 난류 Colebrook-White 반복해 — 관마찰손실 계산기와 동일 엔진</li>
+          <li>• <b>절대조도 ε</b>: 재질×신관/노후 기본값 (Moody 1944 · ASHRAE Ch.22 · NFPA 13 · KDS 57) — 화면에서 직접 수정 가능</li>
+          <li>• <b>물성</b>: 물 ν(참조 엑셀 물성표)·ρ(NIST WebBook) — 입력 온도 기준 선형보간</li>
           <li>• <b>유속</b>: v = Q / A (Q: m³/s, A: 원형관 단면적)</li>
           <li>• <b>선정 규칙</b>: 허용 압력강하 이하가 되는 가장 작은 관경을 자동 선정</li>
           <li>• 결과 단위 <b>mmAq/m</b> → 사용자 선택 단위로 자동 환산</li>
         </ul>
         <p style={{ fontSize: 12, color: C.text, marginTop: 8 }}>
-          출처: 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p
+          출처: Colebrook-White(1939) · Swamee-Jain(1976, 검산) · EPANET 천이 보간 · Moody(1944)/ASHRAE Ch.22/NFPA 13/KDS 57(ε) · NIST WebBook(ρ)
         </p>
       </InfoBlock>
 
       <InfoBlock title="개선사항">
         <ul style={{ paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
           <li>
-            <b>① 정통 Darcy-Weisbach 단일 적용</b><br />
-            <span style={{ color: C.text }}>→ 재질별 고정 마찰계수 f를 사용하는 정통 D-W 공식을 단일 기준으로 채택. 수온·점성계수 보간 없이 계산이 간결하며, 학술 표준과의 오차 ±0.5% 이내.</span>
+            <b>① 고정 f → 유동 영역별 마찰계수 엔진</b><br />
+            <span style={{ color: C.text }}>→ 재질별 고정 f 대신, 관경별 Re와 상대조도 ε/D로 층류 64/Re·천이 보간·난류 Colebrook-White를 자동 적용. 물 온도(ν·ρ)와 신관/노후(ε)까지 반영하며 관마찰손실 계산기와 결과가 일치.</span>
           </li>
           <li>
             <b>② 셀 표시 자릿수에 의한 누적 오차</b><br />
@@ -112,7 +113,7 @@ export default function OverviewTab() {
 
       <InfoBlock title="제한 사항">
         <ul style={{ paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-          <li>• <b>재질별 고정 f 사용</b> — 노후·스케일에 의한 마찰계수 변화는 반영되지 않음. 실제 운용 배관은 마진을 두고 설계 권장</li>
+          <li>• 노후·스케일 영향은 배관 상태(신관/노후)의 ε 기본값 또는 ε 직접 수정으로 반영 — 심한 부식·퇴적은 실측 기반 ε 적용 권장</li>
           <li>• 원관 · 수평 직관 기준 (부속류 · 입상·수평 전환 손실 별도 계산 필요)</li>
           <li>• 선정된 관경의 유속이 권장 범위(1.5~2.0 m/s)를 벗어나면 한 단계 위·아래 호칭으로 재검토</li>
           <li>• 치수표는 KS D 3507(강관) · KS D 3576(STS10S) · ASTM B88 Type L(동관) · ASTM D1785 Schedule 80(PVC / C-PVC) 기준. 외경 · 두께가 다른 비표준 관은 직접 입력 모드 미제공</li>

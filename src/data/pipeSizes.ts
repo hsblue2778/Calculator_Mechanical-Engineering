@@ -41,7 +41,6 @@ export interface ScheduleSpec {
 export interface MaterialSpec {
   id: string;          // 'sgp', 'stainless', 'copper', 'pvc'
   label: string;       // '탄소강관' 등
-  frictionFactor: number;  // 마찰계수 f (재질 표면 거칠기 기반, schedule 무관)
   schedules: ScheduleSpec[];
 }
 
@@ -395,14 +394,12 @@ const PVC_SCH80: PipeSize[] = [
 ];
 
 // ── V2 PIPE_MATERIALS_V2 ─────────────────────────────────────────────
-// 마찰계수는 pipeMaterials.ts FRICTION_FACTORS 단일 출처를 참조한다.
-import { FRICTION_FACTORS } from './pipeMaterials';
+// 마찰계수: 고정 f 폐기 — 유동 영역별 자동 산출(pipe-friction/engine.ts) + ε(pipeRoughness.ts)로 대체.
 
 export const PIPE_MATERIALS_V2: MaterialSpec[] = [
   {
     id: 'sgp',
     label: '탄소강관',
-    frictionFactor: FRICTION_FACTORS.carbonSteel,
     schedules: [
       { id: 'ks-std',  label: 'KS일반',  sizes: SGP_KS_STD },
       { id: 'sch40',   label: 'Sch40',   sizes: SGP_SCH40 },
@@ -412,7 +409,6 @@ export const PIPE_MATERIALS_V2: MaterialSpec[] = [
   {
     id: 'stainless',
     label: '스테인리스강관',
-    frictionFactor: FRICTION_FACTORS.stainlessSteel,
     schedules: [
       { id: 'ss-5s',  label: '5S',   sizes: STS_5S },
       { id: 'ss-10s', label: '10S',  sizes: STS_10S },
@@ -422,7 +418,6 @@ export const PIPE_MATERIALS_V2: MaterialSpec[] = [
   {
     id: 'copper',
     label: '동관',
-    frictionFactor: FRICTION_FACTORS.copper,
     schedules: [
       { id: 'cu-k', label: 'Type K', sizes: COPPER_TYPE_K },
       { id: 'cu-l', label: 'Type L', sizes: COPPER_TYPE_L },
@@ -432,7 +427,6 @@ export const PIPE_MATERIALS_V2: MaterialSpec[] = [
   {
     id: 'pvc',
     label: 'PVC/C-PVC',
-    frictionFactor: FRICTION_FACTORS.pvcCpvc,
     schedules: [
       { id: 'pvc-sch40', label: 'Sch40', sizes: PVC_SCH40 },
       { id: 'pvc-sch80', label: 'Sch80', sizes: PVC_SCH80 },
@@ -456,7 +450,6 @@ export interface PipeMaterialSize {
   nameEn: string;
   abbreviation: string | null;
   description: string;
-  frictionFactor: number;
   sizes: PipeSpec[];
 }
 
@@ -467,15 +460,7 @@ function v2ToLegacySizes(sizes: PipeSize[]): PipeSpec[] {
 }
 
 // ── pump-hvac helper ────────────────────────────────────────────────
-// V2 id 또는 legacy id (sts10s, pvc-cpvc)로 마찰계수/한글명 조회
-// legacy id는 history 항목 호환을 위해 alias 처리
-export function getMaterialFrictionFactor(materialId: string): number {
-  const v2 = PIPE_MATERIALS_V2.find(m => m.id === materialId);
-  if (v2) return v2.frictionFactor;
-  if (materialId === 'sts10s')   return PIPE_MATERIALS_V2.find(m => m.id === 'stainless')!.frictionFactor;
-  if (materialId === 'pvc-cpvc') return PIPE_MATERIALS_V2.find(m => m.id === 'pvc')!.frictionFactor;
-  return 0.03;
-}
+// V2 id 또는 legacy id (sts10s, pvc-cpvc)로 한글명 조회 — legacy id는 history 호환 alias
 export function getMaterialLabel(materialId: string): string {
   const v2 = PIPE_MATERIALS_V2.find(m => m.id === materialId);
   if (v2) return v2.label;
@@ -491,7 +476,6 @@ export const PIPE_SIZE_MATERIALS: PipeMaterialSize[] = [
     nameEn: 'Carbon Steel Pipe',
     abbreviation: 'SPPS, SPP',
     description: '일반 배관용 탄소강관 (KS일반)',
-    frictionFactor: FRICTION_FACTORS.carbonSteel,
     sizes: v2ToLegacySizes(SGP_KS_STD),
   },
   {
@@ -500,7 +484,6 @@ export const PIPE_SIZE_MATERIALS: PipeMaterialSize[] = [
     nameEn: 'Stainless Steel 10S',
     abbreviation: 'STS 304, 316',
     description: '스테인리스강관 (STS304 10S 계열)',
-    frictionFactor: FRICTION_FACTORS.stainlessSteel,
     sizes: v2ToLegacySizes(STS_10S),
   },
   {
@@ -509,7 +492,6 @@ export const PIPE_SIZE_MATERIALS: PipeMaterialSize[] = [
     nameEn: 'PVC / C-PVC',
     abbreviation: null,
     description: 'PVC · C-PVC 압력 배관 (Sch80)',
-    frictionFactor: FRICTION_FACTORS.pvcCpvc,
     sizes: v2ToLegacySizes(PVC_SCH80),
   },
   {
@@ -518,7 +500,6 @@ export const PIPE_SIZE_MATERIALS: PipeMaterialSize[] = [
     nameEn: 'Copper',
     abbreviation: 'Copper',
     description: '동관 (인동·탈산동) Type L',
-    frictionFactor: FRICTION_FACTORS.copper,
     sizes: v2ToLegacySizes(COPPER_TYPE_L),
   },
 ];

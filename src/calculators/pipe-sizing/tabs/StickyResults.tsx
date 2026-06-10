@@ -7,6 +7,7 @@ import {
   VELOCITY_RECOMMENDED_MIN, VELOCITY_RECOMMENDED_MAX,
 } from '../calc';
 import { PRESSURE_UNITS, type PressureUnitKey } from '../../pipe-friction/units';
+import { fMethodLabel } from '../../pipe-friction/interpret.ts';
 import { mmAqToDisplay } from '../units';
 import {
   RANGES, flowRegime, rangeStatus, formatRe,
@@ -93,9 +94,7 @@ export default function StickyResults({ selected, noSolution, mat, pressureUnit 
     vStat === 'high' ? '과다' : '저속';
 
   const drop_display = mmAqToDisplay(selected.dropPerM_mmAqPerM, pressureUnit);
-  const D_m = selected.size.id_mm / 1000;
-  const NU = 1.004e-6;
-  const Re = v * D_m / NU;
+  const Re = selected.Re; // calc.ts에서 ν(T) 기반으로 산출
   const regime = flowRegime(Re);
   const unitLoss_Pa = selected.dropPerM_mmAqPerM * PA_PER_MM_AQ;
   const rangeU = rangeStatus(unitLoss_Pa, RANGES.unitLossPa);
@@ -203,7 +202,7 @@ export default function StickyResults({ selected, noSolution, mat, pressureUnit 
         <DetailRow label="유속 (V)" value={`${v.toFixed(2)} m/s`} />
         <DetailRow label="레이놀즈수 (Re)" value={formatRe(Re)} />
         <DetailRow label="단위 마찰손실" value={`${drop_display.toFixed(pressDef.dp)} ${pressDef.label}/m`} />
-        <DetailRow label="재질 마찰계수 (f)" value={mat.frictionFactor.toFixed(4)} muted />
+        <DetailRow label="적용 마찰계수 (f)" value={`${selected.f.toFixed(5)} · ${fMethodLabel(selected.fMethod)}`} muted />
         {vStat !== 'ok' && (
           <div style={{
             marginTop: 6, padding: '6px 8px',

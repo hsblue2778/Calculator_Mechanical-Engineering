@@ -117,8 +117,9 @@ export function buildPage2(props: PumpHvacReportProps, logoDataUrl: string, docN
     <tr class="total"><td colspan="10">토출측 합계</td><td class="num">${r.disPipeLoss_total_m.toFixed(5)}</td></tr>
   </table>
   <div class="note">
-    공식: <code>hf = 8·f·L·Q²/(π²·g·D⁵)</code> — Darcy-Weisbach (일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p)<br/>
-    마찰계수 f 재질별 고정값 — 탄소강관 0.030, 스테인리스 0.020, 동관 0.020, PVC/C-PVC 0.020
+    공식: <code>hf = f·(L/D)·V²/(2g)</code> — Darcy-Weisbach<br/>
+    마찰계수 f 유동 영역별 자동 산출 — 층류 64/Re · 천이(2,300~4,000) 3차 보간 · 난류 Colebrook-White(1939) 반복해 ·
+    Re = V·D/ν(운전 온도 기준) · 절대조도 ε: 재질×신관/노후 (Moody 1944 · ASHRAE Ch.22 · NFPA 13 · KDS 57)
   </div>
   ${sec3Html}
   ${pageFooter(docNo, 2, TOTAL_PAGES)}

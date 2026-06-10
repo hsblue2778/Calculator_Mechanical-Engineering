@@ -1,217 +1,141 @@
-// 관마찰손실 — 계산 결과 블록 (KPI / 상세 테이블 / 권장 범위 / Mini / 경고)
+// 관마찰손실 — 메인 열 결과 블록
+// 다단위 동시 표시(엑셀 PHASE 4 우측 패널 개념) + Hazen-Williams 비교 + 권장 범위 게이지(물 전용) + 경고
 
-import Kpi from '../../../components/Kpi';
-import Mini from '../../../components/Mini';
 import RangeGauge from '../../../components/RangeGauge';
 import WarningList from '../../../components/WarningList';
-import {
-  RANGES, flowRegime, rangeStatus, warnings, formatRe, toRangeSpec,
-  type RegimeInfo, type RangeStatus,
-} from '../analysis';
-import type { FrictionResult } from '../calc';
-import type { PRESSURE_UNITS } from '../units';
+import { RANGES, rangeStatus, toRangeSpec } from '../analysis';
+import { pfWarnings } from '../interpret.ts';
+import { PF_G, type PipeFrictionResult } from '../engine.ts';
+import type { PipeFrictionController } from '../usePipeFrictionState.ts';
 import { C } from '../styles';
 
-type PressDef = typeof PRESSURE_UNITS[number];
-
-interface Props {
-  res: FrictionResult;
-  pressDef: PressDef;
-  unitLossDisplay: number | null;
-  // v 입력 모드일 때 V 표시 자리에 Q(역환산) 표시로 교체
-  // inputMode === 'v' 이고 Q_display 가 제공되면 Kpi·ResultTable·RangeGauge 의 label/value/unit만 교체
-  inputMode?: 'Q' | 'v';
-  Q_display?: number | null;
-  flowUnitLabel?: string;
-  // 'full' = 모든 블록 출력 (기존 동작), 'secondary' = RangeCard + 경고 리스트만 출력
-  // 'secondary'는 우측 sticky 패널에 KPI/상세표가 별도로 표시될 때 사용
-  variant?: 'full' | 'secondary';
-}
-
-export default function ResultBlocks({
-  res, pressDef, unitLossDisplay,
-  inputMode = 'Q', Q_display = null, flowUnitLabel = '',
-  variant = 'full',
-}: Props) {
-  const regime = flowRegime(res.Re);
-  const rangeV = rangeStatus(res.V_ms, RANGES.velocity);
-  const rangeU = rangeStatus(res.unitLoss_Pa, RANGES.unitLossPa);
-  const ctx = warnings(res.V_ms, res.Re, res.unitLoss_Pa);
-  const deltaP_unit = res.deltaP_Pa * pressDef.factor;
-
-  const isV = inputMode === 'v' && Q_display !== null;
-  const topKpiLabel = isV ? '유량 Q' : '유속 V';
-  const topKpiValue = isV ? formatFlowValue(Q_display!) : res.V_ms.toFixed(2);
-  const topKpiUnit = isV ? flowUnitLabel : 'm/s';
-
-  if (variant === 'secondary') {
-    return (
-      <>
-        <RangeCard
-          V={res.V_ms} unitLoss_Pa={res.unitLoss_Pa}
-          rangeV={rangeV} rangeU={rangeU}
-          isV={isV} Q_display={Q_display}
-        />
-        <WarningList items={ctx} />
-      </>
-    );
-  }
+export default function ResultBlocks({ pf }: { pf: PipeFrictionController }) {
+  const { res, st } = pf;
+  if (!res) return null;
+  const isWater = st.fluid === 'water';
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-        <Kpi label={topKpiLabel} value={topKpiValue} unit={topKpiUnit}
-          accent={rangeV.color} size="lg" subLabel={rangeV.label} />
-        <Kpi label="총 마찰손실 ΔP"
-          value={deltaP_unit.toFixed(pressDef.dp)} unit={pressDef.label} size="lg" />
-        <Kpi label="Reynolds" value={formatRe(res.Re)}
-          accent={regime.color} size="lg" subLabel={regime.label} />
-      </div>
-
-      <ResultTable
-        res={res} pressDef={pressDef}
-        unitLossDisplay={unitLossDisplay}
-        regime={regime} rangeV={rangeV} rangeU={rangeU}
-        isV={isV} Q_display={Q_display} flowUnitLabel={flowUnitLabel}
-      />
-
-      <RangeCard
-        V={res.V_ms} unitLoss_Pa={res.unitLoss_Pa}
-        rangeV={rangeV} rangeU={rangeU}
-        isV={isV} Q_display={Q_display}
-      />
-
-      <div style={{
-        backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
-        borderRadius: 8, padding: 14,
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-          <Mini label="단위 마찰손실"
-            value={unitLossDisplay !== null ? unitLossDisplay.toFixed(pressDef.dpM) : '—'}
-            unit={`${pressDef.label}/m`} />
-          <Mini label="수두 hf" value={res.hf_m.toFixed(3)} unit="m" />
-          <Mini label="적용 마찰계수 f" value={res.f.toFixed(4)} />
-        </div>
-      </div>
-
-      <WarningList items={ctx} />
+      <MultiUnitCard res={res} />
+      <HWCard res={res} isWater={isWater} />
+      {isWater ? <RangeCard res={res} /> : null}
+      <WarningList items={pfWarnings(res, isWater)} />
     </>
   );
 }
 
-function ResultTable({
-  res, pressDef, unitLossDisplay, regime, rangeV, rangeU,
-  isV, Q_display, flowUnitLabel,
-}: {
-  res: FrictionResult;
-  pressDef: PressDef;
-  unitLossDisplay: number | null;
-  regime: RegimeInfo;
-  rangeV: RangeStatus;
-  rangeU: RangeStatus;
-  isV: boolean;
-  Q_display: number | null;
-  flowUnitLabel: string;
-}) {
-  const deltaP_unit = res.deltaP_Pa * pressDef.factor;
-  const velocityRow = isV && Q_display !== null
-    ? { label: '유량 (Q)', value: `${formatFlowValue(Q_display)} ${flowUnitLabel}`,
-        badge: { color: rangeV.color, bg: rangeV.bg, label: rangeV.label } }
-    : { label: '유속 (V)', value: `${res.V_ms.toFixed(2)} m/s`,
-        badge: { color: rangeV.color, bg: rangeV.bg, label: rangeV.label } };
-  const rows = [
-    velocityRow,
-    { label: '레이놀즈수 (Re)', value: formatRe(res.Re), note: regime.desc,
-      badge: { color: regime.color, bg: regimeBg(regime.key), label: regime.label } },
-    { label: '총 마찰손실 (ΔP)', value: `${deltaP_unit.toFixed(pressDef.dp)} ${pressDef.label}` },
-    { label: '단위 마찰손실', value: unitLossDisplay !== null
-        ? `${unitLossDisplay.toFixed(pressDef.dpM)} ${pressDef.label}/m`
-        : '—',
-      badge: { color: rangeU.color, bg: rangeU.bg, label: rangeU.label } },
-    { label: '수두 (hf)', value: `${res.hf_m.toFixed(3)} m`, muted: true },
-    { label: '적용 마찰계수 (f)', value: res.f.toFixed(4), muted: true },
-  ] as const;
+// ── 다단위 동시 표시 ──────────────────────────────────────────────
+const MULTI_UNITS = [
+  { label: 'mmAq',   factor: 1 / 9.80665,  dp: 1, dpM: 2 },
+  { label: 'kPa',    factor: 1 / 1000,     dp: 2, dpM: 3 },
+  { label: 'kg/cm²', factor: 1 / 98066.5,  dp: 4, dpM: 5 },
+  { label: 'bar',    factor: 1 / 100000,   dp: 4, dpM: 5 },
+  { label: 'Pa',     factor: 1,            dp: 0, dpM: 1 },
+] as const;
 
+function MultiUnitCard({ res }: { res: PipeFrictionResult }) {
   return (
     <div style={{
       backgroundColor: C.surface, border: `1px solid ${C.border}`,
-      borderRadius: 8, padding: '18px 20px',
+      borderRadius: 8, padding: '16px 20px',
     }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.border}`,
-      }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: C.heading }}>계산 결과 상세</span>
-        <StatusBadge color={regime.color} bg={regimeBg(regime.key)} label={regime.label} />
+      <div style={{ fontSize: 14, fontWeight: 600, color: C.heading, marginBottom: 10 }}>
+        결과 다단위 표시 <span style={{ fontSize: 11, fontWeight: 400, color: C.text }}>— ΔP = ρ유체 × g × hL 환산</span>
       </div>
-
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <tbody>
-          {rows.map((r, i) => {
-            const last = i === rows.length - 1;
-            const muted = 'muted' in r && r.muted;
-            return (
-              <tr key={r.label} style={{ borderBottom: last ? 'none' : `1px solid ${C.border}` }}>
-                <td style={{ padding: '10px 0', color: muted ? 'var(--text-quaternary)' : C.textDark, width: '40%' }}>
-                  {r.label}
-                </td>
-                <td style={{
-                  padding: '10px 0', textAlign: 'right',
-                  fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-                  fontWeight: muted ? 500 : 600,
-                  color: muted ? C.text : C.heading,
-                  fontSize: 14,
-                }}>
-                  {r.value}
-                </td>
-                <td style={{ padding: '10px 0 10px 12px', textAlign: 'right', fontSize: 11, color: 'var(--text-quaternary)', width: 80 }}>
-                  {'note' in r ? r.note : ''}
-                </td>
-                <td style={{ padding: '10px 0 10px 8px', width: 56, textAlign: 'right' }}>
-                  {'badge' in r && r.badge && (
-                    <StatusBadge color={r.badge.color} bg={r.badge.bg} label={r.badge.label} />
-                  )}
-                </td>
-              </tr>
-            );
-          })}
+        <thead>
+          <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.text }}>
+            <th style={{ textAlign: 'left', padding: '6px 0', fontWeight: 500 }}>구분</th>
+            {MULTI_UNITS.map(u => (
+              <th key={u.label} style={{ textAlign: 'right', padding: '6px 0', fontWeight: 500 }}>{u.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody style={{ fontFamily: 'ui-monospace, monospace' }}>
+          <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+            <td style={{ padding: '8px 0', fontFamily: 'inherit', color: C.textDark }}>총 마찰손실 ΔP</td>
+            {MULTI_UNITS.map(u => (
+              <td key={u.label} style={{ textAlign: 'right', padding: '8px 0', fontWeight: 600, color: C.heading }}>
+                {(res.deltaP_Pa * u.factor).toFixed(u.dp)}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td style={{ padding: '8px 0', fontFamily: 'inherit', color: C.textDark }}>단위 마찰손실 (/m)</td>
+            {MULTI_UNITS.map(u => (
+              <td key={u.label} style={{ textAlign: 'right', padding: '8px 0', color: C.textDark }}>
+                {(res.deltaP_per_m_Pa * u.factor).toFixed(u.dpM)}
+              </td>
+            ))}
+          </tr>
         </tbody>
       </table>
+      <div style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 8 }}>
+        수두 hL = {res.hL_m.toFixed(4)} m (유체 기둥 기준) · mmAq는 ΔP를 표준 물기둥(9.80665 Pa/mm)으로 환산한 값
+      </div>
     </div>
   );
 }
 
-function StatusBadge({ color, bg, label }: { color: string; bg: string; label: string }) {
+// ── Hazen-Williams 비교 ──────────────────────────────────────────
+function HWCard({ res, isWater }: { res: PipeFrictionResult; isWater: boolean }) {
+  if (!isWater || !res.hw) {
+    return (
+      <div style={{
+        backgroundColor: C.surfaceAlt, border: `1px dashed ${C.border}`,
+        borderRadius: 8, padding: '12px 16px', fontSize: 12, color: C.text,
+      }}>
+        Hazen-Williams 비교는 표시하지 않습니다 — 상온 물 전용 경험식으로, 다른 유체에 적용 시 큰 오차(최대 50%)가 발생합니다.
+      </div>
+    );
+  }
+  const diffPct = 100 * (res.hw.hL_m - res.hL_m) / res.hL_m;
   return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px',
-      fontSize: 11, fontWeight: 600,
-      color, backgroundColor: bg,
-      borderRadius: 999, minWidth: 44, textAlign: 'center', whiteSpace: 'nowrap',
-    }}>{label}</span>
+    <div style={{
+      backgroundColor: C.surface, border: `1px solid ${C.border}`,
+      borderRadius: 8, padding: '16px 20px',
+    }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: C.heading, marginBottom: 4 }}>
+        공식 비교 — Darcy-Weisbach vs Hazen-Williams
+      </div>
+      <div style={{ fontSize: 11, color: C.text, marginBottom: 10 }}>
+        hL = 10.67·L·Q¹·⁸⁵² / (C¹·⁸⁵²·D⁴·⁸⁷¹) · C = {res.hw.C} · 물 전용 경험식 (상온·난류 조건)
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.text }}>
+            <th style={{ textAlign: 'left', padding: '6px 0', fontWeight: 500 }}>공식</th>
+            <th style={{ textAlign: 'right', padding: '6px 0', fontWeight: 500 }}>수두 hL (m)</th>
+            <th style={{ textAlign: 'right', padding: '6px 0', fontWeight: 500 }}>ΔP (kPa)</th>
+            <th style={{ textAlign: 'right', padding: '6px 0', fontWeight: 500 }}>단위손실 (mmAq/m)</th>
+          </tr>
+        </thead>
+        <tbody style={{ fontFamily: 'ui-monospace, monospace' }}>
+          <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+            <td style={{ padding: '8px 0', fontFamily: 'inherit', color: C.textDark }}>Darcy-Weisbach (기준)</td>
+            <td style={{ textAlign: 'right', fontWeight: 600, color: C.heading }}>{res.hL_m.toFixed(4)}</td>
+            <td style={{ textAlign: 'right', fontWeight: 600, color: C.heading }}>{(res.deltaP_Pa / 1000).toFixed(3)}</td>
+            <td style={{ textAlign: 'right', fontWeight: 600, color: C.heading }}>{(res.deltaP_per_m_Pa / 9.80665).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '8px 0', fontFamily: 'inherit', color: C.textDark }}>Hazen-Williams (C={res.hw.C})</td>
+            <td style={{ textAlign: 'right', color: C.textDark }}>{res.hw.hL_m.toFixed(4)}</td>
+            <td style={{ textAlign: 'right', color: C.textDark }}>{(res.hw.deltaP_Pa / 1000).toFixed(3)}</td>
+            <td style={{ textAlign: 'right', color: C.textDark }}>{(res.rho_kgm3 * PF_G * res.hw.hL_per_m / 9.80665).toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 8 }}>
+        D-W 대비 {diffPct >= 0 ? '+' : ''}{diffPct.toFixed(1)}% — 두 경험·이론식의 차이는 통상 ±10% 내외입니다.
+      </div>
+    </div>
   );
 }
 
-function regimeBg(key: RegimeInfo['key']): string {
-  switch (key) {
-    case 'laminar':    return 'var(--state-success-bg)';
-    case 'transition': return 'var(--state-warn-bg)';
-    case 'turbulent':  return 'var(--accent-primary-bg)';
-    default:           return 'var(--bg-surface-3)';
-  }
-}
-
-function RangeCard({
-  V, unitLoss_Pa, rangeV, rangeU,
-  isV, Q_display,
-}: {
-  V: number; unitLoss_Pa: number;
-  rangeV: RangeStatus; rangeU: RangeStatus;
-  isV: boolean;
-  Q_display: number | null;
-}) {
-  const vGaugeLabel = isV && Q_display !== null ? '유량 (Q)' : '유속 (V)';
-  const vGaugeValue = isV && Q_display !== null ? Q_display : V;
+// ── 권장 범위 게이지 (물 전용 — 한국 실무 관행 기준) ─────────────
+function RangeCard({ res }: { res: PipeFrictionResult }) {
+  const rangeV = rangeStatus(res.V_ms, RANGES.velocity);
+  const rangeU = rangeStatus(res.deltaP_per_m_Pa, RANGES.unitLossPa);
   return (
     <div style={{
       backgroundColor: C.surface, border: `1px solid ${C.border}`,
@@ -220,19 +144,19 @@ function RangeCard({
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: C.heading }}>권장 범위 대비 현재값</div>
         <div style={{ fontSize: 11, color: C.text, marginTop: 2 }}>
-          한국 실무 관행 기준 · 회색 마커 = 현재값
+          한국 실무 관행 기준 (물 배관) · 회색 마커 = 현재값
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
         <RangeGauge
-          label={vGaugeLabel} value={vGaugeValue}
+          label="유속 (V)" value={res.V_ms}
           range={toRangeSpec(RANGES.velocity)}
           format={v => v.toString()}
           status={{ label: rangeV.label, color: rangeV.color }}
         />
         <RangeGauge
-          label="단위 마찰손실" value={unitLoss_Pa}
+          label="단위 마찰손실" value={res.deltaP_per_m_Pa}
           range={toRangeSpec(RANGES.unitLossPa)}
           format={v => v.toFixed(0)}
           status={{ label: rangeU.label, color: rangeU.color }}
@@ -242,13 +166,6 @@ function RangeCard({
       <Legend />
     </div>
   );
-}
-
-function formatFlowValue(n: number): string {
-  if (!Number.isFinite(n)) return '—';
-  if (n >= 100) return n.toFixed(1);
-  if (n >= 10) return n.toFixed(2);
-  return n.toFixed(3);
 }
 
 function Legend() {
