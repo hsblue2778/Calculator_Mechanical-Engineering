@@ -3,6 +3,7 @@
 import WarningList from '../../../components/WarningList';
 import { pfWarnings } from '../interpret.ts';
 import MoodyChart from './MoodyChart';
+import FrictionLossChart from './FrictionLossChart';
 import type { PipeFrictionController } from '../usePipeFrictionState.ts';
 
 export default function ResultBlocks({ pf }: { pf: PipeFrictionController }) {
@@ -12,6 +13,7 @@ export default function ResultBlocks({ pf }: { pf: PipeFrictionController }) {
   return (
     <>
       <MoodyChart res={res} />
+      <FrictionLossChart pf={pf} />
       <WarningList items={pfWarnings(res, st.fluid === 'water')} />
     </>
   );

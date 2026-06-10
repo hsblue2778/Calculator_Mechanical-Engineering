@@ -9,6 +9,7 @@ import {
 } from '../engine.ts';
 import { fMethodLabel } from '../interpret.ts';
 import { C } from '../styles';
+import { fmtSci, HALO, logRange, logTicks, sup, tickCeil, tickFloor } from './chartUtils';
 
 // 플롯 영역 (viewBox 720×400)
 const W = 720, H = 400;
@@ -27,50 +28,8 @@ const FAMILY: { rr: number; label: string }[] = [
   { rr: 0.05,  label: '0.05' },
 ];
 
-// log 축 눈금 후보 가수 (예: 0.005, 0.007, 0.01, 0.015 …)
-const TICK_MANTISSAS = [1, 1.5, 2, 3, 4, 5, 7];
-
-const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
-function sup(n: number): string {
-  const s = Math.abs(n).toString().split('').map(d => SUP[Number(d)]).join('');
-  return (n < 0 ? '⁻' : '') + s;
-}
-
-/** 2.99×10⁵ 형식 */
-function fmtSci(v: number, dp = 2): string {
-  const e = Math.floor(Math.log10(v));
-  const m = v / Math.pow(10, e);
-  return e === 0 ? m.toFixed(dp) : `${m.toFixed(dp)}×10${sup(e)}`;
-}
-
-function tickFloor(v: number): number {
-  const d = Math.floor(Math.log10(v));
-  const cands = TICK_MANTISSAS.map(m => m * Math.pow(10, d)).filter(c => c <= v * 1.0001);
-  return cands.length ? Math.max(...cands) : Math.pow(10, d);
-}
-
-function tickCeil(v: number): number {
-  for (let d = Math.floor(Math.log10(v)); ; d++) {
-    const cands = TICK_MANTISSAS.map(m => m * Math.pow(10, d)).filter(c => c >= v * 0.9999);
-    if (cands.length) return Math.min(...cands);
-  }
-}
-
-function logTicks(min: number, max: number): number[] {
-  const out: number[] = [];
-  for (let d = Math.floor(Math.log10(min)); d <= Math.ceil(Math.log10(max)); d++) {
-    for (const m of TICK_MANTISSAS) {
-      const v = m * Math.pow(10, d);
-      if (v >= min * 0.999 && v <= max * 1.001) out.push(v);
-    }
-  }
-  return out;
-}
-
-function logRange(a: number, b: number, n: number): number[] {
-  const la = Math.log10(a), lb = Math.log10(b);
-  return Array.from({ length: n }, (_, i) => Math.pow(10, la + ((lb - la) * i) / (n - 1)));
-}
+// log 축 눈금 가수 (예: 0.005, 0.007, 0.01, 0.015 …)
+const MANT = [1, 1.5, 2, 3, 4, 5, 7] as const;
 
 export default function MoodyChart({ res }: { res: PipeFrictionResult }) {
   const m = useMemo(() => buildModel(res.Re, res.f, res.relRough), [res.Re, res.f, res.relRough]);
@@ -80,7 +39,6 @@ export default function MoodyChart({ res }: { res: PipeFrictionResult }) {
   const chipBelow = m.py < Y0 + 48;             // 상단 근접 시 라벨 하단 배치
   const chipX = chipRight ? m.px - 12 : m.px + 12;
   const chipY = chipBelow ? m.py + 22 : m.py - 26;
-  const halo = { paintOrder: 'stroke' as const, stroke: C.surface, strokeWidth: 3.5, strokeLinejoin: 'round' as const };
 
   return (
     <div style={{
@@ -158,9 +116,9 @@ export default function MoodyChart({ res }: { res: PipeFrictionResult }) {
         <line x1={m.px} y1={m.py} x2={m.px} y2={Y1} stroke={C.navy} strokeDasharray="3 3" opacity={0.55} />
         <circle cx={m.px} cy={m.py} r={5} fill={C.navy} stroke={C.surface} strokeWidth={2} />
         <text x={chipX} y={chipY} textAnchor={chipRight ? 'end' : 'start'} fontSize={11.5} fontWeight={600}
-          fill={C.heading} style={halo}>{chip}</text>
+          fill={C.heading} style={HALO}>{chip}</text>
         <text x={chipX} y={chipY + 14} textAnchor={chipRight ? 'end' : 'start'} fontSize={10}
-          fill={C.text} style={halo}>{fMethodLabel(res.fMethod)}{res.fMethod === 'override' ? ' — 곡선과 무관' : ''}</text>
+          fill={C.text} style={HALO}>{fMethodLabel(res.fMethod)}{res.fMethod === 'override' ? ' — 곡선과 무관' : ''}</text>
       </svg>
 
       <div style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 8 }}>
@@ -176,8 +134,8 @@ function buildModel(Re: number, f: number, relRough: number) {
   // 도메인: 표준 Moody 범위(6×10²~10⁸ · 0.005~0.1), 운전점이 벗어나면 눈금 단위로 확장
   const xMin = Math.min(600, Math.pow(10, Math.floor(Math.log10(Re * 0.5))));
   const xMax = Math.max(1e8, Math.pow(10, Math.ceil(Math.log10(Re * 2))));
-  const yMin = tickFloor(Math.min(0.005, f * 0.7));
-  const yMax = tickCeil(Math.max(0.1, f * 1.15));
+  const yMin = tickFloor(Math.min(0.005, f * 0.7), MANT);
+  const yMax = tickCeil(Math.max(0.1, f * 1.15), MANT);
 
   const lx0 = Math.log10(xMin), lx1 = Math.log10(xMax);
   const ly0 = Math.log10(yMin), ly1 = Math.log10(yMax);
@@ -193,7 +151,7 @@ function buildModel(Re: number, f: number, relRough: number) {
       if (v > xMin && v < xMax) xMinor.push(v);
     }
   }
-  const yTicks = logTicks(yMin, yMax);
+  const yTicks = logTicks(yMin, yMax, MANT);
 
   const toPts = (arr: [number, number][]) =>
     arr.map(([re, ff]) => `${x(re).toFixed(1)},${y(ff).toFixed(1)}`).join(' ');
