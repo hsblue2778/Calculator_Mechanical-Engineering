@@ -1,7 +1,9 @@
 // HVAC 펌프 시스템 계산기 — 순수 계산 함수
 //
 // 사용 공식:
-//   배관 마찰손실 — Darcy-Weisbach (pipe-friction/calc.ts 함수 직접 import)
+//   배관 마찰손실 — Darcy-Weisbach + 유동 영역별 마찰계수 (pipe-friction/engine.ts 공용)
+//                   층류 64/Re · 천이 3차 보간 · 난류 Colebrook-White 반복해
+//                   Re = V·D/ν (실제 유체 ν(T) 적용), ε: 재질×신관/노후 (pipeRoughness.ts)
 //   부속 손실     — K-method: h_K = K × V² / (2g)
 //   총양정 TDH (개방계) — TDH = (Hd - Hs) + ΔH_suc + ΔH_dis + ΔH_fit + ΔH_equip + H_res
 //   총양정 TDH (폐회로) — TDH = ΔH_suc + ΔH_dis + ΔH_fit + ΔH_equip + H_res (정수두 차 0)
@@ -10,7 +12,7 @@
 //   이론 동력     — P = ρ·g·Q·H / η  (η=0.65 고정)
 //
 // 공식 출처:
-//   Darcy-Weisbach: 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p
+//   Darcy-Weisbach + Colebrook-White(1939)·층류 64/Re·천이 보간(EPANET 준용): pipe-friction/engine.ts 참조
 //   K-method: Perry's Chemical Engineers' Handbook 8th Ed (2008)
 //             https://myengineeringtools.com/Piping/Pressure_Drop_Key_Piping_Elements_K_Coefficient.html
 //   TDH·NPSHa·동력: ASHRAE Handbook HVAC Systems and Equipment / Pump equation (교과서 형태 유지)
@@ -19,8 +21,7 @@
 //
 // 유체 물성: glycol-properties.ts (청수·온수: NIST WebBook; EG/PG: Phase 1.5)
 
-import { computeFriction } from '../pipe-friction/calc';
-import type { FrictionInput } from '../pipe-friction/calc';
+import { frictionFactor, type FMethod } from '../pipe-friction/engine.ts';
 import { getDensity, getKinematicViscosity, getSpecificHeat, type FluidType } from '../../data/glycol-properties';
 import { calcFittingLoss_m } from '../../data/fitting-k-values';
 import type { ScheduleId } from '../../data/pipeSizes';
@@ -61,7 +62,7 @@ export interface PipeSegment {
   nominalA: number;
   id_mm: number;
   L_m: number;
-  f: number;
+  eps_mm: number;           // 절대조도 (재질×신관/노후 — pipeRoughness.ts)
   materialNameKo: string;   // PDF 표기용
 }
 
@@ -127,7 +128,8 @@ export interface PipeLossDetail {
   nominalA: number;
   id_mm: number;
   L_m: number;
-  f: number;                // PDF 출처 추적용
+  f: number;                // 적용 마찰계수 (영역별 자동 산출 — PDF 추적용)
+  fMethod: FMethod;         // 적용식 (층류/천이/난류/—)
   V_ms: number;
   Re: number;
   hf_m: number;             // 직관 마찰손실 (m)
@@ -298,69 +300,44 @@ export function computePumpHvac(
     return null; // EG/PG Phase 1.5 미구현
   }
 
-  // ③ 흡입측 배관별 마찰손실 — Darcy-Weisbach (pipe-friction/calc.ts 재사용)
-  // 공식: hf = 8·f·L·Q²/(π²·g·D⁵)
-  // 출처: 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p
-  const sucPipes: PipeLossDetail[] = [];
-  for (let i = 0; i < input.sucPipes.length; i++) {
-    const p = input.sucPipes[i];
-    const frictionInput: FrictionInput = {
-      Q_str: String(input.Q_m3s * 3600), // m³/s → m³/h
-      flowUnit: 'm3h',
-      D_mm: p.id_mm,
-      L_m: p.L_m,
-      f: p.f,
-    };
-    const r = computeFriction(frictionInput);
-    if (!r) return null;
-    sucPipes.push({
-      pipeNo: i + 1,
-      side: 'suction',
-      pipeLabel: `SP-${i + 1}`,
-      materialId: p.materialId,
-      materialNameKo: p.materialNameKo,
-      scheduleId: p.scheduleId,
-      scheduleLabel: p.scheduleLabel,
-      nominalA: p.nominalA,
-      id_mm: p.id_mm,
-      L_m: p.L_m,
-      f: p.f,
-      V_ms: r.V_ms,
-      Re: r.Re,
-      hf_m: r.hf_m,
-    });
-  }
+  // ③·④ 배관별 마찰손실 — Darcy-Weisbach + 영역별 마찰계수 (pipe-friction/engine.ts)
+  // hf = f·(L/D)·V²/(2g), Re = V·D/ν (실제 유체 ν(T)), f: 층류 64/Re·천이 보간·난류 Colebrook-White
+  const segmentFriction = (p: PipeSegment) => {
+    const D_m = p.id_mm / 1000;
+    const V_ms = input.Q_m3s / (Math.PI * D_m * D_m / 4);
+    const Re = V_ms * D_m / nu;
+    const ff = frictionFactor(Re, (p.eps_mm / 1000) / D_m);
+    const hf_m = ff.f * (p.L_m / D_m) * V_ms * V_ms / (2 * G);
+    return { V_ms, Re, f: ff.f, fMethod: ff.method, hf_m };
+  };
 
-  // ④ 토출측 배관별 마찰손실 — 동일 패턴 (DP-)
-  const disPipes: PipeLossDetail[] = [];
-  for (let i = 0; i < input.disPipes.length; i++) {
-    const p = input.disPipes[i];
-    const frictionInput: FrictionInput = {
-      Q_str: String(input.Q_m3s * 3600),
-      flowUnit: 'm3h',
-      D_mm: p.id_mm,
-      L_m: p.L_m,
-      f: p.f,
-    };
-    const r = computeFriction(frictionInput);
-    if (!r) return null;
-    disPipes.push({
-      pipeNo: i + 1,
-      side: 'discharge',
-      pipeLabel: `DP-${i + 1}`,
-      materialId: p.materialId,
-      materialNameKo: p.materialNameKo,
-      scheduleId: p.scheduleId,
-      scheduleLabel: p.scheduleLabel,
-      nominalA: p.nominalA,
-      id_mm: p.id_mm,
-      L_m: p.L_m,
-      f: p.f,
-      V_ms: r.V_ms,
-      Re: r.Re,
-      hf_m: r.hf_m,
-    });
-  }
+  const sucPipes: PipeLossDetail[] = input.sucPipes.map((p, i) => ({
+    pipeNo: i + 1,
+    side: 'suction' as const,
+    pipeLabel: `SP-${i + 1}`,
+    materialId: p.materialId,
+    materialNameKo: p.materialNameKo,
+    scheduleId: p.scheduleId,
+    scheduleLabel: p.scheduleLabel,
+    nominalA: p.nominalA,
+    id_mm: p.id_mm,
+    L_m: p.L_m,
+    ...segmentFriction(p),
+  }));
+
+  const disPipes: PipeLossDetail[] = input.disPipes.map((p, i) => ({
+    pipeNo: i + 1,
+    side: 'discharge' as const,
+    pipeLabel: `DP-${i + 1}`,
+    materialId: p.materialId,
+    materialNameKo: p.materialNameKo,
+    scheduleId: p.scheduleId,
+    scheduleLabel: p.scheduleLabel,
+    nominalA: p.nominalA,
+    id_mm: p.id_mm,
+    L_m: p.L_m,
+    ...segmentFriction(p),
+  }));
 
   const sucPipeLoss_total_m = sucPipes.reduce((s, p) => s + p.hf_m, 0);
   const disPipeLoss_total_m = disPipes.reduce((s, p) => s + p.hf_m, 0);

@@ -175,6 +175,47 @@ checkTrue('압력 범위 초과 → null',
 checkTrue('음수 L → null',
   computePipeFriction({ ...baseInput, L_m: -1 }) === null);
 
+// ── 10. 관경 계산기 (동일 엔진 공유 — pipe-sizing/calc.ts) ────────
+{
+  const { frictionLoss, sizingTable, selectPipeSize } = await import('../src/calculators/pipe-sizing/calc.ts');
+  const { PIPE_SIZE_MATERIALS } = await import('../src/data/pipeSizes.ts');
+  const { pfKinematicViscosity: nuF, pfDensity: rhoF } = await import('../src/data/fluidProperties.ts');
+
+  const cond = { nu_m2s: nuF('water', 20), rho_kgm3: rhoF('water', 20), eps_mm: 0.046 };
+  // 손계산 독립 검증: Q=100 LPM, ID=27.5 mm
+  const Q_lpm = 100, ID_mm = 27.5;
+  const fr = frictionLoss(Q_lpm, ID_mm, cond)!;
+  const D = ID_mm / 1000;
+  const V = (Q_lpm / 60000) / (Math.PI * D * D / 4);
+  const Re = V * D / cond.nu_m2s;
+  check('관경: Re 일치', fr.Re, Re, Re * 1e-12);
+  const fExpect = frictionFactor(Re, cond.eps_mm / ID_mm).f;
+  check('관경: f = 엔진 frictionFactor', fr.f, fExpect, 1e-15);
+  const dropExpect = cond.rho_kgm3 * PF_G * (fExpect * (1 / D) * V * V / (2 * PF_G)) / 9.80665;
+  check('관경: ΔP/L(mmAq/m) 독립 산식 일치', fr.dropPerM_mmAqPerM, dropExpect, dropExpect * 1e-12,
+    `V=${V.toFixed(3)}, f=${fr.f.toFixed(5)}, drop=${fr.dropPerM_mmAqPerM.toFixed(2)} mmAq/m`);
+
+  // 선정 규칙: 허용 이하 최초(최소) 관경 + 그 직전 관경은 초과
+  const sgp = PIPE_SIZE_MATERIALS[0];
+  const rows10 = sizingTable(Q_lpm, 30, sgp, cond);
+  const sel = selectPipeSize(Q_lpm, 30, sgp, cond)!;
+  const selIdx = rows10.findIndex(r => r.size.nominalA === sel.size.nominalA);
+  checkTrue('관경: 선정 = 허용 이하 최소 관경',
+    sel.dropPerM_mmAqPerM <= 30 && (selIdx === 0 || rows10[selIdx - 1].dropPerM_mmAqPerM > 30),
+    `선정 ${sel.size.nominalA}A, drop=${sel.dropPerM_mmAqPerM.toFixed(2)} mmAq/m, f=${sel.f.toFixed(5)}(${sel.fMethod})`);
+
+  // 온도 반영: 60°C에서 ν 감소 → Re 증가 → f 감소
+  const cond60 = { ...cond, nu_m2s: nuF('water', 60), rho_kgm3: rhoF('water', 60) };
+  const fr60 = frictionLoss(Q_lpm, ID_mm, cond60)!;
+  checkTrue('관경: 온도 60°C 반영 (Re↑·f↓)', fr60.Re > fr.Re && fr60.f < fr.f,
+    `Re ${fr.Re.toFixed(0)}→${fr60.Re.toFixed(0)}, f ${fr.f.toFixed(5)}→${fr60.f.toFixed(5)}`);
+
+  // ε 수정 반영
+  const frEps = frictionLoss(Q_lpm, ID_mm, { ...cond, eps_mm: 0.2 })!;
+  checkTrue('관경: ε 수정 반영 (0.046→0.2 → f↑)', frEps.f > fr.f,
+    `f ${fr.f.toFixed(5)} → ${frEps.f.toFixed(5)}`);
+}
+
 // ── 출력 ──────────────────────────────────────────────────────────
 console.log(rows.join('\n'));
 console.log(`\n총 ${pass + fail}건 — PASS ${pass} / FAIL ${fail}`);

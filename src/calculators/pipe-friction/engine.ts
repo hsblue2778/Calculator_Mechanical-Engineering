@@ -18,7 +18,7 @@ import {
   type PFFluid,
 } from '../../data/fluidProperties.ts';
 
-// 중력가속도 — legacy calc.ts의 G와 동일 값 (엔진을 독립 모듈로 유지하기 위한 의도적 중복)
+// 중력가속도 (m/s²)
 export const PF_G = 9.81;
 
 // 유동 영역 경계 — analysis.ts flowRegime·참조 엑셀과 동일 (층류 <2300, 천이 ≤4000, 난류 >4000)

@@ -1,5 +1,6 @@
 // 관경 선정 — HTML 산출서 (펌프 양식 채용, 표지 페이지 없음)
 // 디자인 출처: pump-system/htmlReport (REPORT_CSS, pageHeader/pageFooter/secHeader)
+// 마찰 계산: Darcy-Weisbach + 유동 영역별 마찰계수 (pipe-friction 엔진 공용)
 
 import logoDataUrl from '../../assets/report-logo.png?inline';
 import { REPORT_CSS } from '../pump-system/htmlReport/styles';
@@ -8,6 +9,7 @@ import {
   makeDocNo, makeCalcDateTime, makeTodayStr,
 } from '../pump-system/htmlReport/helpers';
 import type { SizingRow } from './calc';
+import { fMethodLabel } from '../pipe-friction/interpret.ts';
 import type { PipeMaterialSize } from '../../data/pipeSizes';
 import {
   FLOW_UNITS, PRESSURE_UNITS,
@@ -26,6 +28,9 @@ interface ReportProps {
   mat: PipeMaterialSize;
   Q: string;
   dP: string;
+  tempC: string;
+  condLabel: string;   // '신관' | '노후'
+  epsStr: string;
   flowUnit: FlowUnitKey;
   pressureUnit: PressureUnitKey;
 }
@@ -33,7 +38,7 @@ interface ReportProps {
 const TOTAL_PAGES = 2;
 
 export function buildPipeSizingReportHtml(props: ReportProps): string {
-  const { selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit } = props;
+  const { selected, rows, analysis, mat, Q, dP, tempC, condLabel, epsStr, flowUnit, pressureUnit } = props;
 
   const pressDef = PRESSURE_UNITS.find(u => u.key === pressureUnit)!;
   const flowUnitLabel = FLOW_UNITS.find(u => u.key === flowUnit)?.label ?? '';
@@ -42,7 +47,6 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
   const ID_mm = selected.size.id_mm;
   const ID_m = ID_mm / 1000;
   const Q_m3s = Q_lpm / 60000;
-  const f = mat.frictionFactor;
 
   const drop_display = mmAqToDisplay(selected.dropPerM_mmAqPerM, pressureUnit);
   const regime = analysis ? flowRegime(analysis.Re) : null;
@@ -65,20 +69,23 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
 
   // §1 입력 요약
   const inputRows: [string, string, string, string][] = [
-    ['계산 방법', '정통 Darcy-Weisbach (재질별 고정 f)', '—', '—'],
-    ['배관 재질', mat.nameKo + (mat.abbreviation ? ` (${mat.abbreviation})` : ''), '—', `f = ${f}`],
+    ['계산 방법', 'Darcy-Weisbach + 영역별 마찰계수', '—', '층류 64/Re·천이 보간·난류 Colebrook-White'],
+    ['배관 재질', mat.nameKo + (mat.abbreviation ? ` (${mat.abbreviation})` : ''), '—', condLabel],
+    ['절대조도 ε', epsStr, 'mm', '재질×상태 기본값 (수정 가능)'],
+    ['물 온도', tempC, '°C', 'ν·ρ 물성표 선형보간'],
     ['유량 Q', Q, flowUnitLabel, `= ${Q_lpm.toFixed(3)} LPM`],
     ['허용 압력강하 ΔP/L', dP, `${pressDef.label}/m`, '선정 기준값'],
   ];
 
-  // §3 단위 변환 / 대입
+  // §3 대입 과정 (선정 관경)
   const substitutionItems: string[] = [
     qConvStr(),
     `ID = ${ID_mm.toFixed(1)} mm ÷ 1,000 = ${ID_m.toFixed(5)} m`,
     `Q_SI = ${Q_lpm.toFixed(3)} LPM ÷ 60,000 = ${Q_m3s.toExponential(4)} m³/s`,
-    `hf/L = 8 × ${f} × (${Q_m3s.toExponential(4)})² / (π² × ${G} × (${ID_m.toFixed(5)})⁵) × 1,000`,
-    `     = ${selected.dropPerM_mmAqPerM.toFixed(3)} mmAq/m → ${drop_display.toFixed(pressDef.dp)} ${pressDef.label}/m`,
-    `V = Q_SI / (π · D² / 4) = ${(Q_m3s / (Math.PI * ID_m * ID_m / 4)).toFixed(3)} m/s`,
+    `V = Q_SI / (π · D² / 4) = ${selected.v_ms.toFixed(3)} m/s`,
+    `Re = V · D / ν(${esc(tempC)}°C) = ${formatRe(selected.Re)} → ${esc(fMethodLabel(selected.fMethod))}`,
+    `f = ${selected.f.toFixed(6)} (ε/D = ${(parseFloat(epsStr) / ID_mm).toExponential(3)})`,
+    `ΔP/L = ρ(T) × g × f × (1/D) × V²/(2g) → ${selected.dropPerM_mmAqPerM.toFixed(3)} mmAq/m = ${drop_display.toFixed(pressDef.dp)} ${pressDef.label}/m`,
   ];
 
   // §4 선정 결과
@@ -86,6 +93,7 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
     ['선정 관경', `${selected.size.nominalA}A`, '—', `ID ${ID_mm.toFixed(1)} mm`],
     ['선정 관경 유속 V', selected.v_ms.toFixed(3), 'm/s', rangeV?.label ?? '—'],
     ['선정 관경 단위손실', drop_display.toFixed(pressDef.dp), `${pressDef.label}/m`, rangeU?.label ?? '—'],
+    ['선정 관경 마찰계수 f', selected.f.toFixed(6), '—', fMethodLabel(selected.fMethod)],
     ...(analysis ? [['선정 관경 Re', formatRe(analysis.Re), '—', regime?.label ?? '—']] as [string, string, string, string][] : []),
     ['허용 압력강하 대비', `${drop_display.toFixed(pressDef.dp)} ≤ ${dP}`, `${pressDef.label}/m`, '적합'],
   ];
@@ -98,13 +106,14 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
       <td class="c">${esc(r.size.nominalA)}A</td>
       <td class="num">${r.size.id_mm.toFixed(1)}</td>
       <td class="num">${r.v_ms.toFixed(3)}</td>
+      <td class="num">${Number.isFinite(r.f) ? r.f.toFixed(5) : '—'}</td>
       <td class="num">${drop.toFixed(pressDef.dp)}</td>
       <td class="c">${r.ok ? '<span class="badge-ok">허용</span>' : '<span class="badge-warn">초과</span>'}</td>
       <td class="c">${isSel ? '★ 선정' : ''}</td>
     </tr>`;
   }).join('');
 
-  // 페이지 1: §1 입력 + §2 공식 + §3 단위 변환·대입 + §4 선정 결과
+  // 페이지 1: §1 입력 + §2 공식 + §3 대입 + §4 선정 결과
   const page1 = `
 <section class="sheet">
   ${pageHeader(logo, docLabel, docNo, 1, TOTAL_PAGES)}
@@ -116,26 +125,26 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
     ${inputRows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${esc(r[1])}</td><td class="c">${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join('')}
   </table>
 
-  ${secHeader('2.', '사용 공식 — 정통 Darcy-Weisbach')}
+  ${secHeader('2.', '사용 공식 — Darcy-Weisbach + 영역별 마찰계수')}
   <table class="k">
     <colgroup><col style="width:24%"><col style="width:76%"></colgroup>
     <tr><th>구분</th><th>식</th></tr>
-    <tr><td>단위 마찰손실</td><td><code>hf/L = 8 · f · Q² / (π² · g · D⁵) × 1,000   [mmAq/m]</code></td></tr>
+    <tr><td>단위 마찰손실</td><td><code>ΔP/L = ρ(T) · g · f · (1/D) · V²/(2g)   [Pa/m] → mmAq/m = ΔP/L ÷ 9.80665</code></td></tr>
     <tr><td>유속</td><td><code>V = Q / (π · D² / 4)   [m/s]</code></td></tr>
-    <tr><td>레이놀즈수</td><td><code>Re = V · D / ν</code></td></tr>
+    <tr><td>레이놀즈수</td><td><code>Re = V · D / ν(T)</code></td></tr>
+    <tr><td>마찰계수</td><td><code>층류(Re&lt;2,300) f=64/Re · 천이(≤4,000) 3차 보간 · 난류 Colebrook-White: 1/√f = −2log₁₀(ε/(3.7D)+2.51/(Re√f))</code></td></tr>
   </table>
   <table class="k">
     <colgroup><col style="width:24%"><col style="width:76%"></colgroup>
     <tr><th>기호</th><th>의미</th></tr>
-    <tr><td class="c">f</td><td>재질별 고정 마찰계수 — 탄소강관 0.030, 스테인리스 0.020, 동관 0.020, PVC/C-PVC 0.020</td></tr>
-    <tr><td class="c">Q</td><td>유량 [m³/s] = Q[LPM] / 60,000</td></tr>
+    <tr><td class="c">f</td><td>마찰계수 — 유동 영역별 자동 산출 (관마찰손실 계산기와 동일 엔진)</td></tr>
+    <tr><td class="c">ε</td><td>절대조도 [mm] — 재질×신관/노후 (Moody 1944·ASHRAE Ch.22·NFPA 13·KDS 57)</td></tr>
+    <tr><td class="c">ν, ρ</td><td>물 동점성계수·밀도 — 온도별 물성표 선형보간 (물 ν: 참조 엑셀 물성표 / ρ: NIST WebBook)</td></tr>
     <tr><td class="c">D</td><td>관 내경 [m] = D[mm] / 1,000</td></tr>
     <tr><td class="c">g</td><td>중력가속도 = ${G} m/s²</td></tr>
-    <tr><td class="c">×1,000</td><td>m → mmAq 환산 (1 m 수두 ≈ 1,000 mmAq, 오차 0.034%)</td></tr>
   </table>
-  <div class="note">출처: 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p</div>
 
-  ${secHeader('3.', '단위 변환 및 대입 과정 (선정 관경)')}
+  ${secHeader('3.', '대입 과정 (선정 관경)')}
   <table class="k">
     <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
     <tr><th>#</th><th>식 / 대입</th></tr>
@@ -158,16 +167,16 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
 <section class="sheet">
   ${pageHeader(logo, docLabel, docNo, 2, TOTAL_PAGES)}
 
-  ${secHeader('5.', `관경별 상세 (${esc(mat.nameKo)})`)}
+  ${secHeader('5.', `관경별 상세 (${esc(mat.nameKo)} · ${esc(condLabel)} · ε ${esc(epsStr)} mm)`)}
   <table class="k">
-    <colgroup><col style="width:14%"><col style="width:18%"><col style="width:18%"><col style="width:22%"><col style="width:14%"><col style="width:14%"></colgroup>
+    <colgroup><col style="width:12%"><col style="width:16%"><col style="width:16%"><col style="width:16%"><col style="width:18%"><col style="width:11%"><col style="width:11%"></colgroup>
     <tr>
-      <th>호칭</th><th>내경 (mm)</th><th>유속 (m/s)</th>
+      <th>호칭</th><th>내경 (mm)</th><th>유속 (m/s)</th><th>f</th>
       <th>단위손실 (${esc(pressDef.label)}/m)</th><th>허용 비교</th><th>선정</th>
     </tr>
     ${detailRows}
   </table>
-  <div class="note">하이라이트 = 선정 관경 (허용 ΔP/L 이하가 되는 가장 작은 관경)</div>
+  <div class="note">하이라이트 = 선정 관경 (허용 ΔP/L 이하가 되는 가장 작은 관경) · f는 관경별 Re에 따라 자동 산출</div>
 
   ${secHeader('6.', '해석 / 판정')}
   ${analysis ? `
@@ -193,8 +202,9 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
 
   ${secHeader('7.', '적용 표준')}
   <ul class="refs">
-    <li><b>Darcy-Weisbach (정통식)</b> — 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p</li>
-    <li>마찰계수 f 재질별 고정값 — 탄소강관 0.030, 스테인리스 0.020, 동관 0.020, PVC/C-PVC 0.020</li>
+    <li><b>Darcy-Weisbach · Colebrook-White(1939)</b> — 마찰손실·마찰계수 (층류 64/Re · 천이 3차 보간: EPANET 준용)</li>
+    <li><b>절대조도 ε</b> — Moody(1944) · ASHRAE Fundamentals Ch.22 · NFPA 13 · KDS 57</li>
+    <li><b>물성</b> — 물 ν: 참조 엑셀 물성표 · ρ: NIST WebBook (온도별 선형보간)</li>
     <li><b>SAREK 설비편람</b> — 권장 유속 / 단위 마찰손실 범위</li>
     <li><b>건축기계설비공사 표준시방서</b> (국토교통부)</li>
     <li>관경 라인업: KS D 3507, KS D 5301 등 — 호칭경별 내경 데이터</li>

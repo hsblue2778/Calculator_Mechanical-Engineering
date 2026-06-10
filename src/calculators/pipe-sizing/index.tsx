@@ -1,6 +1,6 @@
 // 관경 계산기 — 메인 컴포넌트 (계산 + 개요 + 예시)
-// 공식: 정통 Darcy-Weisbach (재질별 고정 f)
-// 출처: 일본 건축기술자협회 건축설비설계매뉴얼 공기조화설비(기문당) 213p
+// 공식: Darcy-Weisbach + 유동 영역별 마찰계수 (pipe-friction 엔진 공용)
+//   층류 64/Re · 천이 3차 보간 · 난류 Colebrook-White 반복해 · ε: 재질×신관/노후 (수정 가능)
 
 import { useMemo, useState } from 'react';
 import {
@@ -8,11 +8,12 @@ import {
   type FlowUnitKey,
   type PressureUnitKey,
 } from '../pipe-friction/units';
-import { NU } from '../pipe-friction/calc';
+import { pfKinematicViscosity, pfDensity } from '../../data/fluidProperties.ts';
+import { pfMaterial, type PFMaterialId, type PipeCondition } from '../../data/pipeRoughness.ts';
 import CalculatorTab from './tabs/CalculatorTab';
 import OverviewTab from './tabs/OverviewTab';
 import ExamplesTab, { type SizingPreset } from './tabs/ExamplesTab';
-import { sizingTable, selectPipeSize } from './calc';
+import { sizingTable, selectPipeSize, type SizingConditions } from './calc';
 import { displayToMmAq, mmAqToDisplay, convertFlowToLpm } from './units';
 import { PIPE_SIZE_MATERIALS } from '../../data/pipeSizes';
 import type { FieldContext } from '../../config/calculators';
@@ -31,6 +32,11 @@ function normalizeTab(t?: string): TabKey {
   return 'calculator';
 }
 
+// PIPE_SIZE_MATERIALS id → pipeRoughness PFMaterialId (ε 기본값 조회용)
+export const PF_MATERIAL_BY_SIZING: Record<string, PFMaterialId> = {
+  sgp: 'steel', sts10s: 'sts304', 'pvc-cpvc': 'pvc', copper: 'copper',
+};
+
 export default function PipeSizingCalculator({
   initialTab, initialState, onSave,
 }: Props) {
@@ -39,28 +45,66 @@ export default function PipeSizingCalculator({
   const [matIdx, setMatIdx] = useState<number>(() => initialState?.matIdx ?? 0);
   const [Q, setQ] = useState<string>(() => initialState?.Q ?? '');
   const [dP, setDP] = useState<string>(() => initialState?.dP ?? '');
+  const [tempC, setTempC] = useState<string>(() => initialState?.tempC ?? '20');
+  const [condition, setCondition] = useState<PipeCondition>(
+    () => (initialState?.condition === 'old' ? 'old' : 'new'),
+  );
+  const [epsStr, setEpsStr] = useState<string>(() => {
+    if (initialState?.eps !== undefined) return String(initialState.eps);
+    const id = PF_MATERIAL_BY_SIZING[PIPE_SIZE_MATERIALS[initialState?.matIdx ?? 0]?.id] ?? 'steel';
+    return String(pfMaterial(id).eps_mm[initialState?.condition === 'old' ? 'old' : 'new']);
+  });
   const [flowUnit, setFlowUnit] = useState<FlowUnitKey>(() => initialState?.flowUnit ?? 'm3h');
   const [pressureUnit, setPressureUnit] = useState<PressureUnitKey>(() => initialState?.pressureUnit ?? 'kPa');
 
-  const inputs = { matIdx, Q, dP, flowUnit, pressureUnit };
+  const mat = PIPE_SIZE_MATERIALS[matIdx] ?? PIPE_SIZE_MATERIALS[0];
+  const pfMat = pfMaterial(PF_MATERIAL_BY_SIZING[mat.id] ?? 'steel');
+  const epsDefault = String(pfMat.eps_mm[condition]);
+
+  function changeMaterial(idx: number) {
+    setMatIdx(idx);
+    const m = PIPE_SIZE_MATERIALS[idx] ?? PIPE_SIZE_MATERIALS[0];
+    setEpsStr(String(pfMaterial(PF_MATERIAL_BY_SIZING[m.id] ?? 'steel').eps_mm[condition]));
+  }
+
+  function changeCondition(c: PipeCondition) {
+    setCondition(c);
+    setEpsStr(String(pfMat.eps_mm[c]));
+  }
+
+  // 물 온도 물성 + 조도 — 계산 조건 (sizingTable에 전달)
+  const cond: SizingConditions | null = useMemo(() => {
+    const t = parseFloat(tempC);
+    const eps = parseFloat(epsStr);
+    if (!Number.isFinite(t) || t < 0 || t > 100) return null;
+    if (!Number.isFinite(eps) || eps < 0) return null;
+    return {
+      nu_m2s: pfKinematicViscosity('water', t),
+      rho_kgm3: pfDensity('water', t),
+      eps_mm: eps,
+    };
+  }, [tempC, epsStr]);
+
+  const inputs = { matIdx, Q, dP, tempC, condition, eps: epsStr, flowUnit, pressureUnit };
 
   const outputs = useMemo(() => {
+    if (!cond) return null;
     const Q_lpm = convertFlowToLpm(Q, flowUnit);
     const allowable_mmAq = displayToMmAq(parseFloat(dP), pressureUnit);
-    const mat = PIPE_SIZE_MATERIALS[matIdx];
     if (!mat || !Number.isFinite(Q_lpm) || !Number.isFinite(allowable_mmAq)) return null;
 
-    const rows = sizingTable(Q_lpm, allowable_mmAq, mat);
-    const selected = selectPipeSize(Q_lpm, allowable_mmAq, mat);
+    const rows = sizingTable(Q_lpm, allowable_mmAq, mat, cond);
+    const selected = selectPipeSize(Q_lpm, allowable_mmAq, mat, cond);
     let analysis: { V: number; Re: number; unitLoss_Pa: number } | null = null;
     if (selected) {
-      const V = selected.v_ms;
-      const D_m = selected.size.id_mm / 1000;
-      const Re = V * D_m / NU;
-      analysis = { V, Re, unitLoss_Pa: selected.dropPerM_mmAqPerM * PA_PER_MM_AQ };
+      analysis = {
+        V: selected.v_ms,
+        Re: selected.Re,
+        unitLoss_Pa: selected.dropPerM_mmAqPerM * PA_PER_MM_AQ,
+      };
     }
     return { rows, selected, analysis };
-  }, [Q, dP, flowUnit, pressureUnit, matIdx]);
+  }, [Q, dP, flowUnit, pressureUnit, mat, cond]);
 
   // 단위 변경 시 입력값 자동 환산 — 물리량 유지
   function handleFlowUnitChange(newUnit: FlowUnitKey) {
@@ -95,12 +139,18 @@ export default function PipeSizingCalculator({
   function loadPreset(p: SizingPreset) {
     setQ(p.Q); setDP(p.dP);
     setMatIdx(p.matIdx);
+    setTempC('20');
+    setCondition('new');
+    const m = PIPE_SIZE_MATERIALS[p.matIdx] ?? PIPE_SIZE_MATERIALS[0];
+    setEpsStr(String(pfMaterial(PF_MATERIAL_BY_SIZING[m.id] ?? 'steel').eps_mm.new));
     setFlowUnit('lpm'); setPressureUnit('mmAq');
     setTab('calculator');
   }
 
   function reset() {
     setQ(''); setDP(''); setMatIdx(0);
+    setTempC('20'); setCondition('new');
+    setEpsStr(String(pfMaterial('steel').eps_mm.new));
     setFlowUnit('m3h'); setPressureUnit('kPa');
   }
 
@@ -114,7 +164,12 @@ export default function PipeSizingCalculator({
           setQ={setQ}
           setDP={setDP}
           matIdx={matIdx}
-          setMatIdx={setMatIdx}
+          setMatIdx={changeMaterial}
+          tempC={tempC} setTempC={setTempC}
+          condition={condition} setCondition={changeCondition}
+          epsStr={epsStr} setEpsStr={setEpsStr}
+          epsDefault={epsDefault}
+          cond={cond}
           flowUnit={flowUnit} setFlowUnit={handleFlowUnitChange}
           pressureUnit={pressureUnit} setPressureUnit={handlePressureUnitChange}
           onReset={reset}

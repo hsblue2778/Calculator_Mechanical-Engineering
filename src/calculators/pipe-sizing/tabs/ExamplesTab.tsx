@@ -10,7 +10,7 @@ export interface SizingPreset {
 }
 
 export const SIZING_PRESETS: SizingPreset[] = [
-  { label: '엑셀 기본값', hint: '탄소강관, Q=100 lpm, ΔP/L=30 mmAq/m',
+  { label: '기본 예시', hint: '탄소강관 신관, Q=100 lpm, ΔP/L=30 mmAq/m',
     Q: '100', dP: '30', matIdx: 0 },
   { label: '중형 냉수 배관',  hint: '스테인리스강관, Q=500 lpm',
     Q: '500', dP: '30', matIdx: 1 },
@@ -54,7 +54,7 @@ export default function ExamplesTab({ onLoad }: Props) {
               <span style={{ fontSize: 11, color: 'var(--text-quaternary)' }}>{p.hint}</span>
             </div>
             <div style={{ fontSize: 12, color: C.text, fontFamily: 'ui-monospace, monospace' }}>
-              Q = {p.Q} lpm · ΔP/L = {p.dP} mmAq/m · {PIPE_SIZE_MATERIALS[p.matIdx].nameKo} · Darcy-Weisbach (정통)
+              Q = {p.Q} lpm · ΔP/L = {p.dP} mmAq/m · {PIPE_SIZE_MATERIALS[p.matIdx].nameKo} · 물 20°C · 영역별 f (Colebrook-White)
             </div>
           </button>
         ))}

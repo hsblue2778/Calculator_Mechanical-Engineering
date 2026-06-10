@@ -9,6 +9,7 @@ import { PipeMultiTable } from './PipeMultiTable';
 import HeadPressureSection from './HeadPressureSection';
 import SystemConditionSection from './SystemConditionSection';
 import type { ScheduleId } from '../../../data/pipeSizes';
+import type { PipeCondition } from '../../../data/pipeRoughness.ts';
 import { FITTING_K_VALUES } from '../../../data/fitting-k-values';
 import {
   FLOW_UNITS_PUMP, PRESSURE_UNITS_PUMP, POWER_UNITS,
@@ -84,6 +85,8 @@ interface Props {
   setSucPipeRows: (v: PipeRowState[]) => void;
   disPipeRows: PipeRowState[];
   setDisPipeRows: (v: PipeRowState[]) => void;
+  pipeCondition: PipeCondition;
+  setPipeCondition: (v: PipeCondition) => void;
 
   fittingRows: FittingRowState[];
   setFittingRows: (v: FittingRowState[]) => void;
@@ -151,6 +154,7 @@ export default function CalculatorTab(props: Props) {
     systemMode, setSystemMode,
     fluid, setFluid, tempC, setTempC, Q, setQ, flowUnit, setFlowUnit,
     sucPipeRows, setSucPipeRows, disPipeRows, setDisPipeRows,
+    pipeCondition, setPipeCondition,
     fittingRows, setFittingRows,
     equipRows, setEquipRows,
     HsStr, setHsStr, HdStr, setHdStr, PresStr, setPresStr, presUnit, setPresUnit,
@@ -353,7 +357,28 @@ export default function CalculatorTab(props: Props) {
         </div>
 
         {/* §2 흡입측 배관 (다중) */}
-        <div id="sec-suction">
+        <div id="sec-suction" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+            fontSize: 12, color: 'var(--text-tertiary)',
+          }}>
+            <span style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>배관 상태</span>
+            <select
+              value={pipeCondition}
+              onChange={e => setPipeCondition(e.target.value as PipeCondition)}
+              style={{
+                border: '1px solid var(--border-default)', borderRadius: 6, padding: '4px 8px',
+                fontSize: 12, color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)',
+                outline: 'none', fontFamily: 'inherit',
+              }}
+            >
+              <option value="new">신관</option>
+              <option value="old">노후</option>
+            </select>
+            <span style={{ color: 'var(--text-quaternary)' }}>
+              전 구간 공통 — 재질×상태별 절대조도 ε 자동 적용 (마찰계수는 영역별 자동 산출)
+            </span>
+          </div>
           <PipeMultiTable
             title="흡입측 배관"
             side="suction"

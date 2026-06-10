@@ -1,8 +1,9 @@
 // 펌프 시스템 계산기 — 메인 컴포넌트 (계산 + 개요 + 예시)
 
 import { useMemo, useState } from 'react';
-import { PIPE_MATERIALS_V2, getMaterialFrictionFactor, getMaterialLabel } from '../../data/pipeSizes';
+import { PIPE_MATERIALS_V2, getMaterialLabel } from '../../data/pipeSizes';
 import type { ScheduleId } from '../../data/pipeSizes';
+import { pfMaterial, type PFMaterialId, type PipeCondition } from '../../data/pipeRoughness.ts';
 import type { PumpFieldId, FluidId } from './configs/types';
 import { getPumpFieldConfig } from './configs/index';
 import { type FlowUnitPumpKey, type PressureUnitPumpKey, type PowerUnitKey, FLOW_UNITS_PUMP, LENGTH_UNITS, PRESSURE_UNITS_PUMP } from './units';
@@ -15,6 +16,13 @@ import type { FieldContext } from '../../config/calculators';
 import { computePumpHvac, type SystemMode } from './calc';
 import type { FluidType } from '../../data/glycol-properties';
 import { FITTING_K_VALUES } from '../../data/fitting-k-values';
+
+// PIPE_MATERIALS_V2 id → pipeRoughness PFMaterialId (ε 조회용)
+const PF_MATERIAL_BY_V2: Record<string, PFMaterialId> = {
+  sgp: 'steel', stainless: 'sts304', pvc: 'pvc', copper: 'copper',
+  // legacy 저장 기록 호환
+  sts10s: 'sts304', 'pvc-cpvc': 'pvc',
+};
 
 const FITTING_K_MAP: Record<string, number> = Object.fromEntries(
   FITTING_K_VALUES.map(f => [f.id, f.K]),
@@ -78,6 +86,10 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
   // §2 흡입측 배관 (다중)
   const [sucPipeRows, setSucPipeRows] = useState<PipeRowState[]>(
     () => initialState?.sucPipeRows ?? [defaultSucRow()],
+  );
+  // 배관 상태 (신관/노후) — ε 기본값 선택 (전 구간 공통)
+  const [pipeCondition, setPipeCondition] = useState<PipeCondition>(
+    () => (initialState?.pipeCondition === 'old' ? 'old' : 'new'),
   );
 
   // §3 토출측 배관 (다중)
@@ -148,7 +160,7 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
   // 현재 inputs/outputs (onSave용)
   const inputs = {
     systemMode, fluid, tempC, Q, flowUnit,
-    sucPipeRows, disPipeRows,
+    sucPipeRows, disPipeRows, pipeCondition,
     fittingRows, equipRows,
     HsStr, HdStr, PresStr, presUnit, PatmStr,
     headMarginStr, powerMarginStr, npshMarginStr, presetApplied,
@@ -196,7 +208,7 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
           nominalA: sizeSpec.nominalA,
           id_mm: sizeSpec.id_mm,
           L_m,
-          f: getMaterialFrictionFactor(row.materialId),
+          eps_mm: pfMaterial(PF_MATERIAL_BY_V2[row.materialId] ?? 'steel').eps_mm[pipeCondition],
           materialNameKo: getMaterialLabel(row.materialId),
         };
       });
@@ -258,7 +270,7 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
     );
   }, [
     systemMode, fluid, tempC, Q, flowUnit,
-    sucPipeRows, disPipeRows, fittingRows, equipRows,
+    sucPipeRows, disPipeRows, pipeCondition, fittingRows, equipRows,
     HsStr, HdStr, PresStr, presUnit, PatmStr,
     headMarginStr, powerMarginStr, npshMarginStr, npshrStr,
   ]);
@@ -361,6 +373,7 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
           flowUnit={flowUnit} setFlowUnit={setFlowUnit}
           sucPipeRows={sucPipeRows} setSucPipeRows={setSucPipeRows}
           disPipeRows={disPipeRows} setDisPipeRows={setDisPipeRows}
+          pipeCondition={pipeCondition} setPipeCondition={setPipeCondition}
           fittingRows={fittingRows} setFittingRows={setFittingRows}
           equipRows={equipRows} setEquipRows={setEquipRows}
           HsStr={HsStr} setHsStr={setHsStr}

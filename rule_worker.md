@@ -69,9 +69,9 @@ src/
 
 | 계산기 | 출처 | 오차 기준 |
 |---|---|---|
-| pipe-friction | 일본 건축기술자협회 건축설비설계매뉴얼(기문당) 213p — Darcy-Weisbach | ±0.1 mmAq/m |
-| pipe-sizing | 동일 출처 — Darcy-Weisbach (재질별 고정 f) | ±0.5% |
-| pump-hvac | Darcy-Weisbach + K-method (Perry's 8th) + P=ρgQH/η. 청수·온수: NIST WebBook | 마찰 ±1% 또는 ±0.05 mAq, 동력 ±1% |
+| pipe-friction | f: 층류 64/Re·천이 3차보간(EPANET 준용)·난류 Colebrook-White(1939), Swamee-Jain(1976) 검산 병기 · 물성: 참조 엑셀 '마찰손실 계산기' ν표 + NIST WebBook(물 ρ) + 설비공학 문헌 표2(공기 압력의존)/표5(수소·휘발유·에틸알코올·수은·SAE30·글리세린) · ε/C: 조사표(Moody 1944·ASHRAE Ch.22·NFPA 13·KDS 57·GF SYGEF·PPI) · D-W + Hazen-Williams(물 전용) | ν 절점 엑셀 일치 · S-J 재현 ±0.01% · Colebrook 잔차<10⁻¹⁰ · D-W/H-W 직접대입 ±0.5% (`scripts/verify-pipe-friction.ts`) |
+| pipe-sizing | pipe-friction과 동일 마찰 엔진(영역별 f·ε 조사표·물 ν표·NIST ρ) — Darcy-Weisbach 기반 관경 탐색, ΔP=ρ(T)gh 환산 | 마찰 ±0.5% (공식 직접 대입, 엔진 검증 공유) |
+| pump-hvac | Darcy-Weisbach(영역별 f — pipe-friction 엔진, Re=V·D/ν(T)) + K-method (Perry's 8th) + P=ρgQH/η. 청수·온수: NIST WebBook · ε: 조사표 | 마찰 ±1% 또는 ±0.05 mAq, 동력 ±1% |
 
 신규 출처는 사람 승인 후 이 표에 추가. 기존 출처 변경 금지.
 

@@ -1,9 +1,9 @@
-// 재질×상태별 절대조도 ε(mm)·Hazen-Williams 조도계수 C — 관마찰손실(pipe-friction) 전용 기본값
+// 재질×상태별 절대조도 ε(mm)·Hazen-Williams 조도계수 C — 기본값 단일 출처
 //
 // 사용자 확정 조사표(2026-06-10) 기준. UI에서 기본값을 표기하되 사용자가 직접 수정 가능
 // (수정값이 그대로 계산에 반영됨 — 보수 설계·수질 불량·소방 C값 등은 수정으로 대응).
 //
-// 주의: pipe-sizing·pump-hvac가 사용하는 pipeMaterials.ts(재질별 고정 f)와는 별개 데이터.
+// 관마찰손실·관경·HVAC 펌프 계산기가 공용으로 사용하는 ε·C 기본값.
 // 주의: 제조사 카탈로그의 Ra(산술평균 거칠기)는 ε(절대조도)와 다른 물리량 — ε로 직접 대입 금지.
 
 export type PFMaterialId = 'steel' | 'sts304' | 'pvc' | 'copper' | 'pvdf';
