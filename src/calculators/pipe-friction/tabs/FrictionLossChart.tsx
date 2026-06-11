@@ -55,7 +55,7 @@ export default function FrictionLossChart({ pf }: { pf: PipeFrictionController }
         마찰손실선도 <span style={{ fontSize: 11, fontWeight: 400, color: C.text }}>— 유량 × 단위 마찰손실</span>
       </div>
       <div style={{ fontSize: 11, color: C.text, margin: '2px 0 10px' }}>
-        대각선 = 호칭경(내경 기준) · 역대각 곡선 = 유속 · ● 운전점 — 선군은 현재 조건(ε·ν·ρ)으로 재계산
+        대각선 = 호칭경(내경 기준) · 역대각 곡선 = 유속 · ● 운전점 · 음영 = 층류·천이 영역 — 선군은 현재 조건(ε·ν·ρ)으로 재계산
       </div>
 
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}
@@ -83,6 +83,26 @@ export default function FrictionLossChart({ pf }: { pf: PipeFrictionController }
         <text x={(X0 + X1) / 2} y={H - 6} textAnchor="middle" fontSize={11} fill={C.textDark}>단위 마찰손실 R (mmAq/m)</text>
         <text x={13} y={(Y0 + Y1) / 2} textAnchor="middle" fontSize={11} fill={C.textDark}
           transform={`rotate(-90 13 ${(Y0 + Y1) / 2})`}>유량 Q (L/min)</text>
+
+        {/* 층류·천이 영역 음영 + Re=2,300·4,000 경계 점선 — 이 영역에서 선군이 곡선으로 꺾임 */}
+        <g clipPath="url(#pf-floss-clip)">
+          <polygon points={m.lamPoly} fill={C.border} fillOpacity={0.35} />
+          <polygon points={m.transPoly} fill={C.border} fillOpacity={0.18} />
+          <polyline points={m.c23} fill="none" stroke={C.borderInput} strokeWidth={1} strokeDasharray="5 4" />
+          <polyline points={m.c40} fill="none" stroke={C.borderInput} strokeWidth={1} strokeDasharray="2 4" />
+          {m.lamLab && (
+            <text x={m.lamLab.x} y={m.lamLab.y + 12} textAnchor="middle" fontSize={8.5} fontWeight={600}
+              fill={C.text} style={HALO} transform={`rotate(${m.lamLab.angle} ${m.lamLab.x} ${m.lamLab.y + 12})`}>
+              층류 영역 (Re&lt;2,300)
+            </text>
+          )}
+          {m.transLab && (
+            <text x={m.transLab.x} y={m.transLab.y + 11} textAnchor="middle" fontSize={8}
+              fill={C.text} style={HALO} transform={`rotate(${m.transLab.angle} ${m.transLab.x} ${m.transLab.y + 11})`}>
+              천이
+            </text>
+          )}
+        </g>
 
         {/* 관경선 + 등유속 곡선 */}
         <g clipPath="url(#pf-floss-clip)">
@@ -118,6 +138,8 @@ export default function FrictionLossChart({ pf }: { pf: PipeFrictionController }
         관경선 = {m.tableNote} 내경 기준{m.substitute ? ' (PVDF는 PVC Sch80 치수 대용)' : ''} · ε = {res.eps_mm} mm ·
         현재 유체 ν·ρ 반영 — 재질·유체·온도 변경 시 선군 전체가 다시 계산됩니다.
         임의 내경 입력 시 운전점은 관경선 사이에 위치할 수 있습니다.
+        음영 영역(Re&lt;4,000)은 층류(64/Re)·천이(3차 보간) 영역으로, f 공식이 바뀌어 이 구간의 선군은 직선이 아닌
+        곡선으로 꺾여 보입니다 (점선 경계 = Re 2,300 · 4,000).
       </div>
     </div>
   );
@@ -138,11 +160,11 @@ function buildModel(res: PipeFrictionResult, matId: PFMaterialId) {
   const nu = res.nu_m2s, rho = res.rho_kgm3;
   const eps_m = res.eps_mm / 1000;
 
-  // 단위 마찰손실 [mmAq/m] — 엔진과 동일한 영역별 f 사용
-  const unitLoss = (D_m: number, V: number): number => {
-    const Re = V * D_m / nu;
+  // 단위 마찰손실 [mmAq/m] + Re — 엔진과 동일한 영역별 f 사용
+  const loss = (D_m: number, V: number) => {
+    const Re = (V * D_m) / nu;
     const f = frictionFactor(Re, eps_m / D_m).f;
-    return (f * rho * V * V) / (2 * D_m) / MMAQ;
+    return { R: (f * rho * V * V) / (2 * D_m) / MMAQ, Re };
   };
 
   // 운전점 + 도메인 (기본 x 1~400 · y 1~10,000 — 참조 선도와 동일, 운전점 포함하도록 확장)
@@ -161,30 +183,57 @@ function buildModel(res: PipeFrictionResult, matId: PFMaterialId) {
   const toPx = (pts: [number, number][]) => pts.map(([r, q]) => [x(r), y(q)] as [number, number]);
   const toStr = (pts: [number, number][]) => pts.map(([a, b]) => `${a.toFixed(1)},${b.toFixed(1)}`).join(' ');
 
-  // 관경선: 호칭경별 내경 고정, Q를 y도메인 전체로 스윕
+  // 관경선: 호칭경별 내경 고정, Q를 y도메인 전체로 스윕 — 라벨은 난류(직선) 구간 우선
   const qSweep = logRange(yMin, yMax, 40).map(q => q / 60000);
   const dLines = table.sizes.map(s => {
     const D = s.id_mm / 1000;
-    const px = toPx(qSweep.map(Q => {
+    const samples = qSweep.map(Q => {
       const V = (4 * Q) / (Math.PI * D * D);
-      return [unitLoss(D, V), Q * 60000] as [number, number];
-    }));
-    return { label: `${s.nominalA}A`, points: toStr(px), lab: lineLabel(px, 'anti') };
+      const { R, Re } = loss(D, V);
+      return { pt: [R, Q * 60000] as [number, number], turb: Re >= 4000 };
+    });
+    const px = toPx(samples.map(s2 => s2.pt));
+    return { label: `${s.nominalA}A`, points: toStr(px), lab: lineLabel(px, 'anti', [], samples.map(s2 => s2.turb)) };
   });
   const dLabs = dLines.map(l => l.lab).filter(l => l !== null);
 
-  // 등유속 곡선: V 고정, D 스윕 (4~800mm) — 라벨은 관경선 라벨을 피해 배치
+  // 등유속 곡선: V 고정, D 스윕 (4~800mm) — 라벨은 관경선 라벨 회피 + 난류 구간 우선
   const dSweep = logRange(0.004, 0.8, 55);
   const vCurves = V_CURVES.map(V => {
-    const px = toPx(dSweep.map(D => {
+    const samples = dSweep.map(D => {
       const Q = (Math.PI * D * D * V) / 4;
-      return [unitLoss(D, V), Q * 60000] as [number, number];
-    }));
-    return { label: `V=${V.toFixed(1)}`, points: toStr(px), lab: lineLabel(px, 'main', dLabs) };
+      const { R, Re } = loss(D, V);
+      return { pt: [R, Q * 60000] as [number, number], turb: Re >= 4000 };
+    });
+    const px = toPx(samples.map(s2 => s2.pt));
+    return { label: `V=${V.toFixed(1)}`, points: toStr(px), lab: lineLabel(px, 'main', dLabs, samples.map(s2 => s2.turb)) };
   });
+  const vLabs = vCurves.map(l => l.lab).filter(l => l !== null);
+
+  // 층류·천이 영역 — Re=2,300·4,000 등Re 경계선(D 스윕 매개변수화) 아래가 해당 영역.
+  // 이 영역에서는 f 공식이 바뀌어(64/Re·3차 보간) 선군이 곡선으로 꺾인다.
+  const bSweep = logRange(0.002, 1.2, 60);
+  const reCurve = (ReT: number) => bSweep.map(D => {
+    const V = (ReT * nu) / D;
+    return [loss(D, V).R, ((Math.PI * D * D * V) / 4) * 60000] as [number, number];
+  });
+  const c23 = toPx(reCurve(2300));   // D 오름차순: 우하 → 좌상
+  const c40 = toPx(reCurve(4000));
+  const yAt = (c: [number, number][], i: number) => c[i][1];
+  const lamPoly = [
+    ...c23,
+    [X0 - 40, yAt(c23, c23.length - 1)], [X0 - 40, Y1 + 40],
+    [X1 + 40, Y1 + 40], [X1 + 40, yAt(c23, 0)],
+  ] as [number, number][];
+  const transPoly = [...c23, ...[...c40].reverse()];
+  const lamLab = lineLabel(c23, 'main', [...dLabs, ...vLabs]);
+  const transLab = lineLabel(c40, 'main', [...dLabs, ...vLabs, ...(lamLab ? [lamLab] : [])]);
 
   return {
     x, y, dLines, vCurves, Rpt, Qpt,
+    c23: toStr(c23), c40: toStr(c40),
+    lamPoly: toStr(lamPoly), transPoly: toStr(transPoly),
+    lamLab, transLab,
     px: x(Rpt), py: y(Qpt),
     xTicks: logTicks(xMin, xMax, MANT_X),
     yTicks: logTicks(yMin, yMax, MANT_Y),
@@ -195,14 +244,19 @@ function buildModel(res: PipeFrictionResult, matId: PFMaterialId) {
 
 // 라벨 위치: 선이 플롯 대각선을 지나는 지점에 선 기울기로 회전 배치
 // anti = ↘ 대각선(관경선용) · main = ↗ 대각선(등유속선용) — 두 선군이 서로 수직 교차하므로 자연스럽게 분산됨
-// 두 대각선이 중앙에서 만나 라벨이 겹치지 않도록 어긋나게 배치하고, avoid(기배치 라벨) 30px 이내는 회피
-function lineLabel(ptsPx: [number, number][], diag: 'anti' | 'main', avoid: { x: number; y: number }[] = []) {
+// 두 대각선이 중앙에서 만나 라벨이 겹치지 않도록 어긋나게 배치하고, avoid(기배치 라벨) 30px 이내는 회피.
+// eligible(난류 구간 여부)이 주어지면 직선 구간을 우선하고, 전부 비적격이면 전체에서 선택
+function lineLabel(
+  ptsPx: [number, number][], diag: 'anti' | 'main',
+  avoid: { x: number; y: number }[] = [], eligible?: boolean[],
+) {
   let best = -1, bestScore = Infinity;
   ptsPx.forEach(([px, py], i) => {
     if (px < X0 + 16 || px > X1 - 16 || py < Y0 + 16 || py > Y1 - 16) return;
     const u = (px - X0) / (X1 - X0), w = (py - Y0) / (Y1 - Y0);
     let score = diag === 'anti' ? Math.abs(u - w + 0.12) : Math.abs(u + w - 1.18);
     if (avoid.some(a => Math.hypot(px - a.x, py - a.y) < 30)) score += 10;
+    if (eligible && !eligible[i]) score += 100;
     if (score < bestScore) { bestScore = score; best = i; }
   });
   if (best < 0) return null;
