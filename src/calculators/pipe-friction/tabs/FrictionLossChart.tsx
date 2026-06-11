@@ -20,7 +20,9 @@ const X0 = 56, X1 = 700, Y0 = 22, Y1 = 372;
 const MANT_X = [1, 2, 3, 4, 5, 6, 8] as const;
 const MANT_Y = [1, 2, 3, 4, 6, 8] as const;
 
-const V_CURVES = [0.3, 0.4, 0.6, 0.8, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0];
+// 물 배관(0.3~3 m/s)뿐 아니라 공기·가스 배관의 실무 권장유속(10~20 m/s대)까지 커버.
+// 도메인 밖 곡선은 클립으로 잘리므로 물 케이스에서는 고속 곡선이 보이지 않는다.
+const V_CURVES = [0.3, 0.4, 0.6, 0.8, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10, 15, 20, 30];
 
 // mmAq 환산 표준 중력 (결과 패널 압력 환산과 동일 기준)
 const MMAQ = 9.80665;
@@ -206,7 +208,8 @@ function buildModel(res: PipeFrictionResult, matId: PFMaterialId) {
       return { pt: [R, Q * 60000] as [number, number], turb: Re >= 4000 };
     });
     const px = toPx(samples.map(s2 => s2.pt));
-    return { label: `V=${V.toFixed(1)}`, points: toStr(px), lab: lineLabel(px, 'main', dLabs, samples.map(s2 => s2.turb)) };
+    const label = `V=${V >= 10 ? V.toFixed(0) : V.toFixed(1)}`;
+    return { label, points: toStr(px), lab: lineLabel(px, 'main', dLabs, samples.map(s2 => s2.turb)) };
   });
   const vLabs = vCurves.map(l => l.lab).filter(l => l !== null);
 
