@@ -20,9 +20,10 @@ interface Props {
   pf: PipeFrictionController;
   onSave?: () => void;
   canSave?: boolean;
+  onChain?: () => void;
 }
 
-export default function CalculatorTab({ pf, onSave, canSave }: Props) {
+export default function CalculatorTab({ pf, onSave, canSave, onChain }: Props) {
   const { st, patch, res, error } = pf;
   const pressDef = PRESSURE_UNITS.find(u => u.key === st.pressureUnit)!;
   const showError = !!error && error.field !== 'pair';
@@ -47,6 +48,7 @@ export default function CalculatorTab({ pf, onSave, canSave }: Props) {
     canExport: !!res,
     onCsv: handleCsv, onHtmlSave: handleHtmlSave, onPdf: handlePdf,
     onReset: pf.reset,
+    onChain,
   };
 
   return (

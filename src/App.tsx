@@ -30,6 +30,7 @@ type CalculatorComponentProps = {
   initialTab?: TabKey;
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  onChain?: (calculatorId: string, initialState: Record<string, any>) => void;
 };
 
 const calculatorComponents: Record<string, React.ComponentType<CalculatorComponentProps>> = {
@@ -101,6 +102,21 @@ export default function App() {
     };
     setInstances([inst]);
     setActiveId(inst.id);
+    setView('workspace');
+  }
+
+  // 체이닝 — 다른 계산기를 초기 입력값과 함께 열어 현재 계산기를 교체
+  function openCalculatorWithState(calculatorId: string, initialState: Record<string, any>) {
+    const calc = calculators.find(c => c.id === calculatorId);
+    if (!calc) return;
+    const inst: WorkspaceInstance = {
+      id: genId(),
+      calculatorId,
+      name: calc.title,
+    };
+    setInstances([inst]);
+    setActiveId(inst.id);
+    setInstanceInitialStates(prev => ({ ...prev, [inst.id]: initialState }));
     setView('workspace');
   }
 
@@ -395,6 +411,7 @@ export default function App() {
                 initialTab="calculator"
                 initialState={instanceInitialStates[activeInstance.id]}
                 onSave={handleSave}
+                onChain={openCalculatorWithState}
               />
             </div>
           )}
