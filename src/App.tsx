@@ -295,7 +295,7 @@ export default function App() {
               "{query}"에 해당하는 계산기가 없습니다.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {grouped.map(([category, calcs]) => (
                 <section key={category}>
                   <SectionHeading>{category}</SectionHeading>
@@ -318,7 +318,7 @@ export default function App() {
           .calc-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
+            gap: 14px;
           }
           @media (max-width: 1024px) { .calc-grid { grid-template-columns: repeat(2, 1fr); } }
           @media (max-width: 640px)  { .calc-grid { grid-template-columns: 1fr; } }
