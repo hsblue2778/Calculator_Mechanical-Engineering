@@ -16,8 +16,11 @@ import {
 } from '../../../data/pipeSizes';
 import { PIPE_CONDITIONS, type PipeCondition } from '../../../data/pipeRoughness.ts';
 import {
+  pfFluidMeta, PF_PRESSURE_MIN_MMHG, PF_PRESSURE_MAX_MMHG,
+} from '../../../data/fluidProperties.ts';
+import {
   sizingTable, selectPipeSize, validateSizingInput,
-  type SizingRow, type SizingConditions,
+  type SizingRow, type SizingConditions, type SizingFluid,
 } from '../calc';
 import {
   displayToMmAq, mmAqToDisplay, convertFlowToLpm,
@@ -33,7 +36,9 @@ interface Props {
   Q: string; dP: string;
   setQ: (v: string) => void; setDP: (v: string) => void;
   matIdx: number; setMatIdx: (i: number) => void;
+  fluid: SizingFluid; setFluid: (f: SizingFluid) => void;
   tempC: string; setTempC: (v: string) => void;
+  pressureMmHg: string; setPressureMmHg: (v: string) => void;
   condition: PipeCondition; setCondition: (c: PipeCondition) => void;
   epsStr: string; setEpsStr: (v: string) => void;
   epsDefault: string;
@@ -48,7 +53,8 @@ interface Props {
 export default function CalculatorTab({
   Q, dP, setQ, setDP,
   matIdx, setMatIdx,
-  tempC, setTempC, condition, setCondition,
+  fluid, setFluid,
+  tempC, setTempC, pressureMmHg, setPressureMmHg, condition, setCondition,
   epsStr, setEpsStr, epsDefault, cond,
   flowUnit, setFlowUnit, pressureUnit, setPressureUnit, onReset,
   onSave, canSave,
@@ -57,13 +63,15 @@ export default function CalculatorTab({
   const pressDef = PRESSURE_UNITS.find(u => u.key === pressureUnit)!;
   const flowUnitLabel = FLOW_UNITS.find(u => u.key === flowUnit)?.label ?? '';
   const epsEdited = epsStr.trim() !== epsDefault;
+  const fluidMeta = pfFluidMeta(fluid);
+  const fluidLabel = fluid === 'air' ? '공기' : '물';
 
   const result = useMemo(() => {
     const Q_lpm = convertFlowToLpm(Q, flowUnit);
     const dP_display = parseFloat(dP);
     const allowable_mmAq = displayToMmAq(dP_display, pressureUnit);
 
-    const err = (Q || dP) ? validateSizingInput(Q_lpm, allowable_mmAq, parseFloat(tempC), parseFloat(epsStr)) : null;
+    const err = (Q || dP) ? validateSizingInput(Q_lpm, allowable_mmAq, parseFloat(tempC), parseFloat(epsStr), fluid) : null;
     if (err) return { error: err };
 
     if (!cond || !Number.isFinite(Q_lpm) || !Number.isFinite(allowable_mmAq)) return null;
@@ -81,7 +89,7 @@ export default function CalculatorTab({
     }
 
     return { rows, selected, analysis };
-  }, [Q, dP, flowUnit, pressureUnit, mat, cond, tempC, epsStr]);
+  }, [Q, dP, flowUnit, pressureUnit, mat, cond, tempC, epsStr, fluid]);
 
   const inputErr = result && 'error' in result ? result.error : null;
   const ok = result && !('error' in result) ? result : null;
@@ -90,8 +98,22 @@ export default function CalculatorTab({
   return (
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
-      {/* 재질·물 온도·상태·조도 — 계산 조건 */}
+      {/* 유체·재질·온도·(압력)·상태·조도 — 계산 조건 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+        <div>
+          <label style={labelStyle}>유체 종류</label>
+          <select
+            value={fluid}
+            onChange={e => setFluid(e.target.value as SizingFluid)}
+            style={inputStyle}
+          >
+            <option value="water">물</option>
+            <option value="air">공기</option>
+          </select>
+          <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
+            {fluid === 'air' ? '이상기체 ν·ρ (온도·압력 반영)' : '온도별 ν·ρ 물성표 적용'}
+          </p>
+        </div>
         <div style={{ position: 'relative' }}>
           <label style={labelStyle}>배관 재질</label>
           <select
@@ -115,16 +137,29 @@ export default function CalculatorTab({
           </p>
         </div>
         <div>
-          <label style={labelStyle}>물 온도 (°C)</label>
+          <label style={labelStyle}>{fluidLabel} 온도 (°C)</label>
           <input
             type="number" step="any" value={tempC}
             onChange={e => setTempC(e.target.value)}
             style={inputStyle}
           />
           <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
-            0~100°C · ν·ρ 물성표 선형보간 자동 적용
+            {fluidMeta.tempMin}~{fluidMeta.tempMax}°C · ν·ρ 물성표 선형보간 자동 적용
           </p>
         </div>
+        {fluid === 'air' && (
+          <div>
+            <label style={labelStyle}>압력 (mmHg)</label>
+            <input
+              type="number" step="any" value={pressureMmHg}
+              onChange={e => setPressureMmHg(e.target.value)}
+              style={inputStyle}
+            />
+            <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
+              기본 760 (1atm) · 유효 {PF_PRESSURE_MIN_MMHG}~{PF_PRESSURE_MAX_MMHG} · ρ·ν에 반영
+            </p>
+          </div>
+        )}
         <div>
           <label style={labelStyle}>배관 상태</label>
           <select
@@ -183,7 +218,7 @@ export default function CalculatorTab({
           f: 유동 영역별 자동 — 층류 64/Re · 천이(2,300~4,000) 3차 보간 · 난류 Colebrook-White 반복해 · Re = V·D/ν(T)
         </p>
         <p style={{ fontSize: 11, color: 'var(--text-quaternary)', margin: '2px 0 12px 0' }}>
-          관마찰손실 계산기와 동일 엔진 (ε: Moody·ASHRAE Ch.22·NFPA 13·KDS 57 / 물성: 물 ν표·NIST ρ)
+          관마찰손실 계산기와 동일 엔진 (ε: Moody·ASHRAE Ch.22·NFPA 13·KDS 57 / 물성: {fluid === 'air' ? '공기 ν·ρ 이상기체·압력 반영' : '물 ν표·NIST ρ'})
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
@@ -207,6 +242,7 @@ export default function CalculatorTab({
               V={ok.analysis.V}
               Re={ok.analysis.Re}
               unitLoss_Pa={ok.analysis.unitLoss_Pa}
+              fluid={fluid}
               variant="secondary"
             />
           )}
@@ -226,9 +262,9 @@ export default function CalculatorTab({
         className="calc-actions calc-actions-desktop"
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
-        onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr)}
-        onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr)}
-        onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr)}
+        onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
+        onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
+        onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
         onReset={onReset}
       />
       </main>
@@ -237,14 +273,15 @@ export default function CalculatorTab({
         noSolution={noSolution}
         mat={mat}
         pressureUnit={pressureUnit}
+        fluid={fluid}
       />
       <ActionBar
         className="calc-actions calc-actions-mobile"
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
-        onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr)}
-        onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr)}
-        onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr)}
+        onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
+        onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
+        onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
         onReset={onReset}
       />
     </div>
@@ -259,10 +296,12 @@ function buildSizingHtml(
   Q: string, dP: string,
   flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
   tempC: string, condition: PipeCondition, epsStr: string,
+  fluid: SizingFluid, pressureMmHg: string,
 ): string {
   return buildPipeSizingReportHtml({
     selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit,
     tempC, condLabel: condition === 'new' ? '신관' : '노후', epsStr,
+    fluid, pressureMmHg,
   });
 }
 
@@ -274,8 +313,9 @@ function handleSizingHtmlSave(
   Q: string, dP: string,
   flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
   tempC: string, condition: PipeCondition, epsStr: string,
+  fluid: SizingFluid, pressureMmHg: string,
 ) {
-  const html = buildSizingHtml(selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr);
+  const html = buildSizingHtml(selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg);
   const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   downloadHtmlFile(`pipe-sizing_${ts}.html`, html);
 }
@@ -288,8 +328,9 @@ function handleSizingPdfPrint(
   Q: string, dP: string,
   flowUnit: FlowUnitKey, pressureUnit: PressureUnitKey,
   tempC: string, condition: PipeCondition, epsStr: string,
+  fluid: SizingFluid, pressureMmHg: string,
 ) {
-  const html = buildSizingHtml(selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr);
+  const html = buildSizingHtml(selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg);
   printHtmlReport(html);
 }
 
@@ -431,16 +472,20 @@ function handleSizingCsvExport(
   flowUnit: FlowUnitKey,
   pressDef: typeof PRESSURE_UNITS[number],
   tempC: string, condition: PipeCondition, epsStr: string,
+  fluid: SizingFluid, pressureMmHg: string,
 ) {
   const flowLabel = FLOW_UNITS.find(u => u.key === flowUnit)?.label ?? '';
   const drop_display = mmAqToDisplay(selected.dropPerM_mmAqPerM, pressDef.key);
   const condLabel = condition === 'new' ? '신관' : '노후';
+  const fluidLabel = fluid === 'air' ? '공기' : '물';
 
   const data: (string | number)[][] = [
     ['항목', '값', '단위', '비고'],
     ['계산기', '관경 선정 (Darcy-Weisbach + 영역별 마찰계수)', '', ''],
+    ['유체', fluidLabel, '', fluid === 'air' ? '이상기체 ν·ρ' : 'ν·ρ 물성표'],
     ['배관 재질', `${mat.nameKo} (${condLabel})`, '', `ε=${epsStr} mm`],
-    ['물 온도', tempC, '°C', 'ν·ρ 물성표 보간'],
+    [`${fluidLabel} 온도`, tempC, '°C', 'ν·ρ 물성표 보간'],
+    ...(fluid === 'air' ? [['압력', pressureMmHg, 'mmHg', 'ρ·ν 압력 반영']] as (string | number)[][] : []),
     ['유량 Q', Q, flowLabel, ''],
     ['허용 압력강하 ΔP/L', dP, `${pressDef.label}/m`, ''],
     ['', '', '', ''],

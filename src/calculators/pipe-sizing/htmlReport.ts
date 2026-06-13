@@ -8,7 +8,7 @@ import {
   esc, pageHeader, pageFooter, secHeader,
   makeDocNo, makeCalcDateTime, makeTodayStr,
 } from '../pump-system/htmlReport/helpers';
-import type { SizingRow } from './calc';
+import { velocityRange, type SizingRow, type SizingFluid } from './calc';
 import { fMethodLabel } from '../pipe-friction/interpret.ts';
 import type { PipeMaterialSize } from '../../data/pipeSizes';
 import {
@@ -33,15 +33,19 @@ interface ReportProps {
   epsStr: string;
   flowUnit: FlowUnitKey;
   pressureUnit: PressureUnitKey;
+  fluid: SizingFluid;
+  pressureMmHg: string;
 }
 
 const TOTAL_PAGES = 2;
 
 export function buildPipeSizingReportHtml(props: ReportProps): string {
-  const { selected, rows, analysis, mat, Q, dP, tempC, condLabel, epsStr, flowUnit, pressureUnit } = props;
+  const { selected, rows, analysis, mat, Q, dP, tempC, condLabel, epsStr, flowUnit, pressureUnit, fluid, pressureMmHg } = props;
 
   const pressDef = PRESSURE_UNITS.find(u => u.key === pressureUnit)!;
   const flowUnitLabel = FLOW_UNITS.find(u => u.key === flowUnit)?.label ?? '';
+  const fluidLabel = fluid === 'air' ? '공기' : '물';
+  const velRange = velocityRange(fluid);
 
   const Q_lpm = convertFlowToLpm(Q, flowUnit);
   const ID_mm = selected.size.id_mm;
@@ -50,7 +54,7 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
 
   const drop_display = mmAqToDisplay(selected.dropPerM_mmAqPerM, pressureUnit);
   const regime = analysis ? flowRegime(analysis.Re) : null;
-  const rangeV = analysis ? rangeStatus(analysis.V, RANGES.velocity) : null;
+  const rangeV = analysis ? rangeStatus(analysis.V, velRange) : null;
   const rangeU = analysis ? rangeStatus(analysis.unitLoss_Pa, RANGES.unitLossPa) : null;
 
   const docNo = makeDocNo();
@@ -70,9 +74,11 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
   // §1 입력 요약
   const inputRows: [string, string, string, string][] = [
     ['계산 방법', 'Darcy-Weisbach + 영역별 마찰계수', '—', '층류 64/Re·천이 보간·난류 Colebrook-White'],
+    ['유체', fluidLabel, '—', fluid === 'air' ? '이상기체 ν·ρ (온도·압력 반영)' : 'ν·ρ 물성표 (온도 반영)'],
     ['배관 재질', mat.nameKo + (mat.abbreviation ? ` (${mat.abbreviation})` : ''), '—', condLabel],
     ['절대조도 ε', epsStr, 'mm', '재질×상태 기본값 (수정 가능)'],
-    ['물 온도', tempC, '°C', 'ν·ρ 물성표 선형보간'],
+    [`${fluidLabel} 온도`, tempC, '°C', 'ν·ρ 물성표 선형보간'],
+    ...(fluid === 'air' ? [['압력', pressureMmHg, 'mmHg', 'ρ·ν 압력 반영 (1atm = 760)']] as [string, string, string, string][] : []),
     ['유량 Q', Q, flowUnitLabel, `= ${Q_lpm.toFixed(3)} LPM`],
     ['허용 압력강하 ΔP/L', dP, `${pressDef.label}/m`, '선정 기준값'],
   ];
@@ -139,7 +145,7 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
     <tr><th>기호</th><th>의미</th></tr>
     <tr><td class="c">f</td><td>마찰계수 — 유동 영역별 자동 산출 (관마찰손실 계산기와 동일 엔진)</td></tr>
     <tr><td class="c">ε</td><td>절대조도 [mm] — 재질×신관/노후 (Moody 1944·ASHRAE Ch.22·NFPA 13·KDS 57)</td></tr>
-    <tr><td class="c">ν, ρ</td><td>물 동점성계수·밀도 — 온도별 물성표 선형보간 (물 ν: 참조 엑셀 물성표 / ρ: NIST WebBook)</td></tr>
+    <tr><td class="c">ν, ρ</td><td>${esc(fluidLabel)} 동점성계수·밀도 — ${fluid === 'air' ? '이상기체식 (온도·압력 반영, 참조 엑셀 공기 물성표)' : '온도별 물성표 선형보간 (물 ν: 참조 엑셀 물성표 / ρ: NIST WebBook)'}</td></tr>
     <tr><td class="c">D</td><td>관 내경 [m] = D[mm] / 1,000</td></tr>
     <tr><td class="c">g</td><td>중력가속도 = ${G} m/s²</td></tr>
   </table>
@@ -190,7 +196,7 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
     </tr>
     <tr>
       <td>유속 V</td><td class="num">${analysis.V.toFixed(3)} m/s</td>
-      <td>${RANGES.velocity.optMin} ~ ${RANGES.velocity.optMax} m/s (최적)</td>
+      <td>${velRange.optMin} ~ ${velRange.optMax} m/s (최적)</td>
       <td class="c">${esc(rangeV!.label)}</td>
     </tr>
     <tr>
@@ -204,7 +210,7 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
   <ul class="refs">
     <li><b>Darcy-Weisbach · Colebrook-White(1939)</b> — 마찰손실·마찰계수 (층류 64/Re · 천이 3차 보간: EPANET 준용)</li>
     <li><b>절대조도 ε</b> — Moody(1944) · ASHRAE Fundamentals Ch.22 · NFPA 13 · KDS 57</li>
-    <li><b>물성</b> — 물 ν: 참조 엑셀 물성표 · ρ: NIST WebBook (온도별 선형보간)</li>
+    <li><b>물성</b> — 물 ν: 참조 엑셀 물성표 · ρ: NIST WebBook (온도별 선형보간) / 공기 ν·ρ: 이상기체식 (온도·압력 반영)</li>
     <li><b>SAREK 설비편람</b> — 권장 유속 / 단위 마찰손실 범위</li>
     <li><b>건축기계설비공사 표준시방서</b> (국토교통부)</li>
     <li>관경 라인업: KS D 3507, KS D 5301 등 — 호칭경별 내경 데이터</li>

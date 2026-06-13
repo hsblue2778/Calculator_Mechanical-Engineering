@@ -4,7 +4,12 @@
 // 물성: 물 ν·ρ 온도별 (src/data/fluidProperties.ts) · ε: 재질×신관/노후 (src/data/pipeRoughness.ts, 수정 가능)
 
 import { frictionFactor, PF_G, type FMethod } from '../pipe-friction/engine.ts';
+import { RANGES, type Range } from '../pipe-friction/analysis';
+import { pfFluidMeta } from '../../data/fluidProperties.ts';
 import type { PipeMaterialSize, PipeSpec } from '../../data/pipeSizes';
+
+// 관경 계산기가 지원하는 유체 — 물성표(온도·압력) 기반 2종
+export type SizingFluid = 'water' | 'air';
 
 const PA_PER_MM_AQ = 9.80665;
 
@@ -96,15 +101,30 @@ export function selectPipeSize(
   return rows.find(r => r.ok) ?? null;
 }
 
-// 유속 권장 범위 (m/s) — 엑셀 주석의 일반 가이드 1.5 ~ 2.0 m/s
-export const VELOCITY_RECOMMENDED_MIN = 1.5;
-export const VELOCITY_RECOMMENDED_MAX = 2.0;
+// 유체별 권장 유속 (m/s) — 물: 일반배관 가이드 1.5~2.0 / 공기: 저압 급기·덕트류 관행 5~10
+export const VELOCITY_RECOMMENDED: Record<SizingFluid, { min: number; max: number }> = {
+  water: { min: 1.5, max: 2.0 },
+  air:   { min: 5,   max: 10 },
+};
 
-export function velocityStatus(v: number): 'ok' | 'low' | 'high' {
+// 하위호환 — 미사용 ResultPanel 등 기존 참조 (물 기준)
+export const VELOCITY_RECOMMENDED_MIN = VELOCITY_RECOMMENDED.water.min;
+export const VELOCITY_RECOMMENDED_MAX = VELOCITY_RECOMMENDED.water.max;
+
+export function velocityStatus(v: number, fluid: SizingFluid = 'water'): 'ok' | 'low' | 'high' {
+  const r = VELOCITY_RECOMMENDED[fluid];
   if (!Number.isFinite(v)) return 'low';
-  if (v < VELOCITY_RECOMMENDED_MIN) return 'low';
-  if (v > VELOCITY_RECOMMENDED_MAX) return 'high';
+  if (v < r.min) return 'low';
+  if (v > r.max) return 'high';
   return 'ok';
+}
+
+// 유체별 유속 게이지·해석 범위 — 물은 기존 공용 RANGES, 공기는 권장 5~10 기준 허용대 확장
+export function velocityRange(fluid: SizingFluid): Range {
+  if (fluid === 'air') {
+    return { optMin: 5, optMax: 10, allowMin: 3, allowMax: 15, absMin: 0, absMax: 25, unit: 'm/s', label: '유속 (V)' };
+  }
+  return RANGES.velocity;
 }
 
 // 입력값 검증 — 0·음수·NaN·범위 밖 입력 시 에러 메시지 반환
@@ -118,9 +138,13 @@ export function validateSizingInput(
   allowableDrop_mmAqPerM: number,
   tempC: number,
   eps_mm: number,
+  fluid: SizingFluid = 'water',
 ): SizingInputError | null {
-  if (!Number.isFinite(tempC) || tempC < 0 || tempC > 100) {
-    return { field: 'temp', message: '물 온도는 0~100°C 범위로 입력해야 합니다.' };
+  const meta = pfFluidMeta(fluid);
+  const tMin = meta.tempMin ?? 0;
+  const tMax = meta.tempMax ?? 100;
+  if (!Number.isFinite(tempC) || tempC < tMin || tempC > tMax) {
+    return { field: 'temp', message: `${meta.label} 온도는 ${tMin}~${tMax}°C 범위로 입력해야 합니다.` };
   }
   if (!Number.isFinite(eps_mm) || eps_mm < 0) {
     return { field: 'eps', message: '절대조도 ε는 0 이상의 값을 입력해야 합니다.' };
