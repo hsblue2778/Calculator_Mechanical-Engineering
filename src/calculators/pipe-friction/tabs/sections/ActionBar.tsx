@@ -2,22 +2,24 @@
 // 기존 CalculatorTab에서 이동 — 동작 동일.
 
 import { useState } from 'react';
-import { RotateCcw, Printer, Download, Save, Check, FileDown } from 'lucide-react';
+import { RotateCcw, Printer, Download, Save, Check, FileDown, ArrowRight } from 'lucide-react';
 import { C } from '../../styles';
 
 export default function ActionBar({
-  className, onSave, canSave, canExport, onCsv, onHtmlSave, onPdf, onReset,
+  className, onSave, canSave, canExport, onCsv, onHtmlSave, onPdf, onReset, onChain,
 }: {
   className: string;
   onSave?: () => void; canSave?: boolean;
   canExport: boolean;
   onCsv: () => void; onHtmlSave: () => void; onPdf: () => void; onReset: () => void;
+  onChain?: () => void;
 }) {
   return (
     <div
       className={className}
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
+      {onChain && <ChainBtn onClick={onChain} />}
       {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
       <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
         enabled={canExport} onClick={onCsv} />
@@ -40,6 +42,24 @@ export default function ActionBar({
         <RotateCcw size={14} /> 초기화
       </button>
     </div>
+  );
+}
+
+function ChainBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      title="현재 유량·마찰손실(ΔP/L) 값을 관경 설계 시스템으로 전달해 적정 관경을 역산출합니다"
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '10px 16px', fontSize: 13, fontWeight: 600,
+        color: 'var(--text-inverse)', backgroundColor: C.blue,
+        border: 'none', borderRadius: 8,
+        cursor: 'pointer', fontFamily: 'inherit',
+      }}
+    >
+      관경 설계로 보내기 <ArrowRight size={14} />
+    </button>
   );
 }
 

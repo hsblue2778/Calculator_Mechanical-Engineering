@@ -1,7 +1,7 @@
 // 관경 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileDown } from 'lucide-react';
+import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileDown, ArrowRight } from 'lucide-react';
 import Frac from '../../../components/Frac';
 import FormulaSection from '../../../components/FormulaSection';
 import UnitPanel from '../../../components/UnitPanel';
@@ -32,6 +32,11 @@ import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/e
 import { buildPipeSizingReportHtml } from '../htmlReport';
 import { C, inputStyle, labelStyle, PA_PER_MM_AQ } from '../styles';
 
+// 체이닝 전달값 강조 — 연한 보라색
+const CHAIN_BG = 'rgba(147, 51, 234, 0.10)';
+const CHAIN_BORDER = 'rgba(147, 51, 234, 0.55)';
+const CHAIN_TEXT = 'var(--text-secondary)';
+
 interface Props {
   Q: string; dP: string;
   setQ: (v: string) => void; setDP: (v: string) => void;
@@ -48,6 +53,7 @@ interface Props {
   onReset: () => void;
   onSave?: () => void;
   canSave?: boolean;
+  chainedFrom?: string;
 }
 
 export default function CalculatorTab({
@@ -57,7 +63,7 @@ export default function CalculatorTab({
   tempC, setTempC, pressureMmHg, setPressureMmHg, condition, setCondition,
   epsStr, setEpsStr, epsDefault, cond,
   flowUnit, setFlowUnit, pressureUnit, setPressureUnit, onReset,
-  onSave, canSave,
+  onSave, canSave, chainedFrom,
 }: Props) {
   const mat = PIPE_SIZE_MATERIALS[matIdx];
   const pressDef = PRESSURE_UNITS.find(u => u.key === pressureUnit)!;
@@ -65,6 +71,13 @@ export default function CalculatorTab({
   const epsEdited = epsStr.trim() !== epsDefault;
   const fluidMeta = pfFluidMeta(fluid);
   const fluidLabel = fluid === 'air' ? '공기' : '물';
+
+  // 체이닝 전달값 강조(연보라) — 해당 칸을 직접 수정하거나 초기화하면 해제
+  const [hlQ, setHlQ] = useState<boolean>(!!chainedFrom);
+  const [hlDP, setHlDP] = useState<boolean>(!!chainedFrom);
+  const handleQChange = (v: string) => { if (hlQ) setHlQ(false); setQ(v); };
+  const handleDPChange = (v: string) => { if (hlDP) setHlDP(false); setDP(v); };
+  const handleReset = () => { setHlQ(false); setHlDP(false); onReset(); };
 
   const result = useMemo(() => {
     const Q_lpm = convertFlowToLpm(Q, flowUnit);
@@ -98,6 +111,17 @@ export default function CalculatorTab({
   return (
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
+      {chainedFrom === 'pipe-friction' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 14px', fontSize: 13, lineHeight: 1.5,
+          color: CHAIN_TEXT, backgroundColor: CHAIN_BG,
+          border: `1px solid ${CHAIN_BORDER}`, borderRadius: 8,
+        }}>
+          <ArrowRight size={15} style={{ flexShrink: 0 }} />
+          <span>마찰손실 계산기에서 전달된 <b>유량·마찰손실(ΔP/L)</b> 값입니다 (연보라 표시). 이 조건에 맞는 적정 관경을 역산출합니다.</span>
+        </div>
+      )}
       {/* 유체·재질·온도·(압력)·상태·조도 — 계산 조건 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
         <div>
@@ -224,11 +248,11 @@ export default function CalculatorTab({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
           <FieldNumber
             label={<>유량 Q <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>({flowUnitLabel})</span></>}
-            value={Q} onChange={setQ}
+            value={Q} onChange={handleQChange} highlight={hlQ}
           />
           <FieldNumber
             label={<>허용 압력강하 ΔP/L <span style={{ color: 'var(--text-quaternary)', fontWeight: 400 }}>({pressDef.label}/m)</span></>}
-            value={dP} onChange={setDP}
+            value={dP} onChange={handleDPChange} highlight={hlDP}
           />
         </div>
       </FormulaSection>
@@ -265,7 +289,7 @@ export default function CalculatorTab({
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
         onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
         onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
-        onReset={onReset}
+        onReset={handleReset}
       />
       </main>
       <StickyResults
@@ -282,7 +306,7 @@ export default function CalculatorTab({
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
         onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
         onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
-        onReset={onReset}
+        onReset={handleReset}
       />
     </div>
   );
@@ -401,11 +425,12 @@ function SaveBtn({ onClick, enabled }: { onClick: () => void; enabled: boolean }
 }
 
 function FieldNumber({
-  label, value, onChange, min = '0', max,
+  label, value, onChange, min = '0', max, highlight,
 }: {
   label: React.ReactNode; value: string; onChange: (v: string) => void;
-  min?: string; max?: string;
+  min?: string; max?: string; highlight?: boolean;
 }) {
+  const baseBorder = highlight ? CHAIN_BORDER : C.borderInput;
   return (
     <div style={{ position: 'relative' }}>
       <label style={labelStyle}>{label}</label>
@@ -414,10 +439,11 @@ function FieldNumber({
         min={min} max={max} step="any"
         style={{
           ...inputStyle,
-          borderColor: C.borderInput,
+          borderColor: baseBorder,
+          backgroundColor: highlight ? CHAIN_BG : inputStyle.backgroundColor,
         }}
         onFocus={e => { e.currentTarget.style.borderColor = C.blue; }}
-        onBlur={e => { e.currentTarget.style.borderColor = C.borderInput; }}
+        onBlur={e => { e.currentTarget.style.borderColor = baseBorder; }}
       />
     </div>
   );

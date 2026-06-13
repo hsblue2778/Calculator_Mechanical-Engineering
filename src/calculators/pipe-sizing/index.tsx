@@ -58,6 +58,8 @@ export default function PipeSizingCalculator({
   });
   const [flowUnit, setFlowUnit] = useState<FlowUnitKey>(() => initialState?.flowUnit ?? 'm3h');
   const [pressureUnit, setPressureUnit] = useState<PressureUnitKey>(() => initialState?.pressureUnit ?? 'kPa');
+  // 체이닝으로 들어온 경우 — 전달된 Q·ΔP/L 강조 및 안내 배너 표시 (마찰손실 계산기 등)
+  const [chainedFrom] = useState<string | undefined>(() => initialState?.chainedFrom);
 
   const mat = PIPE_SIZE_MATERIALS[matIdx] ?? PIPE_SIZE_MATERIALS[0];
   const pfMat = pfMaterial(PF_MATERIAL_BY_SIZING[mat.id] ?? 'steel');
@@ -184,6 +186,7 @@ export default function PipeSizingCalculator({
           onReset={reset}
           onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
           canSave={!!outputs?.selected}
+          chainedFrom={chainedFrom}
         />
       )}
       {tab === 'overview' && <OverviewTab />}
