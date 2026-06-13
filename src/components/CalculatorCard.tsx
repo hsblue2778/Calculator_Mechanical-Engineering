@@ -20,10 +20,9 @@ export default function CalculatorCard({ calculator, onOpen }: CalculatorCardPro
         background: 'var(--bg-surface)',
         border: '1px solid var(--border-subtle)',
         borderRadius: 10,
-        padding: 20,
+        padding: 16,
         boxShadow: 'var(--shadow-sm)',
         transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-        minHeight: 160,
       }}
       onMouseEnter={e => {
         e.currentTarget.style.boxShadow = 'var(--shadow-md)';
@@ -40,14 +39,15 @@ export default function CalculatorCard({ calculator, onOpen }: CalculatorCardPro
           fontSize: 15,
           fontWeight: 600,
           color: 'var(--text-primary)',
-          lineHeight: 1.4,
+          lineHeight: 1.35,
+          wordBreak: 'keep-all',
         }}
       >
         {calculator.title}
       </h3>
 
       {/* 한 줄 설명 */}
-      <p style={{ marginTop: 8, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>
+      <p style={{ marginTop: 6, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'keep-all' }}>
         {calculator.description}
       </p>
 
@@ -55,7 +55,7 @@ export default function CalculatorCard({ calculator, onOpen }: CalculatorCardPro
       <div
         style={{
           marginTop: 'auto',
-          paddingTop: 16,
+          paddingTop: 14,
           fontSize: 13,
           display: 'flex',
           alignItems: 'center',
