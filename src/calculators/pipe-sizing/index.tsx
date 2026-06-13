@@ -8,12 +8,12 @@ import {
   type FlowUnitKey,
   type PressureUnitKey,
 } from '../pipe-friction/units';
-import { pfKinematicViscosity, pfDensity } from '../../data/fluidProperties.ts';
+import { pfKinematicViscosity, pfDensity, pfFluidMeta } from '../../data/fluidProperties.ts';
 import { pfMaterial, type PFMaterialId, type PipeCondition } from '../../data/pipeRoughness.ts';
 import CalculatorTab from './tabs/CalculatorTab';
 import OverviewTab from './tabs/OverviewTab';
 import ExamplesTab, { type SizingPreset } from './tabs/ExamplesTab';
-import { sizingTable, selectPipeSize, type SizingConditions } from './calc';
+import { sizingTable, selectPipeSize, type SizingConditions, type SizingFluid } from './calc';
 import { displayToMmAq, mmAqToDisplay, convertFlowToLpm } from './units';
 import { PIPE_SIZE_MATERIALS } from '../../data/pipeSizes';
 import type { FieldContext } from '../../config/calculators';
@@ -45,7 +45,9 @@ export default function PipeSizingCalculator({
   const [matIdx, setMatIdx] = useState<number>(() => initialState?.matIdx ?? 0);
   const [Q, setQ] = useState<string>(() => initialState?.Q ?? '');
   const [dP, setDP] = useState<string>(() => initialState?.dP ?? '');
+  const [fluid, setFluid] = useState<SizingFluid>(() => (initialState?.fluid === 'air' ? 'air' : 'water'));
   const [tempC, setTempC] = useState<string>(() => initialState?.tempC ?? '20');
+  const [pressureMmHg, setPressureMmHg] = useState<string>(() => initialState?.pressureMmHg ?? '760');
   const [condition, setCondition] = useState<PipeCondition>(
     () => (initialState?.condition === 'old' ? 'old' : 'new'),
   );
@@ -72,20 +74,23 @@ export default function PipeSizingCalculator({
     setEpsStr(String(pfMat.eps_mm[c]));
   }
 
-  // 물 온도 물성 + 조도 — 계산 조건 (sizingTable에 전달)
+  // 유체 물성(온도·공기는 압력) + 조도 — 계산 조건 (sizingTable에 전달)
   const cond: SizingConditions | null = useMemo(() => {
     const t = parseFloat(tempC);
     const eps = parseFloat(epsStr);
-    if (!Number.isFinite(t) || t < 0 || t > 100) return null;
+    const meta = pfFluidMeta(fluid);
+    const p = parseFloat(pressureMmHg);
+    if (!Number.isFinite(t) || t < (meta.tempMin ?? 0) || t > (meta.tempMax ?? 100)) return null;
     if (!Number.isFinite(eps) || eps < 0) return null;
+    if (fluid === 'air' && (!Number.isFinite(p) || p <= 0)) return null;
     return {
-      nu_m2s: pfKinematicViscosity('water', t),
-      rho_kgm3: pfDensity('water', t),
+      nu_m2s: pfKinematicViscosity(fluid, t, p),
+      rho_kgm3: pfDensity(fluid, t, p),
       eps_mm: eps,
     };
-  }, [tempC, epsStr]);
+  }, [tempC, epsStr, fluid, pressureMmHg]);
 
-  const inputs = { matIdx, Q, dP, tempC, condition, eps: epsStr, flowUnit, pressureUnit };
+  const inputs = { matIdx, Q, dP, fluid, tempC, pressureMmHg, condition, eps: epsStr, flowUnit, pressureUnit };
 
   const outputs = useMemo(() => {
     if (!cond) return null;
@@ -139,7 +144,9 @@ export default function PipeSizingCalculator({
   function loadPreset(p: SizingPreset) {
     setQ(p.Q); setDP(p.dP);
     setMatIdx(p.matIdx);
+    setFluid('water');
     setTempC('20');
+    setPressureMmHg('760');
     setCondition('new');
     const m = PIPE_SIZE_MATERIALS[p.matIdx] ?? PIPE_SIZE_MATERIALS[0];
     setEpsStr(String(pfMaterial(PF_MATERIAL_BY_SIZING[m.id] ?? 'steel').eps_mm.new));
@@ -149,7 +156,7 @@ export default function PipeSizingCalculator({
 
   function reset() {
     setQ(''); setDP(''); setMatIdx(0);
-    setTempC('20'); setCondition('new');
+    setFluid('water'); setTempC('20'); setPressureMmHg('760'); setCondition('new');
     setEpsStr(String(pfMaterial('steel').eps_mm.new));
     setFlowUnit('m3h'); setPressureUnit('kPa');
   }
@@ -165,7 +172,9 @@ export default function PipeSizingCalculator({
           setDP={setDP}
           matIdx={matIdx}
           setMatIdx={changeMaterial}
+          fluid={fluid} setFluid={setFluid}
           tempC={tempC} setTempC={setTempC}
+          pressureMmHg={pressureMmHg} setPressureMmHg={setPressureMmHg}
           condition={condition} setCondition={changeCondition}
           epsStr={epsStr} setEpsStr={setEpsStr}
           epsDefault={epsDefault}

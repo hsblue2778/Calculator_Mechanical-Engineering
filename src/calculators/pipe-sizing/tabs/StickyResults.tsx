@@ -2,9 +2,9 @@
 
 import { AlertTriangle } from 'lucide-react';
 import {
-  type SizingRow,
+  type SizingRow, type SizingFluid,
   velocityStatus,
-  VELOCITY_RECOMMENDED_MIN, VELOCITY_RECOMMENDED_MAX,
+  VELOCITY_RECOMMENDED,
 } from '../calc';
 import { PRESSURE_UNITS, type PressureUnitKey } from '../../pipe-friction/units';
 import { fMethodLabel } from '../../pipe-friction/interpret.ts';
@@ -21,10 +21,12 @@ interface Props {
   noSolution: boolean;
   mat: PipeMaterialSize;
   pressureUnit: PressureUnitKey;
+  fluid: SizingFluid;
 }
 
-export default function StickyResults({ selected, noSolution, mat, pressureUnit }: Props) {
+export default function StickyResults({ selected, noSolution, mat, pressureUnit, fluid }: Props) {
   const pressDef = PRESSURE_UNITS.find(u => u.key === pressureUnit)!;
+  const velRec = VELOCITY_RECOMMENDED[fluid];
 
   if (!selected) {
     return (
@@ -80,7 +82,7 @@ export default function StickyResults({ selected, noSolution, mat, pressureUnit 
   }
 
   const v = selected.v_ms;
-  const vStat = velocityStatus(v);
+  const vStat = velocityStatus(v, fluid);
   const vColor =
     vStat === 'ok' ? 'var(--state-success-text)' :
     vStat === 'high' ? 'var(--state-error-text)' :
@@ -209,7 +211,7 @@ export default function StickyResults({ selected, noSolution, mat, pressureUnit 
             background: vBg, color: vColor,
             borderRadius: 6, fontSize: 11,
           }}>
-            권장 {VELOCITY_RECOMMENDED_MIN}~{VELOCITY_RECOMMENDED_MAX} m/s {vStat === 'low' ? '미만' : '초과'}
+            권장 {velRec.min}~{velRec.max} m/s {vStat === 'low' ? '미만' : '초과'}
           </div>
         )}
       </div>

@@ -5,22 +5,41 @@ import RangeGauge from '../../../components/RangeGauge';
 import WarningList from '../../../components/WarningList';
 import {
   RANGES, flowRegime, rangeStatus, warnings, formatRe, toRangeSpec,
+  type ContextWarning,
 } from '../../pipe-friction/analysis';
+import { velocityRange, VELOCITY_RECOMMENDED, type SizingFluid } from '../calc';
 import { C } from '../styles';
 
 interface Props {
   V: number;
   Re: number;
   unitLoss_Pa: number;
+  fluid?: SizingFluid;
   // 'full' = KPI 그리드 포함 (기존 동작), 'secondary' = RangeCard + 경고만 (KPI는 우측 sticky에서 표시)
   variant?: 'full' | 'secondary';
 }
 
-export default function AnalysisBlock({ V, Re, unitLoss_Pa, variant = 'full' }: Props) {
+// 공기 권장 유속 기준 경고 — 공유 warnings()의 물 기준 유속 경고(소음·수격 등) 대체
+function airVelocityWarnings(V: number): ContextWarning[] {
+  if (!Number.isFinite(V) || V <= 0) return [];
+  const { min, max } = VELOCITY_RECOMMENDED.air;
+  if (V > max) return [{ level: 'warn', title: '유속 과다', msg: `${V.toFixed(2)} m/s — 권장 ${max} m/s 초과: 소음·압력손실 증가` }];
+  if (V < min) return [{ level: 'info', title: '저유속', msg: `${V.toFixed(2)} m/s — 권장 ${min} m/s 미만: 관경 축소 검토 가능` }];
+  return [];
+}
+
+export default function AnalysisBlock({ V, Re, unitLoss_Pa, fluid = 'water', variant = 'full' }: Props) {
+  const velRange = velocityRange(fluid);
   const regime = flowRegime(Re);
-  const rangeV = rangeStatus(V, RANGES.velocity);
+  const rangeV = rangeStatus(V, velRange);
   const rangeU = rangeStatus(unitLoss_Pa, RANGES.unitLossPa);
-  const ctx = warnings(V, Re, unitLoss_Pa);
+  // 물: 공용 warnings 그대로 / 공기: 유속 경고만 공기 기준으로 교체 (단위손실·Re 경고는 유지)
+  const ctx = fluid === 'water'
+    ? warnings(V, Re, unitLoss_Pa)
+    : [
+        ...airVelocityWarnings(V),
+        ...warnings(V, Re, unitLoss_Pa).filter(w => !w.title.includes('유속')),
+      ];
 
   return (
     <>
@@ -49,7 +68,7 @@ export default function AnalysisBlock({ V, Re, unitLoss_Pa, variant = 'full' }: 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
           <RangeGauge
             label="유속 (V)" value={V}
-            range={toRangeSpec(RANGES.velocity)}
+            range={toRangeSpec(velRange)}
             format={v => v.toString()}
             status={{ label: rangeV.label, color: rangeV.color }}
           />

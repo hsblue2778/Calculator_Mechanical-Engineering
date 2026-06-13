@@ -9,7 +9,7 @@ export default function OverviewTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, fontSize: 14, color: C.textDark, lineHeight: 1.65 }}>
       <p>
         설계 유량과 허용 압력강하를 입력하면 적정 <b>관경(A호칭)</b>을 자동 선정합니다.
-        유속이 권장 범위(1.5~2.0 m/s) 안에 들어오는지도 함께 확인합니다.
+        유체(물·공기)를 선택할 수 있으며, 유속이 권장 범위(물 1.5~2.0 · 공기 5~10 m/s) 안에 들어오는지도 함께 확인합니다.
       </p>
 
       <InfoBlock title="사용 공식">
@@ -17,7 +17,7 @@ export default function OverviewTab() {
           <li>• <b>Darcy-Weisbach + 영역별 마찰계수</b>: ΔP/L = ρ(T) × g × f × (1/D) × V²/(2g)  [Pa/m] → mmAq/m = ΔP/L ÷ 9.80665</li>
           <li style={{ paddingLeft: 14, color: C.text }}>f: 층류(Re&lt;2,300) 64/Re · 천이(≤4,000) 3차 보간 · 난류 Colebrook-White 반복해 — 관마찰손실 계산기와 동일 엔진</li>
           <li>• <b>절대조도 ε</b>: 재질×신관/노후 기본값 (Moody 1944 · ASHRAE Ch.22 · NFPA 13 · KDS 57) — 화면에서 직접 수정 가능</li>
-          <li>• <b>물성</b>: 물 ν(참조 엑셀 물성표)·ρ(NIST WebBook) — 입력 온도 기준 선형보간</li>
+          <li>• <b>물성</b>: 물 ν(참조 엑셀 물성표)·ρ(NIST WebBook) — 입력 온도 기준 선형보간 / 공기 ν·ρ(이상기체식) — 온도·압력 반영</li>
           <li>• <b>유속</b>: v = Q / A (Q: m³/s, A: 원형관 단면적)</li>
           <li>• <b>선정 규칙</b>: 허용 압력강하 이하가 되는 가장 작은 관경을 자동 선정</li>
           <li>• 결과 단위 <b>mmAq/m</b> → 사용자 선택 단위로 자동 환산</li>
@@ -115,7 +115,7 @@ export default function OverviewTab() {
         <ul style={{ paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
           <li>• 노후·스케일 영향은 배관 상태(신관/노후)의 ε 기본값 또는 ε 직접 수정으로 반영 — 심한 부식·퇴적은 실측 기반 ε 적용 권장</li>
           <li>• 원관 · 수평 직관 기준 (부속류 · 입상·수평 전환 손실 별도 계산 필요)</li>
-          <li>• 선정된 관경의 유속이 권장 범위(1.5~2.0 m/s)를 벗어나면 한 단계 위·아래 호칭으로 재검토</li>
+          <li>• 선정된 관경의 유속이 권장 범위(물 1.5~2.0 · 공기 5~10 m/s)를 벗어나면 한 단계 위·아래 호칭으로 재검토</li>
           <li>• 치수표는 KS D 3507(강관) · KS D 3576(STS10S) · ASTM B88 Type L(동관) · ASTM D1785 Schedule 80(PVC / C-PVC) 기준. 외경 · 두께가 다른 비표준 관은 직접 입력 모드 미제공</li>
         </ul>
       </InfoBlock>
