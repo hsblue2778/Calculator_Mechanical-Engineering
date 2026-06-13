@@ -1,4 +1,4 @@
-// 계산기 카드 — 제목, 입력/출력 요약, 하단 탭 링크
+// 계산기 카드 — 제목, 한 줄 설명, 하단 탭 링크
 // 하단 링크는 calculators.ts 의 tabs 메타로부터 동적 생성
 
 import type { CalculatorMeta, CardTabKey } from '../config/calculators';
@@ -46,17 +46,10 @@ export default function CalculatorCard({ calculator, onOpen }: CalculatorCardPro
         {calculator.title}
       </h3>
 
-      {/* 입력/출력 요약 (2줄 고정) */}
-      <div style={{ marginTop: 8, fontSize: 13, lineHeight: 1.5 }}>
-        <div>
-          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>입력 →</span>
-          <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>{calculator.inputs}</span>
-        </div>
-        <div style={{ marginTop: 2 }}>
-          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>출력 →</span>
-          <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>{calculator.outputs}</span>
-        </div>
-      </div>
+      {/* 한 줄 설명 */}
+      <p style={{ marginTop: 8, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>
+        {calculator.description}
+      </p>
 
       {/* 하단 탭 링크 — 메타에 정의된 탭만 표시 */}
       <div
