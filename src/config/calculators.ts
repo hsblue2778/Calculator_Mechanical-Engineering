@@ -55,7 +55,7 @@ export const calculators: CalculatorMeta[] = [
   },
   {
     id: 'pump-hvac',
-    title: '마찰손실(양정) 기반 펌프 선정 시스템',
+    title: 'TDH 기반 펌프 선정 시스템',
     inputs: '시스템 조건, 배관, 부속, 장비',
     outputs: '총양정, NPSHa, 동력',
     category: '설계용',
@@ -70,7 +70,7 @@ export const calculators: CalculatorMeta[] = [
   },
   {
     id: 'pipe-sizing',
-    title: '마찰손실(압력강하) 기반 배관 설계 시스템',
+    title: '마찰손실 기반 배관 설계 시스템',
     inputs: '유량, 허용 압력강하, 배관 재질',
     outputs: '적정 관경, 유속, 실제 마찰손실',
     category: '설계용',
