@@ -3,13 +3,13 @@
 
 import {
   FN_FLUIDS, FN_GRADES, FN_V_LIMIT_DEFAULTS, FN_TARGET_R_PA_PER_M, FN_PA_PER_MMAQ,
-  fnFluidDef,
+  FN_R_UNITS, fnFluidDef, fnRUnit, fmtR,
   type FNFluidId, type FNSystemType,
 } from '../../../data/frictionNetworkRef.ts';
 import { fnFluidTempRange } from '../fluids';
 import type { FNFlowUnit, FNNetworkResult } from '../calc';
 import type { FNSettingsState } from '../index';
-import { C, inputStyle, labelStyle, cellInputStyle } from '../styles';
+import { C, inputStyle, labelStyle, cellInputStyle, cellSelectStyle } from '../styles';
 
 interface Props {
   st: FNSettingsState;
@@ -140,14 +140,27 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
           <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }}>목표 마찰률 R</span>
           <input type="number" step="any" min="0" value={st.targetR} style={{ ...cellInputStyle, width: 80 }}
             onChange={e => patchSettings({ targetR: e.target.value })} />
-          <span style={{ fontSize: 12, color: C.text }}>Pa/m</span>
+          <select value={st.targetRUnit} style={{ ...cellSelectStyle, width: 96 }}
+            onChange={e => changeRUnit(st, patchSettings, e.target.value)}>
+            {FN_R_UNITS.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
+          </select>
           <span style={{ fontSize: 11, color: 'var(--text-quaternary)' }}>
-            (권장 덕트 {FN_TARGET_R_PA_PER_M.duct} · 배관 {FN_TARGET_R_PA_PER_M.pipe}) — 제안De 산출 전용, 손실 계산에는 미사용. 비우면 유속 기준만 적용
+            (권장 덕트 {fmtR(FN_TARGET_R_PA_PER_M.duct / fnRUnit(st.targetRUnit).toPaPerM)} · 배관 {fmtR(FN_TARGET_R_PA_PER_M.pipe / fnRUnit(st.targetRUnit).toPaPerM)} {fnRUnit(st.targetRUnit).label}) — 제안De 산출 전용, 손실 계산에는 미사용. 비우면 유속 기준만 적용
           </span>
         </div>
       </div>
     </div>
   );
+}
+
+// R 단위 변경 — 입력값을 새 단위로 환산해 물리량 유지 (빈값·무효값은 단위만 교체)
+function changeRUnit(st: FNSettingsState, patchSettings: (p: Partial<FNSettingsState>) => void, unit: string) {
+  const v = parseFloat(st.targetR);
+  const patch: Partial<FNSettingsState> = { targetRUnit: unit };
+  if (Number.isFinite(v)) {
+    patch.targetR = fmtR(v * fnRUnit(st.targetRUnit).toPaPerM / fnRUnit(unit).toPaPerM);
+  }
+  patchSettings(patch);
 }
 
 export function SectionLabel({ children }: { children: React.ReactNode }) {
