@@ -8,6 +8,7 @@ import {
 } from '../calc';
 import { buildInsulationReportHtml } from '../htmlReport';
 import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
+import { useInitialAction } from '../../../utils/useInitialAction';
 import { C, inputStyle, labelStyle } from '../styles';
 import InsulationVisuals from './InsulationVisuals';
 import StickyResults from './StickyResults';
@@ -18,9 +19,11 @@ interface Props {
   onReset: () => void;
   onSave?: () => void;
   canSave: boolean;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf)
+  onInitialActionDone?: () => void;
 }
 
-export default function CalculatorTab({ state, setState, onReset, onSave, canSave }: Props) {
+export default function CalculatorTab({ state, setState, onReset, onSave, canSave, initialAction, onInitialActionDone }: Props) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const validationErr = useMemo(() => {
@@ -82,6 +85,13 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
     const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     downloadCsv(`insulation-${pipe.nominalA}A_${ts}.csv`, rows);
   }
+
+  // 기록 ⋯ 메뉴 진입 액션 — 결과 준비 후 1회 자동 실행
+  useInitialAction(initialAction, !!result, a => {
+    if (a === 'csv') handleCsvExport();
+    else if (a === 'html') handleHtmlSave();
+    else if (a === 'pdf') handlePdfPrint();
+  }, onInitialActionDone);
 
   return (
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>

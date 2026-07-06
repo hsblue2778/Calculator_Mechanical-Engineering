@@ -91,7 +91,7 @@ export default function SystemConditionSection({
   return (
     <div className="pump-section" style={sectionStyle}>
       <p style={sectionTitleStyle}>시스템 기본조건</p>
-      <div style={{
+      <div className="pump-syscond-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(80px, 0.5fr) minmax(110px, 0.8fr) minmax(90px, 0.6fr) minmax(380px, 3fr)',
         gap: 12,

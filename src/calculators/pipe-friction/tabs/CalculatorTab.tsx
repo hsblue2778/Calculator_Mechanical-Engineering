@@ -15,15 +15,18 @@ import StickyResults from './StickyResults';
 import { buildPipeFrictionCsvRows } from '../csvExport.ts';
 import { buildPipeFrictionReportHtml } from '../htmlReport';
 import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
+import { useInitialAction } from '../../../utils/useInitialAction';
 
 interface Props {
   pf: PipeFrictionController;
   onSave?: () => void;
   canSave?: boolean;
   onChain?: () => void;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf·chain)
+  onInitialActionDone?: () => void;
 }
 
-export default function CalculatorTab({ pf, onSave, canSave, onChain }: Props) {
+export default function CalculatorTab({ pf, onSave, canSave, onChain, initialAction, onInitialActionDone }: Props) {
   const { st, patch, res, error } = pf;
   const pressDef = PRESSURE_UNITS.find(u => u.key === st.pressureUnit)!;
   const showError = !!error && error.field !== 'pair';
@@ -42,6 +45,14 @@ export default function CalculatorTab({ pf, onSave, canSave, onChain }: Props) {
     if (!res) return;
     printHtmlReport(buildPipeFrictionReportHtml(pf));
   }
+
+  // 기록 ⋯ 메뉴 진입 액션 — 결과 준비 후 1회 자동 실행
+  useInitialAction(initialAction, !!res, a => {
+    if (a === 'csv') handleCsv();
+    else if (a === 'html') handleHtmlSave();
+    else if (a === 'pdf') handlePdf();
+    else if (a === 'chain') onChain?.();
+  }, onInitialActionDone);
 
   const actionBarProps = {
     onSave, canSave,

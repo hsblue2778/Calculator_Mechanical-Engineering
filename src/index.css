@@ -79,8 +79,14 @@ input[type="number"] {
     background: rgba(0, 0, 0, 0.45);
     z-index: 55;
   }
-  /* 모바일 전용 '기록' 트리거 바 (계산기 탭 바로 위, 우측 정렬) */
-  .mobile-history-bar { display: flex !important; justify-content: flex-end; margin-bottom: 10px; }
+  /* 모바일 전용 '기록' 트리거 — 탭 줄(계산/개요/예시) 우측 빈 공간에 겹쳐 배치 (별도 줄 없음) */
+  .mobile-history-bar {
+    display: flex !important;
+    position: absolute;
+    top: 17px;
+    right: 14px;
+    margin-bottom: 0;
+  }
   /* 미사용 햄버거는 계속 숨김 */
   .mobile-menu-btn { display: none !important; }
 
@@ -104,9 +110,10 @@ input[type="number"] {
     margin-top: 16px !important;
     padding-top: 14px !important;
   }
-  /* 펌프 섹션 박스 — 가장 넓은 시스템조건 그리드(660px+)에 폭을 통일해
-     섹션 간 가로 길이 차이로 들쭉날쭉해 보이지 않도록 함 */
-  .pump-section { min-width: 720px; }
+  /* 펌프 섹션 박스 — 화면 폭에 맞추고, 못 잡은 넓은 요소는 섹션 내부에서 가로 스크롤 */
+  .pump-section { min-width: 0; overflow-x: auto; }
+  /* 시스템조건 그리드 — 모바일에서는 1열 세로 적층 (내재폭 ~696px 해소) */
+  .pump-syscond-grid { grid-template-columns: 1fr !important; }
 
   /* 헤더 — 패딩 축소, 부제·버튼 라벨 숨김 */
   .app-header { padding: 8px 12px !important; gap: 8px !important; }

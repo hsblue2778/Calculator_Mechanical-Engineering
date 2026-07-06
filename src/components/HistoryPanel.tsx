@@ -1,17 +1,33 @@
 // 모달 좌측 기록 패널
 
 import { useEffect, useRef, useState } from 'react';
-import { X, Pencil, GitCompare } from 'lucide-react';
+import {
+  Pencil, Trash2, GitCompare, MoreVertical,
+  FileDown, FileCode, Printer, ArrowRight,
+} from 'lucide-react';
 import {
   list, updateTitle, remove, formatRelativeTime, dateGroupOf,
   type HistoryEntry, type DateGroup,
 } from '../state/historyStore';
+
+// 기록 항목 ⋯ 메뉴의 내보내기·체이닝 액션 — 계산기별 지원 목록은 App에서 전달
+export type EntryAction = 'csv' | 'html' | 'pdf' | 'chain';
+
+const ENTRY_ACTION_META: Record<EntryAction, { label: string; icon: React.ReactNode }> = {
+  csv:   { label: 'CSV로 저장',        icon: <FileDown size={13} /> },
+  html:  { label: 'HTML로 저장',       icon: <FileCode size={13} /> },
+  pdf:   { label: 'PDF로 저장',        icon: <Printer size={13} /> },
+  chain: { label: '관경 선정으로 보내기', icon: <ArrowRight size={13} /> },
+};
 
 interface Props {
   calculatorId: string;
   refreshKey: number;                              // 외부에서 저장·삭제 발생 시 증가시켜 재렌더 유도
   onLoadEntry: (entry: HistoryEntry) => void;
   onChanged?: () => void;                          // 패널 내부 변경 시 외부 알림
+  // ⋯ 메뉴 내보내기 액션 (계산기가 지원하는 것만 전달 — 미전달 시 이름변경·삭제만)
+  entryActions?: EntryAction[];
+  onEntryAction?: (entry: HistoryEntry, action: EntryAction) => void;
   // 비교 기능 (펌프 시스템 카테고리에서 활성, 옵셔널 — 미전달 시 기존 동작 유지)
   selectable?: boolean;
   selectedIds?: string[];
@@ -33,6 +49,8 @@ const GROUP_LABELS: Record<DateGroup, string> = {
 
 export default function HistoryPanel({
   calculatorId, refreshKey, onLoadEntry, onChanged,
+  entryActions = [],
+  onEntryAction,
   selectable = false,
   selectedIds = [],
   onToggleSelect,
@@ -44,6 +62,7 @@ export default function HistoryPanel({
 }: Props) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);   // ⋯ 메뉴가 열린 항목 ID (동시 1개)
   // 비교 토글 ON/OFF (내부 상태)
   const [compareToggle, setCompareToggle] = useState(false);
 
@@ -68,6 +87,7 @@ export default function HistoryPanel({
 
   function handleDelete(id: string) {
     remove(id, calculatorId);
+    setMenuId(null);
     reload();
   }
 
@@ -153,7 +173,7 @@ export default function HistoryPanel({
                       key={entry.id}
                       entry={entry}
                       editing={editingId === entry.id}
-                      onStartEdit={() => setEditingId(entry.id)}
+                      onStartEdit={() => { setEditingId(entry.id); setMenuId(null); }}
                       onSubmitEdit={v => handleTitleSave(entry.id, v)}
                       onCancelEdit={() => setEditingId(null)}
                       onDelete={() => handleDelete(entry.id)}
@@ -161,9 +181,15 @@ export default function HistoryPanel({
                         if (compareActive) {
                           onToggleSelect?.(entry.id);
                         } else {
+                          setMenuId(null);
                           onLoadEntry(entry);
                         }
                       }}
+                      // ⋯ 메뉴
+                      menuOpen={menuId === entry.id}
+                      onToggleMenu={() => setMenuId(id => id === entry.id ? null : entry.id)}
+                      actions={entryActions}
+                      onAction={a => { setMenuId(null); onEntryAction?.(entry, a); }}
                       // 비교 모드 props
                       compareMode={compareActive}
                       checked={selectedIds.includes(entry.id)}
@@ -214,6 +240,7 @@ export default function HistoryPanel({
 
 function HistoryItem({
   entry, editing, onStartEdit, onSubmitEdit, onCancelEdit, onDelete, onClick,
+  menuOpen, onToggleMenu, actions, onAction,
   compareMode, checked, checkDisabled, isCurrent,
 }: {
   entry: HistoryEntry;
@@ -223,6 +250,10 @@ function HistoryItem({
   onCancelEdit: () => void;
   onDelete: () => void;
   onClick: () => void;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  actions: EntryAction[];
+  onAction: (a: EntryAction) => void;
   compareMode?: boolean;
   checked?: boolean;
   checkDisabled?: boolean;
@@ -252,7 +283,6 @@ function HistoryItem({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        position: 'relative',
         padding: '8px 8px',
         borderRadius: 6,
         backgroundColor: bg,
@@ -260,115 +290,133 @@ function HistoryItem({
         cursor: editing ? 'text' : (checkDisabled ? 'not-allowed' : 'pointer'),
         transition: 'background-color 0.15s, border-color 0.15s',
         opacity: checkDisabled ? 0.5 : 1,
-        display: 'flex', alignItems: 'flex-start', gap: 6,
       }}
       onClick={() => { if (!editing && !checkDisabled) onClick(); }}
     >
-      {/* 비교 모드 체크박스 */}
-      {compareMode && (
-        <input
-          type="checkbox"
-          checked={!!checked}
-          disabled={!!checkDisabled}
-          onChange={() => { if (!checkDisabled) onClick(); }}
-          onClick={e => e.stopPropagation()}
-          style={{ marginTop: 2, flexShrink: 0, cursor: checkDisabled ? 'not-allowed' : 'pointer' }}
-        />
-      )}
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {editing ? (
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+        {/* 비교 모드 체크박스 */}
+        {compareMode && (
           <input
-            ref={inputRef}
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
+            type="checkbox"
+            checked={!!checked}
+            disabled={!!checkDisabled}
+            onChange={() => { if (!checkDisabled) onClick(); }}
             onClick={e => e.stopPropagation()}
-            onBlur={() => onSubmitEdit(draft)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') { e.preventDefault(); onSubmitEdit(draft); }
-              if (e.key === 'Escape') { e.preventDefault(); setDraft(entry.title); onCancelEdit(); }
-            }}
-            style={{
-              width: '100%',
-              fontSize: 12, fontWeight: 500,
-              padding: '2px 4px',
-              border: '1px solid var(--border-focus)',
-              borderRadius: 4,
-              outline: 'none',
-              fontFamily: 'inherit',
-              background: 'var(--bg-surface)',
-              color: 'var(--text-primary)',
-            }}
+            style={{ marginTop: 2, flexShrink: 0, cursor: checkDisabled ? 'not-allowed' : 'pointer' }}
           />
-        ) : (
-          <div
-            style={{
-              fontSize: 12, fontWeight: 500, color: 'var(--text-primary)',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              paddingRight: (!compareMode && hover) ? 40 : 0,
-            }}
-            title={entry.title}
-          >
-            {entry.title}
-          </div>
         )}
 
-        {!editing && (
-          <div style={{ fontSize: 10, color: 'var(--text-quaternary)', marginTop: 2 }}>
-            {formatRelativeTime(entry.timestamp)}
-          </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onClick={e => e.stopPropagation()}
+              onBlur={() => onSubmitEdit(draft)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); onSubmitEdit(draft); }
+                if (e.key === 'Escape') { e.preventDefault(); setDraft(entry.title); onCancelEdit(); }
+              }}
+              style={{
+                width: '100%',
+                fontSize: 12, fontWeight: 500,
+                padding: '2px 4px',
+                border: '1px solid var(--border-focus)',
+                borderRadius: 4,
+                outline: 'none',
+                fontFamily: 'inherit',
+                background: 'var(--bg-surface)',
+                color: 'var(--text-primary)',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                fontSize: 12, fontWeight: 500, color: 'var(--text-primary)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}
+              title={entry.title}
+            >
+              {entry.title}
+            </div>
+          )}
+
+          {!editing && (
+            <div style={{ fontSize: 10, color: 'var(--text-quaternary)', marginTop: 2 }}>
+              {formatRelativeTime(entry.timestamp)}
+            </div>
+          )}
+        </div>
+
+        {/* ⋯ 더보기 — 항상 노출 (터치 접근성), 비교 모드에서는 숨김 */}
+        {!editing && !compareMode && (
+          <button
+            onClick={e => { e.stopPropagation(); onToggleMenu(); }}
+            aria-label="더보기"
+            title="더보기"
+            aria-expanded={menuOpen}
+            style={{
+              width: 28, height: 28, flexShrink: 0, marginTop: -2, marginRight: -4,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: menuOpen ? 'var(--bg-active)' : 'transparent',
+              border: 'none', borderRadius: 6,
+              cursor: 'pointer', color: 'var(--text-tertiary)',
+            }}
+          >
+            <MoreVertical size={15} />
+          </button>
         )}
       </div>
 
-      {/* 펜·X 아이콘 — 비교 모드 OFF일 때만 노출 */}
-      {!editing && !compareMode && hover && (
-        <div style={{
-          position: 'absolute', top: 6, right: 4,
-          display: 'flex', gap: 2,
-        }}>
-          <IconBtn
-            onClick={e => { e.stopPropagation(); onStartEdit(); }}
-            aria-label="이름 수정"
-            title="이름 수정"
-          >
-            <Pencil size={11} />
-          </IconBtn>
-          <IconBtn
-            onClick={e => { e.stopPropagation(); onDelete(); }}
-            aria-label="삭제"
-            title="삭제"
-          >
-            <X size={12} />
-          </IconBtn>
+      {/* ⋯ 메뉴 — 행 내부 인라인 확장 (스크롤 컨테이너에서 잘리지 않음) */}
+      {menuOpen && !editing && !compareMode && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            marginTop: 6,
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 6,
+            background: 'var(--bg-surface)',
+            overflow: 'hidden',
+            cursor: 'default',
+          }}
+        >
+          <MenuItem icon={<Pencil size={13} />} label="이름 변경" onClick={onStartEdit} />
+          {actions.map(a => (
+            <MenuItem key={a} icon={ENTRY_ACTION_META[a].icon} label={ENTRY_ACTION_META[a].label}
+              onClick={() => onAction(a)} />
+          ))}
+          <MenuItem icon={<Trash2 size={13} />} label="삭제" danger
+            onClick={() => { if (window.confirm(`'${entry.title}' 기록을 삭제할까요?`)) onDelete(); }} />
         </div>
       )}
     </div>
   );
 }
 
-function IconBtn({
-  children, onClick, 'aria-label': ariaLabel, title,
+function MenuItem({
+  icon, label, onClick, danger,
 }: {
-  children: React.ReactNode;
-  onClick: (e: React.MouseEvent) => void;
-  'aria-label': string;
-  title: string;
+  icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      aria-label={ariaLabel}
-      title={title}
       style={{
-        width: 18, height: 18,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'transparent', border: 'none', borderRadius: 4,
-        cursor: 'pointer', color: 'var(--text-tertiary)',
+        width: '100%', minHeight: 34,
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '7px 10px',
+        background: 'transparent', border: 'none',
+        fontSize: 12, fontWeight: 500, fontFamily: 'inherit',
+        color: danger ? 'var(--state-error-text)' : 'var(--text-secondary)',
+        cursor: 'pointer', textAlign: 'left',
       }}
-      onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-active)'; }}
+      onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
       onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
     >
-      {children}
+      {icon}
+      {label}
     </button>
   );
 }

@@ -25,6 +25,8 @@ interface Props {
   initialTab?: string;
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf)
+  onInitialActionDone?: () => void;
 }
 
 function normalizeTab(t?: string): TabKey {
@@ -38,7 +40,7 @@ export const PF_MATERIAL_BY_SIZING: Record<string, PFMaterialId> = {
 };
 
 export default function PipeSizingCalculator({
-  initialTab, initialState, onSave,
+  initialTab, initialState, onSave, initialAction, onInitialActionDone,
 }: Props) {
   const [tab, setTab] = useState<TabKey>(normalizeTab(initialTab));
 
@@ -187,6 +189,8 @@ export default function PipeSizingCalculator({
           onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
           canSave={!!outputs?.selected}
           chainedFrom={chainedFrom}
+          initialAction={initialAction}
+          onInitialActionDone={onInitialActionDone}
         />
       )}
       {tab === 'overview' && <OverviewTab />}
