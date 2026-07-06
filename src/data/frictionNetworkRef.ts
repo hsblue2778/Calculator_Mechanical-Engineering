@@ -158,3 +158,22 @@ export const FN_V_LIMIT_DEFAULTS: Record<FNSystemType, FNVelocityLimits> = {
 
 /** 목표 마찰률 R 권장값 (Pa/m) — 참고 표시용, 계산 미사용 */
 export const FN_TARGET_R_PA_PER_M: Record<FNSystemType, number> = { duct: 1.0, pipe: 300 };
+
+// ── 목표 마찰률 R 단위 — 실무 마찰손실 구배 단위 (내부 계산은 Pa/m 환산) ──
+
+export interface FNRUnitDef { id: string; label: string; toPaPerM: number }
+
+/** R 입력 단위 목록 — toPaPerM: 해당 단위 1 = ? Pa/m */
+export const FN_R_UNITS: FNRUnitDef[] = [
+  { id: 'Pa/m',     label: 'Pa/m',     toPaPerM: 1 },
+  { id: 'kPa/m',    label: 'kPa/m',    toPaPerM: 1000 },
+  { id: 'mmAq/m',   label: 'mmAq/m',   toPaPerM: FN_PA_PER_MMAQ },
+  { id: 'mAq/100m', label: 'mAq/100m', toPaPerM: FN_PA_PER_MMAQ * 1000 / 100 },
+];
+
+export function fnRUnit(id: string): FNRUnitDef {
+  return FN_R_UNITS.find(u => u.id === id) ?? FN_R_UNITS[0];
+}
+
+/** R 단위 환산 표시용 — 유효숫자 6자리로 다듬어 부동소수 꼬리 제거 */
+export const fmtR = (n: number): string => Number.isFinite(n) ? String(Number(n.toPrecision(6))) : '';

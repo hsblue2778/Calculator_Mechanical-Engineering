@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import type { FieldContext } from '../../config/calculators';
 import {
-  FN_MAX_ROWS, FN_V_LIMIT_DEFAULTS, FN_TARGET_R_PA_PER_M,
+  FN_MAX_ROWS, FN_V_LIMIT_DEFAULTS, FN_TARGET_R_PA_PER_M, fnRUnit, fmtR,
   type FNSystemType, type FNGrade, type FNFluidId,
   type FNMaterialId, type FNCondition,
 } from '../../data/frictionNetworkRef.ts';
@@ -47,7 +47,8 @@ export interface FNSettingsState {
   pAvail: string;                 // 가용정압 (Pa)
   alphaPct: string;               // 여유율 (%)
   designTotalFlow: string;        // 설계 총유량 (flowUnit) — Σ말단 대조용, 선택 입력
-  targetR: string;                // 목표 마찰률 R (Pa/m) — 제안De 전용, 손실 계산 미사용
+  targetR: string;                // 목표 마찰률 R (targetRUnit 단위) — 제안De 전용, 손실 계산 미사용
+  targetRUnit: string;            // R 입력 단위 (FN_R_UNITS id) — 내부는 Pa/m 환산
   flowUnit: FNFlowUnit;
   vLimits: Record<FNGrade, FNVLimitState>;
 }
@@ -75,7 +76,7 @@ function defaultSettings(t: FNSystemType = 'pipe'): FNSettingsState {
     systemType: t, fluid: t === 'duct' ? 'air' : 'water', tempC: '20',
     pressAbs: '1.01325', rhoCustom: '', nuCustom: '',
     pAvail: '', alphaPct: '10',
-    designTotalFlow: '', targetR: String(FN_TARGET_R_PA_PER_M[t]),
+    designTotalFlow: '', targetR: String(FN_TARGET_R_PA_PER_M[t]), targetRUnit: 'Pa/m',
     flowUnit: t === 'duct' ? 'CMH' : 'LPM',
     vLimits: defaultVLimits(t),
   };
@@ -124,7 +125,8 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
     setSt(s => ({
       ...s, systemType: t,
       vLimits: defaultVLimits(t),
-      targetR: String(FN_TARGET_R_PA_PER_M[t]),
+      // 권장 R(Pa/m)을 현재 선택 단위로 환산해 채움 (단위 선택은 유지)
+      targetR: fmtR(FN_TARGET_R_PA_PER_M[t] / fnRUnit(s.targetRUnit).toPaPerM),
       flowUnit: t === 'duct' ? 'CMH' : 'LPM',
       fluid: t === 'duct' ? 'air' : 'water',
     }));
@@ -181,14 +183,14 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
       if (!seg) continue;
       const s = fnSuggestDe({
         Q_m3s: r.Q_m3s, grade: seg.grade, vLimits: settings.vLimits,
-        targetR_Pa_per_m: num(st.targetR),
+        targetR_Pa_per_m: num(st.targetR) * fnRUnit(st.targetRUnit).toPaPerM,
         rho_kgm3: net.rho_kgm3, nu_m2s: net.nu_m2s,
         eps_mm: r.eps_mm, materialId: seg.materialId,
       });
       if (s) byId[r.id] = s;
     }
     return byId;
-  }, [net, activeSegments, settings, st.targetR]);
+  }, [net, activeSegments, settings, st.targetR, st.targetRUnit]);
 
   const pAvailEntered = st.pAvail.trim() !== '' && Number.isFinite(num(st.pAvail));
   // 설계 총유량 (m³/s) — 미입력·무효 시 null (대조 생략)
