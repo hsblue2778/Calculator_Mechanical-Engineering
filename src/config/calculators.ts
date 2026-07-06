@@ -90,11 +90,11 @@ export const calculators: CalculatorMeta[] = [
   },
   {
     id: 'pipe-sizing',
-    title: '마찰손실 기반 배관 설계 시스템',
+    title: '관경 선정시스템',
     description: '허용 마찰손실에 맞는 표준 관경을 역산',
     inputs: '유량, 허용 압력강하, 배관 재질',
     outputs: '적정 관경, 유속, 실제 마찰손실',
-    category: '설계용',
+    category: '검증 및 계산용',
     tabs: [
       { key: 'calculator', label: '계산' },
       { key: 'overview',   label: '개요' },

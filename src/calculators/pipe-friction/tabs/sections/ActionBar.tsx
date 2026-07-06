@@ -49,7 +49,7 @@ function ChainBtn({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      title="현재 유량·마찰손실(ΔP/L) 값을 관경 설계 시스템으로 전달해 적정 관경을 역산출합니다"
+      title="현재 유량·마찰손실(ΔP/L) 값을 관경 선정시스템으로 전달해 적정 관경을 역산출합니다"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 6,
         padding: '10px 16px', fontSize: 13, fontWeight: 600,
@@ -58,7 +58,7 @@ function ChainBtn({ onClick }: { onClick: () => void }) {
         cursor: 'pointer', fontFamily: 'inherit',
       }}
     >
-      관경 설계로 보내기 <ArrowRight size={14} />
+      관경 선정으로 보내기 <ArrowRight size={14} />
     </button>
   );
 }
