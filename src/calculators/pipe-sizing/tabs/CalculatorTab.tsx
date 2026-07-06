@@ -29,6 +29,7 @@ import { SizingDetailTable } from './ResultPanel';
 import AnalysisBlock from './AnalysisBlock';
 import StickyResults from './StickyResults';
 import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
+import { useInitialAction } from '../../../utils/useInitialAction';
 import { buildPipeSizingReportHtml } from '../htmlReport';
 import { C, inputStyle, labelStyle, PA_PER_MM_AQ } from '../styles';
 
@@ -54,6 +55,8 @@ interface Props {
   onSave?: () => void;
   canSave?: boolean;
   chainedFrom?: string;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf)
+  onInitialActionDone?: () => void;
 }
 
 export default function CalculatorTab({
@@ -63,7 +66,7 @@ export default function CalculatorTab({
   tempC, setTempC, pressureMmHg, setPressureMmHg, condition, setCondition,
   epsStr, setEpsStr, epsDefault, cond,
   flowUnit, setFlowUnit, pressureUnit, setPressureUnit, onReset,
-  onSave, canSave, chainedFrom,
+  onSave, canSave, chainedFrom, initialAction, onInitialActionDone,
 }: Props) {
   const mat = PIPE_SIZE_MATERIALS[matIdx];
   const pressDef = PRESSURE_UNITS.find(u => u.key === pressureUnit)!;
@@ -107,6 +110,14 @@ export default function CalculatorTab({
   const inputErr = result && 'error' in result ? result.error : null;
   const ok = result && !('error' in result) ? result : null;
   const noSolution = ok !== null && !ok.selected;
+
+  // 기록 ⋯ 메뉴 진입 액션 — 결과 준비 후 1회 자동 실행
+  useInitialAction(initialAction, !!ok?.selected, a => {
+    if (!ok?.selected) return;
+    if (a === 'csv') handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg);
+    else if (a === 'html') handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg);
+    else if (a === 'pdf') handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg);
+  }, onInitialActionDone);
 
   return (
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>

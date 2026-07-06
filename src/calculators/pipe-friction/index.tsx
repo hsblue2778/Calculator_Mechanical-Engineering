@@ -21,6 +21,8 @@ interface Props {
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
   onChain?: (calculatorId: string, initialState: Record<string, any>) => void;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf·chain)
+  onInitialActionDone?: () => void;
 }
 
 function normalizeTab(t?: string): TabKey {
@@ -75,7 +77,7 @@ function buildChainPayload(pf: PipeFrictionController): Record<string, any> {
 }
 
 export default function PipeFrictionCalculator({
-  initialTab, initialState, onSave, onChain,
+  initialTab, initialState, onSave, onChain, initialAction, onInitialActionDone,
 }: Props) {
   const [tab, setTab] = useState<TabKey>(normalizeTab(initialTab));
   const pf = usePipeFrictionState(initialState);
@@ -95,6 +97,8 @@ export default function PipeFrictionCalculator({
           onSave={onSave ? () => onSave({ inputs: pf.saveInputs(), outputs: pf.res }) : undefined}
           canSave={!!pf.res}
           onChain={onChain && pf.res ? () => onChain('pipe-sizing', buildChainPayload(pf)) : undefined}
+          initialAction={initialAction}
+          onInitialActionDone={onInitialActionDone}
         />
       )}
       {tab === 'overview' && <OverviewTab />}

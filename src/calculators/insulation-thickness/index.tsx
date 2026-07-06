@@ -15,6 +15,8 @@ interface Props {
   initialTab?: string;
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf)
+  onInitialActionDone?: () => void;
 }
 
 const DEFAULT_STATE: InsulationInputs = {
@@ -31,7 +33,7 @@ function normalizeTab(t?: string): TabKey {
 }
 
 export default function InsulationThicknessCalculator({
-  initialTab, initialState, onSave,
+  initialTab, initialState, onSave, initialAction, onInitialActionDone,
 }: Props) {
   const [tab, setTab] = useState<TabKey>(normalizeTab(initialTab));
   const [state, setStateFull] = useState<InsulationInputs>(() => ({
@@ -70,6 +72,8 @@ export default function InsulationThicknessCalculator({
           onReset={reset}
           onSave={onSave ? () => onSave({ inputs: state, outputs }) : undefined}
           canSave={canSave}
+          initialAction={initialAction}
+          onInitialActionDone={onInitialActionDone}
         />
       )}
       {tab === 'overview' && <OverviewTab />}

@@ -87,7 +87,8 @@ export default function ResultSection({
       <p style={{ ...sectionTitleStyle, borderBottomColor: 'var(--accent-primary-bg)', color: C.blue }}>계산 결과</p>
 
       {/* 손실 항목 표 — 다중 배관 행 */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 14 }}>
+      <div style={{ overflowX: 'auto', marginBottom: 14 }}>
+      <table style={{ width: '100%', minWidth: 420, borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
           <tr style={{ backgroundColor: 'var(--accent-primary-bg)' }}>
             <th style={thS}>항목</th>
@@ -173,6 +174,7 @@ export default function ResultSection({
           </tr>
         </tbody>
       </table>
+      </div>
 
       {/* KPI 카드 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
@@ -223,7 +225,8 @@ export default function ResultSection({
           <summary style={{ cursor: 'pointer', fontSize: 13, color: C.textDark, fontWeight: 600 }}>
             부속 손실 상세 ({r.fittingDetails.length}건)
           </summary>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginTop: 6 }}>
+          <div style={{ overflowX: 'auto', marginTop: 6 }}>
+          <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ backgroundColor: 'var(--bg-surface-2)' }}>
                 <th style={thS}>번호</th>
@@ -251,6 +254,7 @@ export default function ResultSection({
               ))}
             </tbody>
           </table>
+          </div>
         </details>
       )}
 
@@ -260,7 +264,8 @@ export default function ResultSection({
           <summary style={{ cursor: 'pointer', fontSize: 13, color: C.textDark, fontWeight: 600 }}>
             장비류 손실 상세 ({r.equipDetails.length}건)
           </summary>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginTop: 6 }}>
+          <div style={{ overflowX: 'auto', marginTop: 6 }}>
+          <table style={{ width: '100%', minWidth: 420, borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ backgroundColor: 'var(--bg-surface-2)' }}>
                 <th style={thS}>번호</th>
@@ -282,6 +287,7 @@ export default function ResultSection({
               ))}
             </tbody>
           </table>
+          </div>
         </details>
       )}
     </div>

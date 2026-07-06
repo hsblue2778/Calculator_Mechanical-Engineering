@@ -10,7 +10,7 @@ import AppHeader from './components/AppHeader';
 import Onboarding from './components/Onboarding';
 import Modal from './components/Modal';
 import WorkspaceSidebar, { type WorkspaceInstance } from './components/WorkspaceSidebar';
-import HistoryPanel from './components/HistoryPanel';
+import HistoryPanel, { type EntryAction } from './components/HistoryPanel';
 import * as historyStore from './state/historyStore';
 import type { HistoryEntry } from './state/historyStore';
 import PipeFrictionCalculator from './calculators/pipe-friction';
@@ -32,6 +32,9 @@ type CalculatorComponentProps = {
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
   onChain?: (calculatorId: string, initialState: Record<string, any>) => void;
+  // 기록 ⋯ 메뉴에서 진입 시 마운트 직후 1회 실행할 내보내기·체이닝 액션
+  initialAction?: EntryAction;
+  onInitialActionDone?: () => void;
 };
 
 const calculatorComponents: Record<string, React.ComponentType<CalculatorComponentProps>> = {
@@ -45,6 +48,15 @@ const calculatorComponents: Record<string, React.ComponentType<CalculatorCompone
 function genId(): string {
   return 'inst-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
+
+// 기록 ⋯ 메뉴에 노출할 내보내기·체이닝 액션 — 각 계산기의 현재 구현 현황 그대로
+const ENTRY_EXPORT_ACTIONS: Record<string, EntryAction[]> = {
+  'pipe-friction': ['csv', 'html', 'pdf', 'chain'],
+  'pipe-sizing': ['csv', 'html', 'pdf'],
+  'insulation-thickness': ['csv', 'html', 'pdf'],
+  'pump-hvac': ['html', 'pdf'],
+  'friction-network': [],                 // 내보내기 미구현 — 이름변경·삭제만
+};
 
 export default function App() {
   const [theme, setTheme] = useTheme();
@@ -67,6 +79,8 @@ export default function App() {
   const [instanceLoadEpoch, setInstanceLoadEpoch] = useState<Record<string, number>>({});
   // 인스턴스별 "현재 보고 있는 기록 ID" — 사이드바에서 시각 강조용
   const [currentEntryByInstance, setCurrentEntryByInstance] = useState<Record<string, string>>({});
+  // 인스턴스별 "마운트 직후 실행할 액션" — 기록 ⋯ 메뉴의 내보내기·체이닝 (1회 소비 후 제거)
+  const [instanceInitialAction, setInstanceInitialAction] = useState<Record<string, EntryAction>>({});
   const [saveToast, setSaveToast] = useState<string | null>(null);
 
   const activeInstance = instances.find(i => i.id === activeId) ?? null;
@@ -170,6 +184,12 @@ export default function App() {
       const { [id]: _omit, ...rest } = prev;
       return rest;
     });
+    setInstanceInitialAction(prev => {
+      if (!(id in prev)) return prev;
+      const rest = { ...prev };
+      delete rest[id];
+      return rest;
+    });
   }
 
   // 홈으로 상태 리셋 (popstate·직접 호출 공용) — 열린 드로어·비교 모달도 함께 정리
@@ -254,6 +274,24 @@ export default function App() {
     setInstanceInitialStates(prev => ({ ...prev, [activeInstance.id]: entry.inputs }));
     setInstanceLoadEpoch(prev => ({ ...prev, [activeInstance.id]: (prev[activeInstance.id] ?? 0) + 1 }));
     setCurrentEntryByInstance(prev => ({ ...prev, [activeInstance.id]: entry.id }));
+  }, [activeInstance]);
+
+  // 기록 ⋯ 메뉴 내보내기·체이닝 — 해당 기록을 불러온 뒤 마운트 직후 액션 1회 자동 실행
+  const handleEntryAction = useCallback((entry: HistoryEntry, action: EntryAction) => {
+    if (!activeInstance) return;
+    handleLoadEntry(entry);
+    setInstanceInitialAction(prev => ({ ...prev, [activeInstance.id]: action }));
+  }, [activeInstance, handleLoadEntry]);
+
+  // 계산기가 액션을 소비하면 제거 (remount 시 재실행 방지)
+  const handleInitialActionDone = useCallback(() => {
+    if (!activeInstance) return;
+    setInstanceInitialAction(prev => {
+      if (!(activeInstance.id in prev)) return prev;
+      const rest = { ...prev };
+      delete rest[activeInstance.id];
+      return rest;
+    });
   }, [activeInstance]);
 
   // 비교 진입 (HistoryPanel onCompare → 선택된 entries 로드)
@@ -430,6 +468,8 @@ export default function App() {
                 refreshKey={historyRefreshKey}
                 onLoadEntry={(entry) => { handleLoadEntry(entry); setMobileSidebarOpen(false); }}
                 onChanged={handleHistoryChanged}
+                entryActions={ENTRY_EXPORT_ACTIONS[activeCalc.id] ?? []}
+                onEntryAction={(entry, action) => { handleEntryAction(entry, action); setMobileSidebarOpen(false); }}
                 selectable={supportsCompare}
                 selectedIds={selectedHistoryIds}
                 onToggleSelect={toggleHistorySelect}
@@ -451,7 +491,7 @@ export default function App() {
 
         <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           {activeInstance && ActiveComponent && (
-            <div className="workspace-main" style={{ padding: '20px 24px 60px' }}>
+            <div className="workspace-main" style={{ padding: '20px 24px 60px', position: 'relative' }}>
               {/* 모바일 전용 기록 열기 버튼 (데스크톱은 좌측 사이드바로 접근) */}
               <div className="mobile-history-bar">
                 <button
@@ -473,6 +513,8 @@ export default function App() {
                 initialState={instanceInitialStates[activeInstance.id]}
                 onSave={handleSave}
                 onChain={openCalculatorWithState}
+                initialAction={instanceInitialAction[activeInstance.id]}
+                onInitialActionDone={handleInitialActionDone}
               />
             </div>
           )}

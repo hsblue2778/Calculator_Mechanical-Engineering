@@ -19,6 +19,7 @@ import { generatePumpCurveFamily, findOperatingPoint, type EquipKind, type Syste
 import type { PumpFieldConfig, FluidId } from '../configs/types';
 import { C } from '../styles';
 import { downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
+import { useInitialAction } from '../../../utils/useInitialAction';
 import { buildPumpHvacReportHtml } from '../htmlReport/index';
 import ResultSection from './ResultSection';
 import { FittingTable, EquipTable } from './FittingEquipTables';
@@ -146,6 +147,8 @@ interface Props {
 
   onSave?: () => void;
   canSave?: boolean;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (html·pdf)
+  onInitialActionDone?: () => void;
 }
 
 export default function CalculatorTab(props: Props) {
@@ -172,6 +175,7 @@ export default function CalculatorTab(props: Props) {
     operatingHzList, setOperatingHzList,
     result,
     onSave, canSave,
+    initialAction, onInitialActionDone,
   } = props;
 
   const uid = useId();
@@ -316,6 +320,14 @@ export default function CalculatorTab(props: Props) {
   const pipeRefOptions = buildPipeRefOptions(sucPipeRows.length, disPipeRows.length);
 
   const pdfTitle = `${fieldLabel} 펌프 시스템 계산결과`;
+
+  // 기록 ⋯ 메뉴 진입 액션 — 결과 준비 후 1회 자동 실행
+  useInitialAction(initialAction, !!result, a => {
+    const html = buildPumpHvacHtml();
+    if (!html) return;
+    if (a === 'html') downloadHtmlFile(`${pdfTitle}.html`, html);
+    else if (a === 'pdf') printHtmlReport(html);
+  }, onInitialActionDone);
 
   // 섹션 진행 상태 — 좌측 스테퍼용
   const sucReady = sucPipeRows.length > 0 && sucPipeRows.every(r => parseFloat(r.lStr) > 0);

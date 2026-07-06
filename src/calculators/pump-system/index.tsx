@@ -38,6 +38,8 @@ interface Props {
   initialTab?: string;
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (html·pdf)
+  onInitialActionDone?: () => void;
 }
 
 function normalizeTab(t?: string): TabKey {
@@ -63,7 +65,7 @@ const defaultDisRow = (): PipeRowState => ({
   lUnit: 'm',
 });
 
-export default function PumpSystemCalculator({ field, initialTab, initialState, onSave }: Props) {
+export default function PumpSystemCalculator({ field, initialTab, initialState, onSave, initialAction, onInitialActionDone }: Props) {
   const fieldConfig = getPumpFieldConfig(field);
   const [tab, setTab] = useState<TabKey>(normalizeTab(initialTab));
 
@@ -397,6 +399,8 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
           result={result}
           onSave={onSave ? () => onSave({ inputs, outputs: result }) : undefined}
           canSave={!!result}
+          initialAction={initialAction}
+          onInitialActionDone={onInitialActionDone}
         />
       )}
       {tab === 'overview' && <OverviewTab fieldLabel={fieldConfig.fieldLabel} />}
