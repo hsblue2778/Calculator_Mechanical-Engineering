@@ -99,6 +99,12 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
             {designAvail !== null && ` = ${designAvail.toFixed(0)} Pa (${(designAvail / FN_PA_PER_MMAQ).toFixed(1)} mmAq)`}
           </Hint>
         </div>
+        <div>
+          <label style={labelStyle}>설계 총유량 ({st.flowUnit}) — 대조용</label>
+          <input type="number" step="any" min="0" value={st.designTotalFlow}
+            onChange={e => patchSettings({ designTotalFlow: e.target.value })} style={inputStyle} />
+          <TotalFlowHint st={st} net={net} />
+        </div>
       </div>
 
       {net && (
@@ -130,9 +136,15 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
             );
           })}
         </div>
-        <p style={{ fontSize: 11, color: 'var(--text-quaternary)', margin: '8px 0 0' }}>
-          목표 마찰률 R 권장값(참고용 — 계산 미사용): 덕트 {FN_TARGET_R_PA_PER_M.duct} Pa/m · 배관 {FN_TARGET_R_PA_PER_M.pipe} Pa/m
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }}>목표 마찰률 R</span>
+          <input type="number" step="any" min="0" value={st.targetR} style={{ ...cellInputStyle, width: 80 }}
+            onChange={e => patchSettings({ targetR: e.target.value })} />
+          <span style={{ fontSize: 12, color: C.text }}>Pa/m</span>
+          <span style={{ fontSize: 11, color: 'var(--text-quaternary)' }}>
+            (권장 덕트 {FN_TARGET_R_PA_PER_M.duct} · 배관 {FN_TARGET_R_PA_PER_M.pipe}) — 제안De 산출 전용, 손실 계산에는 미사용. 비우면 유속 기준만 적용
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -146,6 +158,25 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Hint({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>{children}</p>;
+}
+
+// 설계 총유량 ↔ Σ말단유량 대조 힌트 (차이 0.5% 초과 시 경고색)
+function TotalFlowHint({ st, net }: { st: FNSettingsState; net: FNNetworkResult | null }) {
+  const design = parseFloat(st.designTotalFlow);
+  if (st.designTotalFlow.trim() === '' || !Number.isFinite(design) || design <= 0) {
+    return <Hint>입력 시 Σ말단유량과 대조 (계산에는 미사용)</Hint>;
+  }
+  if (!net) return <Hint>구간 입력 후 Σ말단유량과 대조됩니다</Hint>;
+  const mul = st.flowUnit === 'LPM' ? 60000 : 3600;
+  const sum = net.totalLeafFlow_m3s * mul;
+  const diff = sum - design;
+  const relPct = (diff / design) * 100;
+  const mismatch = Math.abs(relPct) > 0.5;
+  return (
+    <p style={{ fontSize: 11, color: mismatch ? C.warn : 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
+      Σ말단 = {sum.toFixed(1)} {st.flowUnit} · 차이 {diff >= 0 ? '+' : ''}{diff.toFixed(1)} ({relPct >= 0 ? '+' : ''}{relPct.toFixed(1)}%)
+    </p>
+  );
 }
 
 function Mono({ children }: { children: React.ReactNode }) {

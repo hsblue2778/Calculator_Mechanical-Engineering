@@ -14,6 +14,7 @@ import {
   FN_V_LIMIT_DEFAULTS, FN_PA_PER_MMAQ, FN_STD_ATM_BAR,
 } from '../src/data/frictionNetworkRef.ts';
 import { swameeJain, frictionFactor } from '../src/calculators/pipe-friction/engine.ts';
+import { fnSuggestDe, fnSnapStandard } from '../src/calculators/friction-network/design.ts';
 
 let pass = 0, fail = 0;
 const rows: string[] = [];
@@ -230,6 +231,67 @@ const SAMPLE: FNSegmentInput[] = [
     baseSettings({ fluid: 'custom', rhoCustom_kgm3: -1, nuCustom_m2s: 1e-6 })) !== null);
   checkTrue('C/α=1 → 설정 에러', validateSettings(baseSettings({ alpha: 1 })) !== null);
   checkTrue('C/설정 에러 시 null', computeNetwork(baseSettings({ alpha: 1 }), SAMPLE) === null);
+}
+
+// ── D. 관경 자동 설계 (design.ts — 이원 기준 + 규격 스냅) ─────────
+{
+  const pipeVL = structuredClone(FN_V_LIMIT_DEFAULTS.pipe);
+  const water = { rho_kgm3: 998.2, nu_m2s: 1.004e-6 };
+  const base = {
+    Q_m3s: 0.005, grade: 'main' as const, vLimits: pipeVL,
+    ...water, eps_mm: 0.045, materialId: 'steel' as const,
+  };
+
+  // 유속 기준 dVel = calc.suggestedD_mm과 동일 공식 (R 미입력 → 유속 기준만)
+  const velOnly = fnSuggestDe({ ...base, targetR_Pa_per_m: NaN })!;
+  const s01 = computeNetwork(baseSettings(), SAMPLE)!.rows[0];
+  check('D/dVel = calc 제안D (엑셀 공식)', velOnly.dVel_mm, s01.suggestedD_mm, 1e-12);
+  checkTrue('D/R 미입력 → dR null·유속 채택', velOnly.dR_mm === null && velOnly.suggest_mm === velOnly.dVel_mm);
+
+  // R 역산 잔차 (배관: R=300 Pa/m) — 산출 De 재대입 시 마찰률 = R
+  const rPipe = fnSuggestDe({ ...base, targetR_Pa_per_m: 300 })!;
+  {
+    const De = rPipe.dR_mm! / 1000;
+    const Re = 4 * base.Q_m3s / (Math.PI * De * water.nu_m2s);
+    const f = Re < 2300 ? 64 / Re : swameeJain(Re, base.eps_mm / (De * 1000));
+    const R = 8 * f * water.rho_kgm3 * base.Q_m3s ** 2 / (Math.PI ** 2 * De ** 5);
+    check('D/R 역산 잔차 (배관 300 Pa/m)', R, 300, 300 * 1e-6, `De=${rPipe.dR_mm!.toFixed(2)} mm`);
+  }
+  checkTrue('D/R 지배 케이스 → max=dR', rPipe.dR_mm! > rPipe.dVel_mm && rPipe.suggest_mm === rPipe.dR_mm,
+    `dVel=${rPipe.dVel_mm.toFixed(1)} < dR=${rPipe.dR_mm!.toFixed(1)}`);
+  const rLoose = fnSuggestDe({ ...base, targetR_Pa_per_m: 100000 })!;
+  checkTrue('D/유속 지배 케이스 → max=dVel', rLoose.dR_mm! < rLoose.dVel_mm && rLoose.suggest_mm === rLoose.dVel_mm,
+    `dR=${rLoose.dR_mm!.toFixed(1)} < dVel=${rLoose.dVel_mm.toFixed(1)}`);
+
+  // R 역산 잔차 (덕트: R=1.0 Pa/m, 공기 20°C)
+  const rDuct = fnSuggestDe({
+    Q_m3s: 0.5, grade: 'main', vLimits: structuredClone(FN_V_LIMIT_DEFAULTS.duct),
+    targetR_Pa_per_m: 1.0, rho_kgm3: 1.205, nu_m2s: 15.11e-6, eps_mm: 0.15, materialId: 'galv-sheet',
+  })!;
+  {
+    const De = rDuct.dR_mm! / 1000;
+    const Re = 4 * 0.5 / (Math.PI * De * 15.11e-6);
+    const f = swameeJain(Re, 0.15 / (De * 1000));
+    const R = 8 * f * 1.205 * 0.5 ** 2 / (Math.PI ** 2 * De ** 5);
+    check('D/R 역산 잔차 (덕트 1.0 Pa/m)', R, 1.0, 1e-6, `De=${rDuct.dR_mm!.toFixed(1)} mm`);
+  }
+
+  // KS 호칭경 스냅: 46.07mm → 강관 50A (ID 53.2) · 직전 40A(ID 42.1)는 미달
+  checkTrue('D/KS 스냅 46.07 → 50A', fnSnapStandard(46.06588659617807, 'steel') === '50A (ID 53.2)',
+    `실제=${fnSnapStandard(46.06588659617807, 'steel')}`);
+  checkTrue('D/KS 스냅 42.1 이하 → 40A', fnSnapStandard(42.0, 'steel') === '40A (ID 42.1)',
+    `실제=${fnSnapStandard(42.0, 'steel')}`);
+  // 덕트 50mm 올림: 304.67→350 · 정확히 300→300 (경계)
+  checkTrue('D/덕트 스냅 304.67 → 350', fnSnapStandard(304.67497318521936, 'galv-sheet') === '350 mm');
+  checkTrue('D/덕트 스냅 경계 300 → 300', fnSnapStandard(300, 'galv-sheet') === '300 mm');
+  // 주철관·표 범위 초과 → 스냅 없음
+  checkTrue('D/주철관 스냅 제외', fnSnapStandard(46, 'cast-iron') === null);
+  checkTrue('D/KS 표 범위 초과 → null', fnSnapStandard(10000, 'steel') === null);
+
+  // Σ말단유량 (설계 총유량 대조용)
+  const net = computeNetwork(baseSettings(), SAMPLE)!;
+  check('D/Σ말단유량 = 0.005 m³/s', net.totalLeafFlow_m3s, 0.005, 1e-15,
+    `= ${(net.totalLeafFlow_m3s * 60000).toFixed(1)} LPM`);
 }
 
 // ── 출력 ──────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import type { FieldContext } from '../../config/calculators';
 import {
-  FN_MAX_ROWS, FN_V_LIMIT_DEFAULTS,
+  FN_MAX_ROWS, FN_V_LIMIT_DEFAULTS, FN_TARGET_R_PA_PER_M,
   type FNSystemType, type FNGrade, type FNFluidId,
   type FNMaterialId, type FNCondition,
 } from '../../data/frictionNetworkRef.ts';
@@ -14,6 +14,7 @@ import {
   computeNetwork, validateSettings,
   type FNSettings, type FNSegmentInput, type FNFlowUnit, type FNShape,
 } from './calc';
+import { fnSuggestDe, type FNSuggestion } from './design';
 import CalculatorTab from './tabs/CalculatorTab';
 import OverviewTab from './tabs/OverviewTab';
 import ExamplesTab, { type FNPreset } from './tabs/ExamplesTab';
@@ -45,6 +46,8 @@ export interface FNSettingsState {
   nuCustom: string;               // 직접입력 ν (×10⁻⁶ m²/s)
   pAvail: string;                 // 가용정압 (Pa)
   alphaPct: string;               // 여유율 (%)
+  designTotalFlow: string;        // 설계 총유량 (flowUnit) — Σ말단 대조용, 선택 입력
+  targetR: string;                // 목표 마찰률 R (Pa/m) — 제안De 전용, 손실 계산 미사용
   flowUnit: FNFlowUnit;
   vLimits: Record<FNGrade, FNVLimitState>;
 }
@@ -72,6 +75,7 @@ function defaultSettings(t: FNSystemType = 'pipe'): FNSettingsState {
     systemType: t, fluid: t === 'duct' ? 'air' : 'water', tempC: '20',
     pressAbs: '1.01325', rhoCustom: '', nuCustom: '',
     pAvail: '', alphaPct: '10',
+    designTotalFlow: '', targetR: String(FN_TARGET_R_PA_PER_M[t]),
     flowUnit: t === 'duct' ? 'CMH' : 'LPM',
     vLimits: defaultVLimits(t),
   };
@@ -115,11 +119,12 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
   function patchSettings(patch: Partial<FNSettingsState>) {
     setSt(s => ({ ...s, ...patch }));
   }
-  // 계통 종류 변경 → 유속범위 기본값·유량 단위·유체 기본값 재설정 (엑셀 Settings 동작)
+  // 계통 종류 변경 → 유속범위·마찰률 R 기본값·유량 단위·유체 기본값 재설정 (엑셀 Settings 동작)
   function changeSystemType(t: FNSystemType) {
     setSt(s => ({
       ...s, systemType: t,
       vLimits: defaultVLimits(t),
+      targetR: String(FN_TARGET_R_PA_PER_M[t]),
       flowUnit: t === 'duct' ? 'CMH' : 'LPM',
       fluid: t === 'duct' ? 'air' : 'water',
     }));
@@ -165,7 +170,32 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
     return computeNetwork(settings, activeSegments);
   }, [settings, settingsError, activeSegments]);
 
+  // 행별 관경 설계 제안 (유속·마찰률 R 이원 기준 + 규격 스냅) — 표시 전용
+  const suggestions = useMemo(() => {
+    const byId: Record<string, FNSuggestion> = {};
+    if (!net) return byId;
+    const segById = new Map(activeSegments.map(s => [s.id.trim(), s]));
+    for (const r of net.rows) {
+      if (r.error) continue;
+      const seg = segById.get(r.id.trim());
+      if (!seg) continue;
+      const s = fnSuggestDe({
+        Q_m3s: r.Q_m3s, grade: seg.grade, vLimits: settings.vLimits,
+        targetR_Pa_per_m: num(st.targetR),
+        rho_kgm3: net.rho_kgm3, nu_m2s: net.nu_m2s,
+        eps_mm: r.eps_mm, materialId: seg.materialId,
+      });
+      if (s) byId[r.id] = s;
+    }
+    return byId;
+  }, [net, activeSegments, settings, st.targetR]);
+
   const pAvailEntered = st.pAvail.trim() !== '' && Number.isFinite(num(st.pAvail));
+  // 설계 총유량 (m³/s) — 미입력·무효 시 null (대조 생략)
+  const designTotalFlow_m3s =
+    st.designTotalFlow.trim() !== '' && Number.isFinite(num(st.designTotalFlow)) && num(st.designTotalFlow) > 0
+      ? num(st.designTotalFlow) / (st.flowUnit === 'LPM' ? 60000 : 3600)
+      : null;
   const canSave = !!net && !net.hasErrors && net.rows.length > 0 && pAvailEntered;
 
   const inputs = { settings: st, segments: rows };
@@ -175,6 +205,7 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
     worstDemand_Pa: net.worstDemand_Pa,
     designAvail_Pa: net.designAvail_Pa,
     margin_Pa: net.margin_Pa,
+    totalLeafFlow_m3s: net.totalLeafFlow_m3s,
     rho_kgm3: net.rho_kgm3, nu_m2s: net.nu_m2s,
   } : null;
 
@@ -204,7 +235,9 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
           removeRow={removeRow}
           settingsError={settingsError}
           net={net}
+          suggestions={suggestions}
           pAvailEntered={pAvailEntered}
+          designTotalFlow_m3s={designTotalFlow_m3s}
           onReset={reset}
           onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
           canSave={canSave}

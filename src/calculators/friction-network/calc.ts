@@ -89,6 +89,7 @@ export interface FNNetworkResult {
   worstId: string | null;      // 최대 (누적+요구압) 구간
   worstDemand_Pa: number;      // 그 값 (유효 행 없으면 0)
   margin_Pa: number;           // designAvail − worstDemand (여유 + / 부족 −)
+  totalLeafFlow_m3s: number;   // Σ말단유량 (유효 말단 행) — 설계 총유량 대조용
   hasErrors: boolean;
 }
 
@@ -259,9 +260,11 @@ export function computeNetwork(settings: FNSettings, segments: FNSegmentInput[])
   const designAvail = settings.pAvail_Pa * (1 - settings.alpha);
   let worstId: string | null = null;
   let worstDemand = 0;
+  let totalLeafFlow = 0;
   for (const r of results) {
     if (r.error) continue;
     if (worstId === null || r.cumPlusReq_Pa > worstDemand) { worstId = r.id; worstDemand = r.cumPlusReq_Pa; }
+    if (r.isLeaf) totalLeafFlow += r.Q_m3s;
   }
 
   return {
@@ -270,6 +273,7 @@ export function computeNetwork(settings: FNSettings, segments: FNSegmentInput[])
     designAvail_Pa: designAvail,
     worstId, worstDemand_Pa: worstDemand,
     margin_Pa: designAvail - worstDemand,
+    totalLeafFlow_m3s: totalLeafFlow,
     hasErrors: results.some(r => r.error !== null),
   };
 }

@@ -8,6 +8,7 @@ import {
   VERDICT_LABELS, REGIME_LABELS,
   type FNNetworkResult, type FNFlowUnit, type FNSegmentResult,
 } from '../calc';
+import type { FNSuggestion } from '../design';
 import { C } from '../styles';
 import { SectionLabel } from './SettingsPanel';
 
@@ -15,6 +16,8 @@ interface Props {
   net: FNNetworkResult | null;
   flowUnit: FNFlowUnit;
   pAvailEntered: boolean;
+  suggestions: Record<string, FNSuggestion>;
+  designTotalFlow_m3s: number | null;
 }
 
 const th: React.CSSProperties = {
@@ -31,7 +34,7 @@ const td: React.CSSProperties = {
 const fmt = (v: number, dp = 1) => Number.isFinite(v) ? v.toFixed(dp) : '—';
 const fmtInt = (v: number) => Number.isFinite(v) ? Math.round(v).toLocaleString() : '—';
 
-export default function ResultsPanel({ net, flowUnit, pAvailEntered }: Props) {
+export default function ResultsPanel({ net, flowUnit, pAvailEntered, suggestions, designTotalFlow_m3s }: Props) {
   if (!net) {
     return (
       <p style={{ fontSize: 13, color: 'var(--text-quaternary)', margin: 0 }}>
@@ -41,7 +44,7 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered }: Props) {
   }
 
   const flowMul = flowUnit === 'LPM' ? 60000 : 3600;   // m³/s → 표시 단위
-  const warnings = buildWarnings(net, pAvailEntered);
+  const warnings = buildWarnings(net, pAvailEntered, suggestions, designTotalFlow_m3s, flowUnit);
   const short = pAvailEntered && net.margin_Pa < 0;
 
   return (
@@ -58,7 +61,8 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered }: Props) {
               <th style={th}>De (mm)</th>
               <th style={th}>V (m/s)</th>
               <th style={{ ...th, textAlign: 'left' }}>유속판정</th>
-              <th style={th}>제안D (mm)</th>
+              <th style={th}>제안De (mm)</th>
+              <th style={{ ...th, textAlign: 'left' }}>제안 규격</th>
               <th style={th}>Re</th>
               <th style={{ ...th, textAlign: 'left' }}>유동</th>
               <th style={th}>f</th>
@@ -71,7 +75,9 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered }: Props) {
             </tr>
           </thead>
           <tbody>
-            {net.rows.map((r, i) => <ResultRow key={i} r={r} flowMul={flowMul} worst={r.id === net.worstId && !r.error} />)}
+            {net.rows.map((r, i) => (
+              <ResultRow key={i} r={r} flowMul={flowMul} worst={r.id === net.worstId && !r.error} sug={suggestions[r.id]} />
+            ))}
           </tbody>
         </table>
       </div>
@@ -104,7 +110,9 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered }: Props) {
   );
 }
 
-function ResultRow({ r, flowMul, worst }: { r: FNSegmentResult; flowMul: number; worst: boolean }) {
+function ResultRow({ r, flowMul, worst, sug }: {
+  r: FNSegmentResult; flowMul: number; worst: boolean; sug?: FNSuggestion;
+}) {
   const idCell: React.CSSProperties = {
     ...td, textAlign: 'left', fontWeight: 600, position: 'sticky', left: 0, zIndex: 1,
     backgroundColor: worst ? 'var(--accent-primary-bg-soft)' : C.surface,
@@ -114,11 +122,15 @@ function ResultRow({ r, flowMul, worst }: { r: FNSegmentResult; flowMul: number;
     return (
       <tr>
         <td style={idCell}>{r.id || '—'}</td>
-        <td colSpan={15} style={{ ...td, textAlign: 'left', color: C.err, fontFamily: 'inherit' }}>{r.error}</td>
+        <td colSpan={16} style={{ ...td, textAlign: 'left', color: C.err, fontFamily: 'inherit' }}>{r.error}</td>
       </tr>
     );
   }
   const verdictColor = r.verdict === 'ok' ? C.ok : C.warn;
+  // 제안De 툴팁 — 이원 기준 내역 (유속 / 마찰률 R)
+  const sugTitle = sug
+    ? `유속 기준 ${sug.dVel_mm.toFixed(1)} mm${sug.dR_mm !== null ? ` · 마찰률 R 기준 ${sug.dR_mm.toFixed(1)} mm` : ' (R 미적용)'} — 큰 쪽 채택`
+    : undefined;
   return (
     <tr style={worst ? { backgroundColor: 'var(--accent-primary-bg-soft)' } : undefined}>
       <td style={idCell}>{r.id}{worst ? ' ★' : ''}</td>
@@ -129,7 +141,8 @@ function ResultRow({ r, flowMul, worst }: { r: FNSegmentResult; flowMul: number;
       <td style={{ ...td, textAlign: 'left', fontFamily: 'inherit', color: verdictColor, fontWeight: 600 }}>
         {VERDICT_LABELS[r.verdict]}
       </td>
-      <td style={td}>{r.verdict === 'high' ? fmt(r.suggestedD_mm, 1) : '—'}</td>
+      <td style={td} title={sugTitle}>{sug ? fmt(sug.suggest_mm, 1) : '—'}</td>
+      <td style={{ ...td, textAlign: 'left' }} title={sugTitle}>{sug?.snapLabel ?? '—'}</td>
       <td style={td}>{fmtInt(r.Re)}</td>
       <td style={{ ...td, textAlign: 'left', fontFamily: 'inherit', color: r.regime === 'transition' ? C.warn : undefined }}>
         {REGIME_LABELS[r.regime]}
@@ -147,7 +160,11 @@ function ResultRow({ r, flowMul, worst }: { r: FNSegmentResult; flowMul: number;
   );
 }
 
-function buildWarnings(net: FNNetworkResult, pAvailEntered: boolean): WarningItem[] {
+function buildWarnings(
+  net: FNNetworkResult, pAvailEntered: boolean,
+  suggestions: Record<string, FNSuggestion>,
+  designTotalFlow_m3s: number | null, flowUnit: FNFlowUnit,
+): WarningItem[] {
   const items: WarningItem[] = [];
   for (const r of net.rows) {
     if (r.error) items.push({ level: 'error', title: `구간 ${r.id || '(ID 없음)'}`, msg: `${r.error} — 이 행은 계산에서 제외되었습니다.` });
@@ -158,12 +175,24 @@ function buildWarnings(net: FNNetworkResult, pAvailEntered: boolean): WarningIte
       msg: `최대 누적손실+요구압(${Math.round(net.worstDemand_Pa)} Pa)이 설계 가용정압(${Math.round(net.designAvail_Pa)} Pa)을 초과합니다. 관경 확대·경로 단축 또는 팬/펌프 정압 상향이 필요합니다.`,
     });
   }
+  // 설계 총유량 ↔ Σ말단유량 대조 (차이 0.5% 초과 시)
+  if (designTotalFlow_m3s !== null) {
+    const mul = flowUnit === 'LPM' ? 60000 : 3600;
+    const relPct = (net.totalLeafFlow_m3s - designTotalFlow_m3s) / designTotalFlow_m3s * 100;
+    if (Math.abs(relPct) > 0.5) {
+      items.push({
+        level: 'warn', title: '설계 총유량 불일치',
+        msg: `Σ말단유량 ${(net.totalLeafFlow_m3s * mul).toFixed(1)} ${flowUnit} ≠ 설계 총유량 ${(designTotalFlow_m3s * mul).toFixed(1)} ${flowUnit} (${relPct >= 0 ? '+' : ''}${relPct.toFixed(1)}%) — 말단유량 배분을 확인하세요.`,
+      });
+    }
+  }
   for (const r of net.rows) {
     if (r.error) continue;
     if (r.verdict === 'high') {
+      const d = suggestions[r.id]?.suggest_mm ?? r.suggestedD_mm;
       items.push({
         level: 'warn', title: `구간 ${r.id} ▲유속초과`,
-        msg: `V=${r.V_ms.toFixed(2)} m/s가 적용 최대를 초과 — 제안 관경 ${r.suggestedD_mm.toFixed(1)} mm 이상으로 확대 검토.`,
+        msg: `V=${r.V_ms.toFixed(2)} m/s가 적용 최대를 초과 — 제안 관경 ${d.toFixed(1)} mm 이상으로 확대 검토.`,
       });
     } else if (r.verdict === 'low') {
       items.push({
