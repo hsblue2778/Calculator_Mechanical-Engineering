@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AlertTriangle, Check, RotateCcw, Save } from 'lucide-react';
 import type { FNSystemType } from '../../../data/frictionNetworkRef.ts';
 import type { FNNetworkResult } from '../calc';
+import type { FNSuggestion } from '../design';
 import type { FNSettingsState, FNSegmentState } from '../index';
 import SettingsPanel from './SettingsPanel';
 import SegmentTable from './SegmentTable';
@@ -20,7 +21,9 @@ interface Props {
   removeRow: (i: number) => void;
   settingsError: string | null;
   net: FNNetworkResult | null;
+  suggestions: Record<string, FNSuggestion>;
   pAvailEntered: boolean;
+  designTotalFlow_m3s: number | null;
   onReset: () => void;
   onSave?: () => void;
   canSave?: boolean;
@@ -29,7 +32,7 @@ interface Props {
 export default function CalculatorTab({
   st, patchSettings, changeSystemType,
   rows, patchRow, addRow, removeRow,
-  settingsError, net, pAvailEntered,
+  settingsError, net, suggestions, pAvailEntered, designTotalFlow_m3s,
   onReset, onSave, canSave,
 }: Props) {
   return (
@@ -52,7 +55,13 @@ export default function CalculatorTab({
         flowUnit={st.flowUnit}
       />
 
-      <ResultsPanel net={net} flowUnit={st.flowUnit} pAvailEntered={pAvailEntered} />
+      <ResultsPanel
+        net={net}
+        flowUnit={st.flowUnit}
+        pAvailEntered={pAvailEntered}
+        suggestions={suggestions}
+        designTotalFlow_m3s={designTotalFlow_m3s}
+      />
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}

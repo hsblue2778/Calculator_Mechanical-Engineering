@@ -48,8 +48,23 @@ export default function OverviewTab() {
           <span style={{ marginLeft: 8, color: C.text, fontSize: 12 }}>[mm] · V = Q/A (실단면 기준)</span>
         </div>
         <p style={{ fontSize: 12, color: C.text, margin: '6px 0 0 0' }}>
-          유속판정: V&gt;적용최대 ▲유속초과 / V&lt;적용최소 ▼과대관경 · 제안D = √(4Q/(π·V<sub>max</sub>))×1000 [mm]
+          유속판정: V&gt;적용최대 ▲유속초과 / V&lt;적용최소 ▼과대관경
           — 적용범위는 계통 종류(덕트/배관)×구간 등급(메인/서브/분기) 기본값, 설정에서 수정 가능
+        </p>
+      </FormulaSection>
+
+      <FormulaSection title="관경 자동 설계 — 제안De (유속·마찰률 이원 기준)">
+        <p style={{ margin: 0 }}>
+          제안De = max( 유속 기준 √(4Q/(π·V<sub>max</sub>))×1000 , 마찰률 기준 De )  [mm]
+        </p>
+        <p style={{ fontSize: 12, color: C.text, margin: '6px 0 0 0' }}>
+          마찰률 기준: 8·f(De)·ρ·Q²/(π²·De⁵) = R(목표 마찰률, Pa/m)을 De에 대해 반복 역산(등압법).
+          f는 계통 계산과 동일 규칙(층류 64/Re · Re≥2300 Swamee-Jain). 두 기준 중 큰 관경(보수)을 채택하며,
+          R을 비우면 유속 기준만 적용. 제안De·규격은 표시 전용 — 손실 계산은 항상 입력한 D·a×b로 수행.
+        </p>
+        <p style={{ fontSize: 12, color: C.text, margin: '4px 0 0 0' }}>
+          규격 스냅: 배관은 KS 호칭경(내경 ≥ 제안De인 최소 호칭 — 강관 KS D 3507·STS 10S·동관 Type L·PVC Sch80),
+          덕트는 50mm 단위 올림.
         </p>
       </FormulaSection>
 
@@ -66,7 +81,7 @@ export default function OverviewTab() {
       <InfoBlock title="참고 — 다른 계산기와의 관계">
         <ul style={{ paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
           <li>• <b>Q·V·D 2입력→1산출 환산</b>은 <b>마찰 손실 계산기</b>(유량·유속·관경 삼각 기능)를 사용하세요 — 본 계산기에는 중복이라 넣지 않았습니다.</li>
-          <li>• 직관 1구간 정밀 계산(Colebrook-White·Hazen-Williams 병기)은 마찰 손실 계산기, 허용 손실 기반 관경 역산은 배관 설계 시스템, 펌프 양정·동력은 TDH 펌프 선정 시스템.</li>
+          <li>• 직관 1구간 정밀 계산(Colebrook-White·Hazen-Williams 병기)은 마찰 손실 계산기, 허용 손실 기반 관경 역산은 관경 선정시스템, 펌프 양정·동력은 TDH 펌프 선정 시스템.</li>
           <li>• 이 계산기의 물성·조도 참조표는 참조 엑셀 전용값입니다 (예: 강관 ε 0.045 — 기존 계산기의 Moody 0.046과 다름).</li>
         </ul>
       </InfoBlock>
@@ -100,7 +115,9 @@ export default function OverviewTab() {
           <li>• 사각 덕트는 유속 V를 실단면(a×b) 기준, 마찰은 De 기준으로 계산 — 참조 엑셀 방식 그대로 (물리적으로 근사)</li>
           <li>• 구간 최대 30행 · 부모는 항상 위 행(순환 참조 불가) · 에러 행과 그에 의존하는 상·하류 행은 계산 제외</li>
           <li>• 공기·증기는 비압축성 근사 — 누적ΔP가 절대압의 10%를 넘으면 ⚠구간분할 필요 경고</li>
-          <li>• 목표 마찰률 R(덕트 1.0 · 배관 300 Pa/m)은 참고 표시용 — 계산에 사용하지 않음</li>
+          <li>• 목표 마찰률 R(덕트 1.0 · 배관 300 Pa/m)은 제안De 산출 전용 — 손실 계산에는 사용하지 않음</li>
+          <li>• 제안 규격: 주철관은 치수표 미보유로 스냅 제외(계산값만) · 사각 행의 제안은 원형 환산 지름 기준(a×b 조합 제안 아님)</li>
+          <li>• 설계 총유량은 Σ말단유량과의 대조 표시 전용 — 유량 배분·계산에는 사용하지 않음</li>
         </ul>
       </InfoBlock>
     </div>
