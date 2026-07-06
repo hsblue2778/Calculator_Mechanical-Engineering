@@ -80,15 +80,15 @@ export default function OverviewTab() {
 
       <InfoBlock title="참고 — 다른 계산기와의 관계">
         <ul style={{ paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
-          <li>• <b>Q·V·D 2입력→1산출 환산</b>은 <b>마찰 손실 계산기</b>(유량·유속·관경 삼각 기능)를 사용하세요 — 본 계산기에는 중복이라 넣지 않았습니다.</li>
-          <li>• 직관 1구간 정밀 계산(Colebrook-White·Hazen-Williams 병기)은 마찰 손실 계산기, 허용 손실 기반 관경 역산은 관경 선정시스템, 펌프 양정·동력은 TDH 펌프 선정 시스템.</li>
+          <li>• <b>Q·V·D 2입력→1산출 환산</b>은 <b>마찰손실 계산기</b>(유량·유속·관경 삼각 기능)를 사용하세요 — 본 계산기에는 중복이라 넣지 않았습니다.</li>
+          <li>• 직관 1구간 정밀 계산(Colebrook-White·Hazen-Williams 병기)은 마찰손실 계산기, 허용 손실 기반 관경 역산은 관경 계산기, 펌프 양정·동력은 펌프 선정 시스템(TDH).</li>
           <li>• 이 계산기의 물성·조도 참조표는 참조 엑셀 전용값입니다 (예: 강관 ε 0.045 — 기존 계산기의 Moody 0.046과 다름).</li>
         </ul>
       </InfoBlock>
 
       <InfoBlock title="ΣK 산정 참고 — 부속류 K값 (Perry's 8th)">
         <p style={{ fontSize: 12, color: C.text, margin: '0 0 8px' }}>
-          구간의 ΣK는 아래 대표 K값을 합산해 직접 입력합니다. (TDH 펌프 선정 시스템과 공용 데이터)
+          구간의 ΣK는 아래 대표 K값을 합산해 직접 입력합니다. (펌프 선정 시스템(TDH)과 공용 데이터)
         </p>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>

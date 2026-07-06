@@ -105,7 +105,7 @@ export function buildInsulationReportHtml(props: ReportProps): string {
   const { pipe, mat, k, inputs, result } = props;
   const docNo = makeDocNo();
   const today = makeTodayStr();
-  const title = '냉수배관 보온재 선정 계산결과';
+  const title = '보온재 선정 계산기 계산결과';
   const docLabel = title;
   const logo = logoDataUrl as string;
 
