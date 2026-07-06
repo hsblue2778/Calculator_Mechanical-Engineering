@@ -9,7 +9,10 @@ import {
 import { fnFluidTempRange } from '../fluids';
 import type { FNFlowUnit, FNNetworkResult } from '../calc';
 import type { FNSettingsState } from '../index';
-import { C, inputStyle, labelStyle, cellInputStyle, cellSelectStyle } from '../styles';
+import {
+  C, inputStyle, labelStyle, cellInputStyle,
+  inputStyleOpt, cellInputStyleOpt, cellSelectStyleOpt,
+} from '../styles';
 
 interface Props {
   st: FNSettingsState;
@@ -28,6 +31,8 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <SectionLabel>① 계통 설정</SectionLabel>
+
+      <RequiredOptionalLegend />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
         <div>
@@ -85,10 +90,10 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
           <Hint>Q = LPM÷60000 · CMH÷3600 (m³/s)</Hint>
         </div>
         <div>
-          <label style={labelStyle}>가용정압 P_avail (Pa)</label>
+          <label style={labelStyle}>가용정압 P_avail (Pa) <OptTag /></label>
           <input type="number" step="any" value={st.pAvail}
-            onChange={e => patchSettings({ pAvail: e.target.value })} style={inputStyle} />
-          <Hint>팬·펌프가 계통에 쓸 수 있는 정압</Hint>
+            onChange={e => patchSettings({ pAvail: e.target.value })} style={inputStyleOpt} />
+          <Hint>팬·펌프가 계통에 쓸 수 있는 정압 (비우면 여유 판정만 생략)</Hint>
         </div>
         <div>
           <label style={labelStyle}>여유율 α (%)</label>
@@ -100,9 +105,9 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
           </Hint>
         </div>
         <div>
-          <label style={labelStyle}>설계 총유량 ({st.flowUnit}) — 대조용</label>
+          <label style={labelStyle}>설계 총유량 ({st.flowUnit}) — 대조용 <OptTag /></label>
           <input type="number" step="any" min="0" value={st.designTotalFlow}
-            onChange={e => patchSettings({ designTotalFlow: e.target.value })} style={inputStyle} />
+            onChange={e => patchSettings({ designTotalFlow: e.target.value })} style={inputStyleOpt} />
           <TotalFlowHint st={st} net={net} />
         </div>
       </div>
@@ -137,10 +142,10 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
           })}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }}>목표 마찰률 R</span>
-          <input type="number" step="any" min="0" value={st.targetR} style={{ ...cellInputStyle, width: 80 }}
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }}>목표 마찰률 R <OptTag /></span>
+          <input type="number" step="any" min="0" value={st.targetR} style={{ ...cellInputStyleOpt, width: 80 }}
             onChange={e => patchSettings({ targetR: e.target.value })} />
-          <select value={st.targetRUnit} style={{ ...cellSelectStyle, width: 96 }}
+          <select value={st.targetRUnit} style={{ ...cellSelectStyleOpt, width: 96 }}
             onChange={e => changeRUnit(st, patchSettings, e.target.value)}>
             {FN_R_UNITS.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
           </select>
@@ -171,6 +176,38 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Hint({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>{children}</p>;
+}
+
+// 선택 입력 필드 라벨 옆 텍스트 태그 (색상 + 텍스트 이중 구분)
+function OptTag() {
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 600, color: C.blue, letterSpacing: 0,
+      border: `1px solid ${C.blue}`, borderRadius: 3, padding: '0 4px', marginLeft: 4,
+      verticalAlign: 'middle', textTransform: 'none',
+    }}>선택</span>
+  );
+}
+
+// 필수/선택 색상 범례 — 연한 파란색 = 선택 입력, 흰색 = 필수 입력
+function RequiredOptionalLegend() {
+  const swatch = (bg: string, border: string): React.CSSProperties => ({
+    width: 13, height: 13, borderRadius: 3, backgroundColor: bg, border: `1px solid ${border}`,
+    display: 'inline-block', verticalAlign: 'middle',
+  });
+  const item: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5 };
+  return (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: C.text, marginTop: -4 }}>
+      <span style={item}>
+        <span style={swatch('var(--accent-primary-bg-soft)', 'var(--accent-primary)')} />
+        연한 파란색 = 선택 입력 (비워도 계산됨)
+      </span>
+      <span style={item}>
+        <span style={swatch('var(--bg-surface)', 'var(--border-default)')} />
+        흰색 = 필수 입력
+      </span>
+    </div>
+  );
 }
 
 // 설계 총유량 ↔ Σ말단유량 대조 힌트 (차이 0.5% 초과 시 경고색)

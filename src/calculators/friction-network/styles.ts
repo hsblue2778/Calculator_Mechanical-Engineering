@@ -15,10 +15,10 @@ export const C = {
   err: 'var(--state-error-text)',
 };
 
-// 편집·선택 가능한 컨트롤은 accent 틴트로 정적 텍스트와 확실히 구분 (비활성 셀은 각자 무채색 override)
+// 필수 입력 컨트롤 — 중립(흰색). 선택 입력 필드는 아래 *Opt 변형(accent 틴트)으로 구분.
 export const inputStyle: React.CSSProperties = {
-  border: `1px solid var(--accent-primary)`, borderRadius: 6, padding: '8px 12px',
-  fontSize: 14, color: 'var(--text-primary)', backgroundColor: 'var(--accent-primary-bg-soft)',
+  border: `1px solid var(--border-default)`, borderRadius: 6, padding: '8px 12px',
+  fontSize: 14, color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)',
   outline: 'none', width: '100%', fontFamily: 'inherit',
 };
 
@@ -28,13 +28,28 @@ export const labelStyle: React.CSSProperties = {
   marginBottom: 6, display: 'block',
 };
 
-// 구간 테이블 셀 입력 — 좁은 폭 전용 (편집 가능 → accent 틴트)
+// 구간 테이블 셀 입력 — 좁은 폭 전용 (필수 입력, 중립 흰색)
 export const cellInputStyle: React.CSSProperties = {
-  border: `1px solid var(--accent-primary)`, borderRadius: 4, padding: '5px 6px',
-  fontSize: 12.5, color: 'var(--text-primary)', backgroundColor: 'var(--accent-primary-bg-soft)',
+  border: `1px solid var(--border-default)`, borderRadius: 4, padding: '5px 6px',
+  fontSize: 12.5, color: 'var(--text-primary)', backgroundColor: 'var(--bg-surface)',
   outline: 'none', width: '100%', fontFamily: 'inherit', minWidth: 0,
 };
 
 export const cellSelectStyle: React.CSSProperties = {
   ...cellInputStyle, padding: '5px 2px',
+};
+
+// ── 선택 입력 강조용 변형 — accent 틴트(연한 파란색)로 "비워도 되는 칸" 표시 ──
+export const inputStyleOpt: React.CSSProperties = {
+  ...inputStyle,
+  border: `1px solid var(--accent-primary)`, backgroundColor: 'var(--accent-primary-bg-soft)',
+};
+
+export const cellInputStyleOpt: React.CSSProperties = {
+  ...cellInputStyle,
+  border: `1px solid var(--accent-primary)`, backgroundColor: 'var(--accent-primary-bg-soft)',
+};
+
+export const cellSelectStyleOpt: React.CSSProperties = {
+  ...cellInputStyleOpt, padding: '5px 2px',
 };
