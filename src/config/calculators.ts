@@ -73,6 +73,22 @@ export const calculators: CalculatorMeta[] = [
     nextCalculators: [],
   },
   {
+    id: 'friction-network',
+    title: '마찰손실 계통 계산기',
+    description: '분기 계통 전체의 마찰손실을 합산해 가용정압과 비교',
+    inputs: '계통 종류, 유체·온도, 가용정압, 구간 트리(관경·덕트·길이·ΣK)',
+    outputs: '구간별 유속·손실, 최불리 경로 누적손실, 정압 여유/부족',
+    category: '설계용',
+    tabs: [
+      { key: 'calculator', label: '계산' },
+      { key: 'overview',   label: '개요' },
+      { key: 'examples',   label: '예시' },
+    ],
+    inputTags: [],
+    outputTags: [],
+    nextCalculators: [],
+  },
+  {
     id: 'pipe-sizing',
     title: '마찰손실 기반 배관 설계 시스템',
     description: '허용 마찰손실에 맞는 표준 관경을 역산',
