@@ -63,7 +63,7 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
     const k = isCustomK ? parseFloat(state.customK) : (mat.k as number);
     const rows: (string | number)[][] = [
       ['항목', '값', '단위', '비고'],
-      ['계산기', '냉수배관 보온재 선정', '', ''],
+      ['계산기', '보온재 선정 계산기', '', ''],
       ['관경 (호칭)', `${pipe.nominalA}A`, '', `외경 ${pipe.od_mm.toFixed(1)} mm`],
       ['보온재', mat.nameKo, '', `k = ${k} W/(m·K)`],
       ['외기 온도 Tₐ', state.Ta, '°C', ''],
