@@ -1,8 +1,8 @@
 // 루트 — 홈(카드 그리드) ↔ 워크스페이스(풀페이지 + 인스턴스 사이드바) 전환
 // v5 디자인 토큰 기반. 다크모드 토글은 useTheme.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Search, History } from 'lucide-react';
 import { calculators } from './config/calculators';
 import type { CalculatorMeta, CardTabKey, FieldContext } from './config/calculators';
 import CalculatorCard from './components/CalculatorCard';
@@ -73,6 +73,12 @@ export default function App() {
   const activeCalc = activeInstance ? calculators.find(c => c.id === activeInstance.calculatorId) : null;
   const ActiveComponent = activeInstance ? calculatorComponents[activeInstance.calculatorId] : null;
 
+  // 브라우저 히스토리 연동 — popstate 핸들러가 최신 값을 참조하도록 ref로 미러링
+  const viewRef = useRef(view);
+  const drawerRef = useRef(mobileSidebarOpen);
+  useEffect(() => { viewRef.current = view; }, [view]);
+  useEffect(() => { drawerRef.current = mobileSidebarOpen; }, [mobileSidebarOpen]);
+
   // 검색 필터 (홈)
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -105,6 +111,8 @@ export default function App() {
     setInstances([inst]);
     setActiveId(inst.id);
     setView('workspace');
+    // 홈 → 워크스페이스: 히스토리 항목 추가 (뒤로가기 시 홈으로 복귀)
+    window.history.pushState({ screen: 'workspace' }, '');
   }
 
   // 체이닝 — 다른 계산기를 초기 입력값과 함께 열어 현재 계산기를 교체
@@ -120,6 +128,8 @@ export default function App() {
     setActiveId(inst.id);
     setInstanceInitialStates(prev => ({ ...prev, [inst.id]: initialState }));
     setView('workspace');
+    // 워크스페이스 내 교체 — 항목 1개만 유지 (뒤로가기는 여전히 홈으로)
+    window.history.replaceState({ screen: 'workspace' }, '');
   }
 
   function addInstance() {
@@ -142,17 +152,14 @@ export default function App() {
   }
 
   function removeInstance(id: string) {
-    setInstances(prev => {
-      const filtered = prev.filter(i => i.id !== id);
-      if (filtered.length === 0) {
-        // 마지막 인스턴스 제거 → 홈으로
-        setView('home');
-        setActiveId(null);
-        return [];
-      }
-      if (id === activeId) setActiveId(filtered[0].id);
-      return filtered;
-    });
+    const remaining = instances.filter(i => i.id !== id);
+    if (remaining.length === 0) {
+      // 마지막 인스턴스 제거 → 홈으로 (히스토리 pop 경유)
+      navigateHome();
+      return;
+    }
+    setInstances(remaining);
+    if (id === activeId) setActiveId(remaining[0].id);
     setInstanceInitialStates(prev => {
       if (!(id in prev)) return prev;
       const { [id]: _omit, ...rest } = prev;
@@ -165,11 +172,48 @@ export default function App() {
     });
   }
 
-  function goHome() {
+  // 홈으로 상태 리셋 (popstate·직접 호출 공용) — 열린 드로어·비교 모달도 함께 정리
+  const resetToHome = useCallback(() => {
     setView('home');
     setActiveId(null);
     setInstances([]);
+    setMobileSidebarOpen(false);
+    setCompareEntries(null);
+  }, []);
+
+  // UI 홈 이동 — 히스토리에 워크스페이스 항목이 있으면 back()으로 pop해 popstate가 리셋하도록 위임(일원화)
+  function navigateHome() {
+    if (window.history.state?.screen === 'workspace') {
+      window.history.back();
+    } else {
+      resetToHome();
+    }
   }
+
+  function goHome() {
+    navigateHome();
+  }
+
+  // 브라우저 뒤로가기 → 앱 내 화면 전환 (마운트 시 1회 등록)
+  useEffect(() => {
+    if (!window.history.state) window.history.replaceState({ screen: 'home' }, '');
+    const onPopState = () => {
+      // 1) 모바일 기록 드로어가 열려 있으면 → 드로어만 닫고 워크스페이스 유지 (뒤로가기 트랩)
+      if (drawerRef.current) {
+        setMobileSidebarOpen(false);
+        window.history.pushState({ screen: 'workspace' }, '');
+        return;
+      }
+      // 2) 워크스페이스면 → 홈으로 화면 전환
+      if (viewRef.current === 'workspace') {
+        resetToHome();
+        return;
+      }
+      // 3) 홈이면 → 기본 동작(사이트 이탈) 허용
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [resetToHome]);
 
   function handleUnitSystemChange(next: UnitSystem) {
     if (next === unitSystem) return;
@@ -408,6 +452,21 @@ export default function App() {
         <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           {activeInstance && ActiveComponent && (
             <div className="workspace-main" style={{ padding: '20px 24px 60px' }}>
+              {/* 모바일 전용 기록 열기 버튼 (데스크톱은 좌측 사이드바로 접근) */}
+              <div className="mobile-history-bar">
+                <button
+                  onClick={() => setMobileSidebarOpen(true)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '7px 14px', fontSize: 13, fontWeight: 600,
+                    color: 'var(--accent-primary-hover)', background: 'var(--accent-primary-bg-soft)',
+                    border: '1px solid var(--accent-primary)', borderRadius: 8,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  <History size={15} /> 기록
+                </button>
+              </div>
               <ActiveComponent
                 key={`${activeInstance.id}-${unitSystem}-${instanceLoadEpoch[activeInstance.id] ?? 0}`}
                 initialTab="calculator"
