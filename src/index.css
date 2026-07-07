@@ -46,6 +46,16 @@ input[type="number"] {
    ActionBar inline style(display:flex)를 덮어쓰기 위해 !important 사용 */
 .calc-actions-mobile { display: none !important; }
 
+/* 액션 버튼 바 — 화면 하단 고정(sticky): 스크롤 위치와 무관하게 저장·내보내기 항상 노출 */
+.calc-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;                            /* 모바일 기록 드로어(z55/60)보다 아래 */
+  background: var(--bg-base);             /* 본문 위로 지나갈 때 비침 방지 */
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 0;
+}
+
 /* 보온 두께 — 시각자료 3카드 그리드 (데스크톱 3열, 좁아지면 1열) */
 .insulation-visuals-grid {
   display: grid;

@@ -63,7 +63,7 @@ export default function CalculatorTab({
         designTotalFlow_m3s={designTotalFlow_m3s}
       />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+      <div className="calc-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
         <button
           onClick={onReset}
