@@ -19,6 +19,7 @@ interface Props {
   pAvailEntered: boolean;
   suggestions: Record<string, FNSuggestion>;
   designTotalFlow_m3s: number | null;
+  targetR_Pa_per_m: number | null;    // 목표 마찰률 R (Pa/m 환산) — 구간 R 초과 강조용, 미입력 null
 }
 
 const th: React.CSSProperties = {
@@ -34,8 +35,10 @@ const td: React.CSSProperties = {
 
 const fmt = (v: number, dp = 1) => Number.isFinite(v) ? v.toFixed(dp) : '—';
 const fmtInt = (v: number) => Number.isFinite(v) ? Math.round(v).toLocaleString() : '—';
+// 단위 마찰손실(mmAq/m) — 배관 스케일(수십)은 2자리, 덕트 스케일(0.1 내외)은 3자리
+const fmtUnitR = (v: number) => Number.isFinite(v) ? (v >= 1 ? v.toFixed(2) : v.toFixed(3)) : '—';
 
-export default function ResultsPanel({ net, flowUnit, pAvailEntered, suggestions, designTotalFlow_m3s }: Props) {
+export default function ResultsPanel({ net, flowUnit, pAvailEntered, suggestions, designTotalFlow_m3s, targetR_Pa_per_m }: Props) {
   if (!net) {
     return (
       <p style={{ fontSize: 13, color: 'var(--text-quaternary)', margin: 0 }}>
@@ -91,6 +94,7 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered, suggestions
               <th style={{ ...th, textAlign: 'left' }}>유동</th>
               <th style={th}>f</th>
               <th style={th}>ΔP마찰 (Pa)</th>
+              <th style={th} title="단위 마찰손실 = ΔP마찰 / L — 목표 마찰률 R과 비교">R (mmAq/m)</th>
               <th style={th}>ΔP부차 (Pa)</th>
               <th style={th}>ΔP구간 (Pa)</th>
               <th style={th}>누적ΔP (Pa)</th>
@@ -100,7 +104,7 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered, suggestions
           </thead>
           <tbody>
             {net.rows.map((r, i) => (
-              <ResultRow key={i} r={r} flowMul={flowMul} worst={r.id === net.worstId && !r.error} sug={suggestions[r.id]} />
+              <ResultRow key={i} r={r} flowMul={flowMul} worst={r.id === net.worstId && !r.error} sug={suggestions[r.id]} targetR={targetR_Pa_per_m} />
             ))}
           </tbody>
         </table>
@@ -111,8 +115,8 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered, suggestions
   );
 }
 
-function ResultRow({ r, flowMul, worst, sug }: {
-  r: FNSegmentResult; flowMul: number; worst: boolean; sug?: FNSuggestion;
+function ResultRow({ r, flowMul, worst, sug, targetR }: {
+  r: FNSegmentResult; flowMul: number; worst: boolean; sug?: FNSuggestion; targetR: number | null;
 }) {
   const idCell: React.CSSProperties = {
     ...td, textAlign: 'left', fontWeight: 600, position: 'sticky', left: 0, zIndex: 1,
@@ -123,7 +127,7 @@ function ResultRow({ r, flowMul, worst, sug }: {
     return (
       <tr>
         <td style={idCell}>{r.id || '—'}</td>
-        <td colSpan={16} style={{ ...td, textAlign: 'left', color: C.err, fontFamily: 'inherit' }}>{r.error}</td>
+        <td colSpan={17} style={{ ...td, textAlign: 'left', color: C.err, fontFamily: 'inherit' }}>{r.error}</td>
       </tr>
     );
   }
@@ -150,6 +154,7 @@ function ResultRow({ r, flowMul, worst, sug }: {
       </td>
       <td style={td}>{fmt(r.f, 5)}</td>
       <td style={td}>{fmt(r.dpFriction_Pa, 1)}</td>
+      <UnitRCell r={r} targetR={targetR} />
       <td style={td}>{fmt(r.dpMinor_Pa, 1)}</td>
       <td style={td}>{fmt(r.dpSegment_Pa, 1)}</td>
       <td style={td}>{fmt(r.cum_Pa, 1)}</td>
@@ -158,6 +163,19 @@ function ResultRow({ r, flowMul, worst, sug }: {
         {fmt(r.cumPlusReq_Pa, 1)}{r.compressWarn ? ' ⚠' : ''}
       </td>
     </tr>
+  );
+}
+
+// 단위 마찰손실 R(mmAq/m) 셀 — 목표 마찰률 R 초과 시 경고색
+function UnitRCell({ r, targetR }: { r: FNSegmentResult; targetR: number | null }) {
+  const overR = targetR !== null && Number.isFinite(r.unitR_Pa_per_m) && r.unitR_Pa_per_m > targetR;
+  return (
+    <td
+      style={overR ? { ...td, color: C.warn, fontWeight: 600 } : td}
+      title={overR ? `목표 마찰률 R(${fmtUnitR(targetR / FN_PA_PER_MMAQ)} mmAq/m) 초과` : undefined}
+    >
+      {fmtUnitR(r.unitR_Pa_per_m / FN_PA_PER_MMAQ)}
+    </td>
   );
 }
 

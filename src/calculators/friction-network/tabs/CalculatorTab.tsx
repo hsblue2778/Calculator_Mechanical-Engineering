@@ -1,7 +1,7 @@
 // 계통 압력손실 — 계산 탭 (계통설정 → 구간입력 → 구간결과 조립 + 우측 실시간 결과 패널)
 
 import { AlertTriangle } from 'lucide-react';
-import type { FNSystemType } from '../../../data/frictionNetworkRef.ts';
+import { fnRUnit, type FNSystemType } from '../../../data/frictionNetworkRef.ts';
 import type { FNNetworkResult, FNSegmentInput } from '../calc';
 import type { FNSuggestion } from '../design';
 import type { FNSettingsState, FNSegmentState } from '../index';
@@ -77,6 +77,12 @@ export default function CalculatorTab({
     onReset,
   };
 
+  // 목표 마찰률 R → Pa/m 환산 — 구간 R(mmAq/m) 초과 강조용 (미입력·무효 시 null)
+  const targetRNum = parseFloat(st.targetR);
+  const targetR_Pa_per_m = st.targetR.trim() !== '' && Number.isFinite(targetRNum) && targetRNum > 0
+    ? targetRNum * fnRUnit(st.targetRUnit).toPaPerM
+    : null;
+
   return (
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 22, paddingRight: 8 }}>
@@ -104,6 +110,7 @@ export default function CalculatorTab({
           pAvailEntered={pAvailEntered}
           suggestions={suggestions}
           designTotalFlow_m3s={designTotalFlow_m3s}
+          targetR_Pa_per_m={targetR_Pa_per_m}
         />
 
         <ActionBar className="calc-actions calc-actions-desktop" {...actionBarProps} />

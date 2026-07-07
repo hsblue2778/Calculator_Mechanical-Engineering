@@ -23,6 +23,8 @@ const TOTAL_PAGES = 3;
 
 const fmt = (v: number, dp = 1) => Number.isFinite(v) ? v.toFixed(dp) : '—';
 const fmtInt = (v: number) => Number.isFinite(v) ? Math.round(v).toLocaleString() : '—';
+// 단위 마찰손실(mmAq/m) — 배관 스케일(수십)은 2자리, 덕트 스케일(0.1 내외)은 3자리
+const fmtUnitR = (v: number) => Number.isFinite(v) ? (v >= 1 ? v.toFixed(2) : v.toFixed(3)) : '—';
 
 function gradeLabel(key: string): string {
   return FN_GRADES.find(g => g.key === key)?.label ?? key;
@@ -113,14 +115,22 @@ export function buildFrictionNetworkReportHtml(args: FrictionNetworkReportArgs):
     </tr>`;
   }).join('');
 
+  // 목표 마찰률 R (Pa/m 환산) — 구간 R 초과 시 ▲ 표기 (흑백 인쇄 대비 색상 미사용)
+  const targetRNum = parseFloat(st.targetR);
+  const targetR_Pa_per_m = st.targetR.trim() !== '' && Number.isFinite(targetRNum) && targetRNum > 0
+    ? targetRNum * fnRUnit(st.targetRUnit).toPaPerM
+    : null;
+
   const lossRows = net.rows.map(r => {
     const worst = r.id === net.worstId && !r.error;
     if (r.error) {
-      return `<tr><td>${esc(r.id || '—')}</td><td colspan="7">${esc(r.error)}</td></tr>`;
+      return `<tr><td>${esc(r.id || '—')}</td><td colspan="8">${esc(r.error)}</td></tr>`;
     }
+    const overR = targetR_Pa_per_m !== null && Number.isFinite(r.unitR_Pa_per_m) && r.unitR_Pa_per_m > targetR_Pa_per_m;
     return `<tr${worst ? ' class="hl"' : ''}>
       <td>${esc(r.id)}${worst ? ' ★' : ''}</td>
       <td class="num">${fmt(r.dpFriction_Pa, 1)}</td>
+      <td class="num">${fmtUnitR(r.unitR_Pa_per_m / FN_PA_PER_MMAQ)}${overR ? ' ▲' : ''}</td>
       <td class="num">${fmt(r.dpMinor_Pa, 1)}</td>
       <td class="num">${fmt(r.dpEquip_Pa, 1)}</td>
       <td class="num">${fmt(r.dpSegment_Pa, 1)}</td>
@@ -190,12 +200,12 @@ export function buildFrictionNetworkReportHtml(args: FrictionNetworkReportArgs):
   ${secHeader('4.', '구간 손실 · 누적')}
   <table class="k">
     <tr>
-      <th>구간</th><th>ΔP마찰 (Pa)</th><th>ΔP부차 (Pa)</th><th>ΔP기기 (Pa)</th><th>ΔP구간 (Pa)</th>
+      <th>구간</th><th>ΔP마찰 (Pa)</th><th>R (mmAq/m)</th><th>ΔP부차 (Pa)</th><th>ΔP기기 (Pa)</th><th>ΔP구간 (Pa)</th>
       <th>누적ΔP (Pa)</th><th>누적 (mmAq)</th><th>누적+요구압 (Pa)</th>
     </tr>
     ${lossRows}
   </table>
-  <p class="note">누적ΔP = ΔP구간 + 부모 누적 (ROOT→0) · ⚠ = 누적ΔP &gt; 0.1·P_abs (압축성 한계 — 구간분할 필요)</p>
+  <p class="note">R = ΔP마찰/L (단위 마찰손실)${targetR_Pa_per_m !== null ? ` · ▲ = 목표 마찰률 R(${fmtUnitR(targetR_Pa_per_m / FN_PA_PER_MMAQ)} mmAq/m) 초과` : ''} · 누적ΔP = ΔP구간 + 부모 누적 (ROOT→0) · ⚠ = 누적ΔP &gt; 0.1·P_abs (압축성 한계 — 구간분할 필요)</p>
 
   ${pageFooter(docNo, 2, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
 </section>`;

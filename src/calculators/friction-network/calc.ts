@@ -71,6 +71,7 @@ export interface FNSegmentResult {
   regime: FNRegime;
   f: number;
   dpFriction_Pa: number;
+  unitR_Pa_per_m: number;      // 단위 마찰손실 R = ΔP마찰/L — 표시 전용 파생값 (목표 마찰률 R과 동일 기준)
   dpMinor_Pa: number;
   dpEquip_Pa: number;
   dpSegment_Pa: number;
@@ -109,7 +110,7 @@ function emptyRow(id: string, error: string | null, isLeaf: boolean): FNSegmentR
     Q_m3s: NaN, A_m2: NaN, De_mm: NaN, V_ms: NaN,
     verdict: 'ok', suggestedD_mm: NaN, eps_mm: NaN, Re: NaN,
     regime: 'laminar', f: NaN,
-    dpFriction_Pa: NaN, dpMinor_Pa: NaN, dpEquip_Pa: NaN, dpSegment_Pa: NaN,
+    dpFriction_Pa: NaN, unitR_Pa_per_m: NaN, dpMinor_Pa: NaN, dpEquip_Pa: NaN, dpSegment_Pa: NaN,
     cum_Pa: NaN, cumPlusReq_Pa: NaN, cum_mmAq: NaN, compressWarn: false,
   };
 }
@@ -247,7 +248,8 @@ export function computeNetwork(settings: FNSettings, segments: FNSegmentInput[])
       id: seg.id, error: null, isLeaf,
       Q_m3s: q, A_m2: A, De_mm, V_ms: V,
       verdict, suggestedD_mm, eps_mm, Re, regime, f,
-      dpFriction_Pa: dpFriction, dpMinor_Pa: dpMinor, dpEquip_Pa: seg.equipLoss_Pa,
+      dpFriction_Pa: dpFriction, unitR_Pa_per_m: dpFriction / seg.L_m,
+      dpMinor_Pa: dpMinor, dpEquip_Pa: seg.equipLoss_Pa,
       dpSegment_Pa: dpSegment,
       cum_Pa: cum,
       cumPlusReq_Pa: cum + (isLeaf ? seg.pReq_Pa : 0),
