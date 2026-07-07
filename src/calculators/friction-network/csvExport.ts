@@ -10,6 +10,8 @@ import type { FNSettingsState } from './index';
 
 const fmt = (v: number, dp = 1) => Number.isFinite(v) ? v.toFixed(dp) : '—';
 const fmtInt = (v: number) => Number.isFinite(v) ? String(Math.round(v)) : '—';
+// 단위 마찰손실(mmAq/m) — 배관 스케일(수십)은 2자리, 덕트 스케일(0.1 내외)은 3자리
+const fmtUnitR = (v: number) => Number.isFinite(v) ? (v >= 1 ? v.toFixed(2) : v.toFixed(3)) : '—';
 
 export function buildFrictionNetworkCsvRows(args: {
   st: FNSettingsState;
@@ -42,13 +44,13 @@ export function buildFrictionNetworkCsvRows(args: {
     ['', '', '', ''],
     ['-- 구간 결과 --', '', '', ''],
     ['구간ID', '말단', `Q(${st.flowUnit})`, 'De(mm)', 'V(m/s)', '유속판정', '제안De(mm)', '제안규격',
-      'Re', '유동', 'f', 'ΔP마찰(Pa)', 'ΔP부차(Pa)', 'ΔP기기(Pa)', 'ΔP구간(Pa)',
+      'Re', '유동', 'f', 'ΔP마찰(Pa)', 'R(mmAq/m)', 'ΔP부차(Pa)', 'ΔP기기(Pa)', 'ΔP구간(Pa)',
       '누적ΔP(Pa)', '누적(mmAq)', '누적+요구압(Pa)', '비고'],
   ];
 
   for (const r of net.rows) {
     if (r.error) {
-      rows.push([r.id || '—', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', r.error]);
+      rows.push([r.id || '—', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', r.error]);
       continue;
     }
     const sug = suggestions[r.id];
@@ -65,6 +67,7 @@ export function buildFrictionNetworkCsvRows(args: {
       REGIME_LABELS[r.regime],
       fmt(r.f, 5),
       fmt(r.dpFriction_Pa, 1),
+      fmtUnitR(r.unitR_Pa_per_m / FN_PA_PER_MMAQ),
       fmt(r.dpMinor_Pa, 1),
       fmt(r.dpEquip_Pa, 1),
       fmt(r.dpSegment_Pa, 1),
