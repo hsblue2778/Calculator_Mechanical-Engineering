@@ -672,8 +672,8 @@ export default function CalculatorTab(props: Props) {
         </div>
       </WorkspaceLayout>
 
-      {/* §7 버튼 영역 */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+      {/* §7 버튼 영역 — .calc-actions로 화면 하단 고정(sticky) */}
+      <div className="calc-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
         <PumpReportBtn
           icon={<FileDown size={14} />} label="HTML로 저장하기"
