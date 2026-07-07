@@ -15,7 +15,7 @@ export default function FrictionFactorSection({ pf }: { pf: PipeFrictionControll
   const regime = res ? flowRegime(res.Re) : null;
 
   return (
-    <FormulaSection title="② 마찰계수 f — 유동 영역별 자동 산출">
+    <FormulaSection title="마찰계수 f — 유동 영역별 자동 산출">
       <div style={{ fontSize: 13, lineHeight: 1.9, color: C.textDark }}>
         층류(Re&lt;2,300): <Code>f = 64/Re</Code> · 천이(≤4,000): 3차 보간 ·
         난류(&gt;4,000): <Code>1/√f = −2log₁₀(ε/3.7D + 2.51/(Re√f))</Code> (Colebrook-White 반복해)

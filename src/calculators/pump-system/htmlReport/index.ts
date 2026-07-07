@@ -38,13 +38,6 @@ ${REPORT_CSS}
 </head>
 <body>
 
-<div class="toolbar">
-  <div class="name">${fieldLabel} 펌프 시스템 계산결과</div>
-  <div class="actions">
-    <button onclick="window.print()" class="primary">📄 PDF로 저장 / 인쇄</button>
-  </div>
-</div>
-
 ${coverHtml}
 ${page2Html}
 ${page3Html}

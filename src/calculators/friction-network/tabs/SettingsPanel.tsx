@@ -1,4 +1,4 @@
-// 마찰손실 계통 계산기 — ① 계통 설정 (계통·유체·가용정압·등급별 목표 유속범위)
+// 마찰손실 계통 계산기 — 계통 설정 (계통·유체·가용정압·등급별 목표 유속범위)
 // 스크래치 환산기(Q·V·D)는 미제공 — 마찰 손실 계산기(pipe-friction)와 중복이라 뺐음 (개요 탭 안내)
 
 import {
@@ -30,9 +30,7 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <SectionLabel>① 계통 설정</SectionLabel>
-
-      <RequiredOptionalLegend />
+      <SectionLabel>계통 설정</SectionLabel>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
         <div>
@@ -186,27 +184,6 @@ function OptTag() {
       border: `1px solid ${C.blue}`, borderRadius: 3, padding: '0 4px', marginLeft: 4,
       verticalAlign: 'middle', textTransform: 'none',
     }}>선택</span>
-  );
-}
-
-// 필수/선택 색상 범례 — 연한 파란색 = 선택 입력, 흰색 = 필수 입력
-function RequiredOptionalLegend() {
-  const swatch = (bg: string, border: string): React.CSSProperties => ({
-    width: 13, height: 13, borderRadius: 3, backgroundColor: bg, border: `1px solid ${border}`,
-    display: 'inline-block', verticalAlign: 'middle',
-  });
-  const item: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5 };
-  return (
-    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: C.text, marginTop: -4 }}>
-      <span style={item}>
-        <span style={swatch('var(--accent-primary-bg-soft)', 'var(--accent-primary)')} />
-        연한 파란색 = 선택 입력 (비워도 계산됨)
-      </span>
-      <span style={item}>
-        <span style={swatch('var(--bg-surface)', 'var(--border-default)')} />
-        흰색 = 필수 입력
-      </span>
-    </div>
   );
 }
 

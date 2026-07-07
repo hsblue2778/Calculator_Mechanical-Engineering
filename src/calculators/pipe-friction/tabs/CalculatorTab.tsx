@@ -14,7 +14,7 @@ import ResultBlocks from './ResultBlocks';
 import StickyResults from './StickyResults';
 import { buildPipeFrictionCsvRows } from '../csvExport.ts';
 import { buildPipeFrictionReportHtml } from '../htmlReport';
-import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
+import { downloadCsv, downloadWordFile, printHtmlReport } from '../../../utils/exportUtils';
 import { useInitialAction } from '../../../utils/useInitialAction';
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
   onSave?: () => void;
   canSave?: boolean;
   onChain?: () => void;
-  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf·chain)
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf·chain)
   onInitialActionDone?: () => void;
 }
 
@@ -36,10 +36,10 @@ export default function CalculatorTab({ pf, onSave, canSave, onChain, initialAct
     const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     downloadCsv(`pipe-friction_${ts}.csv`, buildPipeFrictionCsvRows(pf, pressDef));
   }
-  function handleHtmlSave() {
+  function handleWord() {
     if (!res) return;
     const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    downloadHtmlFile(`pipe-friction_${ts}.html`, buildPipeFrictionReportHtml(pf));
+    downloadWordFile(`pipe-friction_${ts}.doc`, buildPipeFrictionReportHtml(pf));
   }
   function handlePdf() {
     if (!res) return;
@@ -49,7 +49,7 @@ export default function CalculatorTab({ pf, onSave, canSave, onChain, initialAct
   // 기록 ⋯ 메뉴 진입 액션 — 결과 준비 후 1회 자동 실행
   useInitialAction(initialAction, !!res, a => {
     if (a === 'csv') handleCsv();
-    else if (a === 'html') handleHtmlSave();
+    else if (a === 'word') handleWord();
     else if (a === 'pdf') handlePdf();
     else if (a === 'chain') onChain?.();
   }, onInitialActionDone);
@@ -57,7 +57,7 @@ export default function CalculatorTab({ pf, onSave, canSave, onChain, initialAct
   const actionBarProps = {
     onSave, canSave,
     canExport: !!res,
-    onCsv: handleCsv, onHtmlSave: handleHtmlSave, onPdf: handlePdf,
+    onCsv: handleCsv, onWord: handleWord, onPdf: handlePdf,
     onReset: pf.reset,
     onChain,
   };

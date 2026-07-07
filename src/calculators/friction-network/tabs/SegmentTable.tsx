@@ -1,4 +1,4 @@
-// 마찰손실 계통 계산기 — ② 구간 입력 테이블 (가로 스크롤, ID 열 sticky)
+// 마찰손실 계통 계산기 — 구간 입력 테이블 (가로 스크롤, ID 열 sticky)
 // 행 = 구간. 부모ID 트리(ROOT 최상단), 최대 30행. 자식이 있는 행은 말단유량·요구압 입력 비활성.
 
 import { Plus, Trash2 } from 'lucide-react';
@@ -36,7 +36,7 @@ export default function SegmentTable({ rows, patchRow, addRow, removeRow, flowUn
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <SectionLabel>② 구간 입력 <span style={{ fontWeight: 400, fontSize: 12, color: C.text }}>
+        <SectionLabel>구간 입력 <span style={{ fontWeight: 400, fontSize: 12, color: C.text }}>
           — 부모ID는 ROOT 또는 위 행의 ID · 말단 구간에만 말단유량 입력
         </span></SectionLabel>
         <button

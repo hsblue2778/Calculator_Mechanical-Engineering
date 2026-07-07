@@ -1,7 +1,7 @@
 // 관경 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileDown, ArrowRight } from 'lucide-react';
+import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileText, ArrowRight } from 'lucide-react';
 import Frac from '../../../components/Frac';
 import FormulaSection from '../../../components/FormulaSection';
 import UnitPanel from '../../../components/UnitPanel';
@@ -28,7 +28,7 @@ import {
 import { SizingDetailTable } from './ResultPanel';
 import AnalysisBlock from './AnalysisBlock';
 import StickyResults from './StickyResults';
-import { downloadCsv, downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
+import { downloadCsv, downloadWordFile, printHtmlReport } from '../../../utils/exportUtils';
 import { useInitialAction } from '../../../utils/useInitialAction';
 import { buildPipeSizingReportHtml } from '../htmlReport';
 import { C, inputStyle, labelStyle, PA_PER_MM_AQ } from '../styles';
@@ -55,7 +55,7 @@ interface Props {
   onSave?: () => void;
   canSave?: boolean;
   chainedFrom?: string;
-  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf)
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
 
@@ -115,7 +115,7 @@ export default function CalculatorTab({
   useInitialAction(initialAction, !!ok?.selected, a => {
     if (!ok?.selected) return;
     if (a === 'csv') handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg);
-    else if (a === 'html') handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg);
+    else if (a === 'word') handleSizingWordSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg);
     else if (a === 'pdf') handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg);
   }, onInitialActionDone);
 
@@ -239,7 +239,7 @@ export default function CalculatorTab({
         onPressureChange={v => setPressureUnit(v as PressureUnitKey)}
       />
 
-      <FormulaSection title="① 마찰손실 (Darcy-Weisbach + 영역별 마찰계수)">
+      <FormulaSection title="마찰손실 (Darcy-Weisbach + 영역별 마찰계수)">
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
           <span>ΔP/L</span><span>=</span>
           <span>ρ(T) · g ·</span>
@@ -298,7 +298,7 @@ export default function CalculatorTab({
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
-        onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
+        onWord={() => ok?.selected && handleSizingWordSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
         onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
         onReset={handleReset}
       />
@@ -315,7 +315,7 @@ export default function CalculatorTab({
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
-        onHtmlSave={() => ok?.selected && handleSizingHtmlSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
+        onWord={() => ok?.selected && handleSizingWordSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
         onPdf={() => ok?.selected && handleSizingPdfPrint(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
         onReset={handleReset}
       />
@@ -340,7 +340,7 @@ function buildSizingHtml(
   });
 }
 
-function handleSizingHtmlSave(
+function handleSizingWordSave(
   selected: SizingRow,
   rows: SizingRow[],
   analysis: { V: number; Re: number; unitLoss_Pa: number } | null,
@@ -352,7 +352,7 @@ function handleSizingHtmlSave(
 ) {
   const html = buildSizingHtml(selected, rows, analysis, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg);
   const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  downloadHtmlFile(`pipe-sizing_${ts}.html`, html);
+  downloadWordFile(`pipe-sizing_${ts}.doc`, html);
 }
 
 function handleSizingPdfPrint(
@@ -370,12 +370,12 @@ function handleSizingPdfPrint(
 }
 
 function ActionBar({
-  className, onSave, canSave, canExport, onCsv, onHtmlSave, onPdf, onReset,
+  className, onSave, canSave, canExport, onCsv, onWord, onPdf, onReset,
 }: {
   className: string;
   onSave?: () => void; canSave?: boolean;
   canExport: boolean;
-  onCsv: () => void; onHtmlSave: () => void; onPdf: () => void; onReset: () => void;
+  onCsv: () => void; onWord: () => void; onPdf: () => void; onReset: () => void;
 }) {
   return (
     <div
@@ -385,9 +385,9 @@ function ActionBar({
       {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
       <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
         enabled={canExport} onClick={onCsv} />
-      <ActionBtn icon={<FileDown size={14} />} label="HTML로 저장하기"
-        enabled={canExport} onClick={onHtmlSave}
-        title="편집 가능한 HTML 산출서 파일 다운로드" />
+      <ActionBtn icon={<FileText size={14} />} label="Word로 저장"
+        enabled={canExport} onClick={onWord}
+        title="PDF 산출서와 동일한 양식의 Word(.doc) 파일 다운로드" />
       <ActionBtn icon={<Printer size={14} />} label="PDF로 저장"
         enabled={canExport} onClick={onPdf}
         title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />

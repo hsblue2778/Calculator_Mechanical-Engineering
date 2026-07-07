@@ -26,6 +26,8 @@ interface Props {
   initialTab?: string;
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
+  onInitialActionDone?: () => void;
 }
 
 function normalizeTab(t?: string): TabKey {
@@ -73,7 +75,7 @@ function defaultVLimits(t: FNSystemType): Record<FNGrade, FNVLimitState> {
 
 function defaultSettings(t: FNSystemType = 'pipe'): FNSettingsState {
   return {
-    systemType: t, fluid: t === 'duct' ? 'air' : 'water', tempC: '20',
+    systemType: t, fluid: 'water', tempC: '20',
     pressAbs: '1.01325', rhoCustom: '', nuCustom: '',
     pAvail: '', alphaPct: '10',
     designTotalFlow: '', targetR: String(FN_TARGET_R_PA_PER_M[t]), targetRUnit: 'Pa/m',
@@ -107,7 +109,7 @@ function isBlankRow(r: FNSegmentState): boolean {
 
 const num = (s: string) => parseFloat(s);
 
-export default function FrictionNetworkCalculator({ initialTab, initialState, onSave }: Props) {
+export default function FrictionNetworkCalculator({ initialTab, initialState, onSave, initialAction, onInitialActionDone }: Props) {
   const [tab, setTab] = useState<TabKey>(normalizeTab(initialTab));
   const [st, setSt] = useState<FNSettingsState>(() => ({
     ...defaultSettings(), ...(initialState?.settings ?? {}),
@@ -120,7 +122,7 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
   function patchSettings(patch: Partial<FNSettingsState>) {
     setSt(s => ({ ...s, ...patch }));
   }
-  // 계통 종류 변경 → 유속범위·마찰률 R 기본값·유량 단위·유체 기본값 재설정 (엑셀 Settings 동작)
+  // 계통 종류 변경 → 유속범위·마찰률 R 기본값·유량 단위 재설정 (유체 선택은 유지)
   function changeSystemType(t: FNSystemType) {
     setSt(s => ({
       ...s, systemType: t,
@@ -128,7 +130,6 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
       // 권장 R(Pa/m)을 현재 선택 단위로 환산해 채움 (단위 선택은 유지)
       targetR: fmtR(FN_TARGET_R_PA_PER_M[t] / fnRUnit(s.targetRUnit).toPaPerM),
       flowUnit: t === 'duct' ? 'CMH' : 'LPM',
-      fluid: t === 'duct' ? 'air' : 'water',
     }));
   }
   function patchRow(i: number, patch: Partial<FNSegmentState>) {
@@ -235,6 +236,7 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
           patchRow={patchRow}
           addRow={addRow}
           removeRow={removeRow}
+          activeSegments={activeSegments}
           settingsError={settingsError}
           net={net}
           suggestions={suggestions}
@@ -243,6 +245,8 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
           onReset={reset}
           onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
           canSave={canSave}
+          initialAction={initialAction}
+          onInitialActionDone={onInitialActionDone}
         />
       )}
       {tab === 'overview' && <OverviewTab />}

@@ -6,7 +6,7 @@ import logoDataUrl from '../../assets/report-logo.png?inline';
 import { REPORT_CSS } from '../pump-system/htmlReport/styles';
 import {
   esc, pageHeader, pageFooter, secHeader,
-  makeDocNo, makeCalcDateTime, makeTodayStr,
+  makeDocNo, makeCalcDateTime,
 } from '../pump-system/htmlReport/helpers';
 import { velocityRange, type SizingRow, type SizingFluid } from './calc';
 import { fMethodLabel } from '../pipe-friction/interpret.ts';
@@ -58,7 +58,6 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
   const rangeU = analysis ? rangeStatus(analysis.unitLoss_Pa, RANGES.unitLossPa) : null;
 
   const docNo = makeDocNo();
-  const today = makeTodayStr();
   const title = '관경 선정 계산결과';
   const docLabel = title;
   const logo = logoDataUrl as string;
@@ -235,13 +234,6 @@ ${REPORT_CSS}
 </style>
 </head>
 <body>
-
-<div class="toolbar">
-  <div class="name">${esc(title)} · ${esc(today)}</div>
-  <div class="actions">
-    <button onclick="window.print()" class="primary">📄 PDF로 저장 / 인쇄</button>
-  </div>
-</div>
 
 ${page1}
 ${page2}

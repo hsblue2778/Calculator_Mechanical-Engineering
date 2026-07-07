@@ -313,8 +313,8 @@ export default function ComparisonView({ entries, onBack }: ComparisonViewProps)
           </thead>
 
           <tbody>
-            {/* ① 펌프 측 입력 */}
-            <tr><td colSpan={n + 1} style={GROUP_HEADER_CELL}>① 펌프 측 입력 (카탈로그)</td></tr>
+            {/* 펌프 측 입력 */}
+            <tr><td colSpan={n + 1} style={GROUP_HEADER_CELL}>펌프 측 입력 (카탈로그)</td></tr>
             <DataRow label="NPSHr (m)" entries={entries}
               render={(_, i) => pump[i].NPSHr !== null ? `${fmt2(pump[i].NPSHr)} m` : '—'} />
             <DataRow label="BEP 유량 Q_BEP (m³/h)" entries={entries}
@@ -324,10 +324,10 @@ export default function ComparisonView({ entries, onBack }: ComparisonViewProps)
             <DataRow label="펌프 곡선 점 수" entries={entries}
               render={(_, i) => `${pump[i].pumpCurveCount}개${pump[i].pumpCurveCount < 2 ? ' (운전점 미산출)' : ''}`} />
 
-            {/* ② 펌프 측 결과 */}
+            {/* 펌프 측 결과 */}
             <tr>
               <td colSpan={n + 1} style={{ ...GROUP_HEADER_CELL, backgroundColor: 'var(--accent-primary-bg-soft)', color: 'var(--accent-primary-hover)' }}>
-                ② 펌프 측 결과 (NPSH·운전점·BEP)
+                펌프 측 결과 (NPSH·운전점·BEP)
               </td>
             </tr>
             <DataRow label="NPSH 여유 = NPSHa − NPSHr (m)" entries={entries}
@@ -355,8 +355,8 @@ export default function ComparisonView({ entries, onBack }: ComparisonViewProps)
             <DataRow label="권장 모터 정격 (IEC, kW)" entries={entries}
               render={(_, i) => pump[i].recommendedMotor_kW !== null ? `${pump[i].recommendedMotor_kW} kW` : '—'} />
 
-            {/* ③ 시스템 결과 (참고용 — 동일 환경이면 모두 같음) */}
-            <tr><td colSpan={n + 1} style={GROUP_HEADER_CELL}>③ 시스템 결과 (참고)</td></tr>
+            {/* 시스템 결과 (참고용 — 동일 환경이면 모두 같음) */}
+            <tr><td colSpan={n + 1} style={GROUP_HEADER_CELL}>시스템 결과 (참고)</td></tr>
             <DataRow label="TDH (총양정, m)" entries={entries}
               render={e => `${fmt2(e.outputs?.TDH_m)} m`} />
             <DataRow label="설계 양정 (m)" entries={entries}

@@ -10,15 +10,7 @@ import type { SystemMode } from '../calc';
 import { calcFlowFromHeatLoad } from '../calc';
 import type { PumpFieldConfig, FluidId } from '../configs/types';
 import type { FluidType } from '../../../data/glycol-properties';
-
-// 유체 ID → 표시 라벨 매핑
-const FLUID_LABELS: Record<FluidId, string> = {
-  'water': '냉수',
-  'cooling-water': '냉각수',
-  'hot-water': '온수',
-  'glycol-eg': 'EG 브라인 (Phase 1.5)',
-  'glycol-pg': 'PG 브라인 (Phase 1.5)',
-};
+import { FLUID_LABELS } from '../fluids';
 
 // 유체 ID → disabled 여부 (Phase 1.5 이전 글리콜 미구현)
 const FLUID_DISABLED: Record<FluidId, boolean> = {

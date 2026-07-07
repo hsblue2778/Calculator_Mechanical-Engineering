@@ -1,15 +1,19 @@
-// 마찰손실 계통 계산기 — 계산 탭 (① 계통설정 → ② 구간입력 → ③ 구간결과 → ④ 판정 요약 조립)
+// 계통 압력손실 — 계산 탭 (계통설정 → 구간입력 → 구간결과 조립 + 우측 실시간 결과 패널)
 
-import { useState } from 'react';
-import { AlertTriangle, Check, RotateCcw, Save } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import type { FNSystemType } from '../../../data/frictionNetworkRef.ts';
-import type { FNNetworkResult } from '../calc';
+import type { FNNetworkResult, FNSegmentInput } from '../calc';
 import type { FNSuggestion } from '../design';
 import type { FNSettingsState, FNSegmentState } from '../index';
+import { downloadCsv, downloadWordFile, printHtmlReport } from '../../../utils/exportUtils';
+import { useInitialAction } from '../../../utils/useInitialAction';
+import { buildFrictionNetworkReportHtml } from '../htmlReport';
+import { buildFrictionNetworkCsvRows } from '../csvExport';
 import SettingsPanel from './SettingsPanel';
 import SegmentTable from './SegmentTable';
 import ResultsPanel from './ResultsPanel';
-import { C } from '../styles';
+import ActionBar from './ActionBar';
+import StickyResults from './StickyResults';
 
 interface Props {
   st: FNSettingsState;
@@ -19,6 +23,7 @@ interface Props {
   patchRow: (i: number, patch: Partial<FNSegmentState>) => void;
   addRow: () => void;
   removeRow: (i: number) => void;
+  activeSegments: FNSegmentInput[];
   settingsError: string | null;
   net: FNNetworkResult | null;
   suggestions: Record<string, FNSuggestion>;
@@ -27,86 +32,86 @@ interface Props {
   onReset: () => void;
   onSave?: () => void;
   canSave?: boolean;
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
+  onInitialActionDone?: () => void;
 }
 
 export default function CalculatorTab({
   st, patchSettings, changeSystemType,
   rows, patchRow, addRow, removeRow,
-  settingsError, net, suggestions, pAvailEntered, designTotalFlow_m3s,
-  onReset, onSave, canSave,
+  activeSegments, settingsError, net, suggestions, pAvailEntered, designTotalFlow_m3s,
+  onReset, onSave, canSave, initialAction, onInitialActionDone,
 }: Props) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <SettingsPanel
-        st={st}
-        patchSettings={patchSettings}
-        changeSystemType={changeSystemType}
-        net={net}
-        pAvailEntered={pAvailEntered}
-      />
-
-      {settingsError && <ErrorBanner message={settingsError} />}
-
-      <SegmentTable
-        rows={rows}
-        patchRow={patchRow}
-        addRow={addRow}
-        removeRow={removeRow}
-        flowUnit={st.flowUnit}
-      />
-
-      <ResultsPanel
-        net={net}
-        flowUnit={st.flowUnit}
-        pAvailEntered={pAvailEntered}
-        suggestions={suggestions}
-        designTotalFlow_m3s={designTotalFlow_m3s}
-      />
-
-      <div className="calc-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-        {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
-        <button
-          onClick={onReset}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '10px 20px', fontSize: 14, fontWeight: 500,
-            color: C.text, backgroundColor: 'transparent',
-            border: `1px solid ${C.borderInput}`, borderRadius: 8,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          <RotateCcw size={14} /> 초기화
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SaveBtn({ onClick, enabled }: { onClick: () => void; enabled: boolean }) {
-  const [saved, setSaved] = useState(false);
-  function handle() {
-    onClick();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1600);
+  function reportArgs() {
+    return {
+      st, segments: activeSegments, net: net!,
+      suggestions, pAvailEntered, designTotalFlow_m3s,
+    };
   }
+  function handleCsv() {
+    if (!net) return;
+    const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    downloadCsv(`friction-network_${ts}.csv`, buildFrictionNetworkCsvRows(reportArgs()));
+  }
+  function handleWord() {
+    if (!net) return;
+    const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    downloadWordFile(`friction-network_${ts}.doc`, buildFrictionNetworkReportHtml(reportArgs()));
+  }
+  function handlePdf() {
+    if (!net) return;
+    printHtmlReport(buildFrictionNetworkReportHtml(reportArgs()));
+  }
+
+  // 기록 ⋯ 메뉴 진입 액션 — 결과 준비 후 1회 자동 실행
+  useInitialAction(initialAction, !!net, a => {
+    if (a === 'csv') handleCsv();
+    else if (a === 'word') handleWord();
+    else if (a === 'pdf') handlePdf();
+  }, onInitialActionDone);
+
+  const actionBarProps = {
+    onSave, canSave,
+    canExport: !!net,
+    onCsv: handleCsv, onWord: handleWord, onPdf: handlePdf,
+    onReset,
+  };
+
   return (
-    <button
-      onClick={handle}
-      disabled={!enabled}
-      title={enabled ? '현재 계산을 기록에 저장' : '가용정압 입력·전 구간 에러 없음일 때 저장할 수 있습니다'}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? 'var(--text-inverse)' : 'var(--border-subtle)',
-        backgroundColor: enabled ? (saved ? 'var(--state-success)' : C.blue) : 'var(--border-default)',
-        border: 'none', borderRadius: 8,
-        cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-        transition: 'background-color 0.15s',
-      }}
-    >
-      {saved ? <Check size={14} /> : <Save size={14} />}
-      {saved ? '저장됨' : '기록 저장'}
-    </button>
+    <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 22, paddingRight: 8 }}>
+        <SettingsPanel
+          st={st}
+          patchSettings={patchSettings}
+          changeSystemType={changeSystemType}
+          net={net}
+          pAvailEntered={pAvailEntered}
+        />
+
+        {settingsError && <ErrorBanner message={settingsError} />}
+
+        <SegmentTable
+          rows={rows}
+          patchRow={patchRow}
+          addRow={addRow}
+          removeRow={removeRow}
+          flowUnit={st.flowUnit}
+        />
+
+        <ResultsPanel
+          net={net}
+          flowUnit={st.flowUnit}
+          pAvailEntered={pAvailEntered}
+          suggestions={suggestions}
+          designTotalFlow_m3s={designTotalFlow_m3s}
+        />
+
+        <ActionBar className="calc-actions calc-actions-desktop" {...actionBarProps} />
+      </main>
+
+      <StickyResults net={net} flowUnit={st.flowUnit} pAvailEntered={pAvailEntered} />
+      <ActionBar className="calc-actions calc-actions-mobile" {...actionBarProps} />
+    </div>
   );
 }
 

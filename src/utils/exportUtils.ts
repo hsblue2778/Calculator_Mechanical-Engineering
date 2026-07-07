@@ -1,6 +1,7 @@
 // 계산 결과 내보내기 유틸 — 외부 라이브러리 의존 없음
 // PDF: 브라우저 인쇄 다이얼로그(window.print) 기반. "대상: PDF로 저장" 선택
 // CSV: Blob + URL.createObjectURL 다운로드 (UTF-8 BOM 포함 → 엑셀 한글 호환)
+// Word: PDF와 동일한 HTML 산출서를 MS Word 호환(.doc) 형식으로 다운로드
 
 // ── CSV ────────────────────────────────────────────────────────────
 export interface CsvRow {
@@ -39,17 +40,64 @@ export function downloadCsv(filename: string, rows: (string | number)[][]): void
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ── HTML 파일 다운로드 ────────────────────────────────────────────
+// ── Word(.doc) 파일 다운로드 ──────────────────────────────────────
+// Word의 HTML 렌더 엔진 제약에 맞춘 보정:
+//  - CSS 변수(var(--x)) 미지원 → REPORT_CSS :root 정의값으로 치환
+//  - flexbox 미지원 → 헤더·푸터·표지 밴드를 float 배치로 대체
+//  - 웹폰트 로드 불가 → Pretendard <link> 제거, 맑은 고딕 폴백
+//  - @page WordSection1 으로 A4 페이지 여백 지정 (인쇄 CSS와 동일 여백)
+const WORD_CSS_VARS: Record<string, string> = {
+  'ink': '#0B1120', 'ink-2': '#1F2937', 'mute': '#475569',
+  'line': '#94A3B8', 'line-soft': '#CBD5E1',
+  'paper': '#FFFFFF', 'paper-2': '#F8FAFC', 'paper-3': '#F1F5F9',
+  'accent': '#1F3A6E', 'accent-2': '#A4133C', 'hi': '#FEF9C3',
+};
+
+const WORD_HEAD_EXTRA = `<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+<style>
+  @page WordSection1 { size: 210mm 297mm; margin: 14mm 12mm 12mm 12mm; }
+  div.WordSection1 { page: WordSection1; }
+  html, body { background: #FFFFFF; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
+  .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; page-break-after: always; }
+  .sheet:last-child { page-break-after: auto; }
+  .sheet.cover { padding: 0; }
+  /* flex 레이아웃 → float 대체 */
+  .doc-head { display: block; overflow: hidden; }
+  .doc-head .brand { display: block; float: left; }
+  .doc-head .brand img { display: inline-block; vertical-align: middle; }
+  .doc-head .brand .label { display: inline-block; vertical-align: middle; margin-left: 10px; }
+  .doc-head .meta { float: right; text-align: right; }
+  .cover-band { display: block; overflow: hidden; height: auto; padding: 12px 14mm; }
+  .cover-band .tag { float: left; }
+  .cover-band .docno { float: right; }
+  .cover-body { display: block; }
+  .cover-foot { display: block; overflow: hidden; }
+  .cover-foot .signoff { float: left; }
+  .cover-foot .biglogo { float: right; }
+  .doc-foot { display: block; overflow: hidden; }
+  .doc-foot span:first-child { float: left; }
+  .doc-foot span:last-child { float: right; }
+  ul.refs { column-count: 1; }
+</style>`;
+
 /**
- * 완성된 HTML 문자열을 .html 파일로 다운로드.
- * Blob text/html;charset=utf-8 — CSV와 동일한 패턴.
+ * PDF 산출서와 동일한 HTML 문자열을 Word 호환 형식으로 가공해 .doc 파일로 다운로드.
+ * MSO 네임스페이스 + Print 뷰 설정으로 Word에서 바로 인쇄 레이아웃으로 열린다.
  */
-export function downloadHtmlFile(filename: string, htmlContent: string): void {
-  const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+export function downloadWordFile(filename: string, htmlContent: string): void {
+  const wordHtml = htmlContent
+    .replace(/<link[^>]*>\n?/g, '')
+    .replace(/var\(--([a-z0-9-]+)\)/g, (m, name: string) => WORD_CSS_VARS[name] ?? m)
+    .replace('<html lang="ko">', '<html lang="ko" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">')
+    .replace('</head>', `${WORD_HEAD_EXTRA}\n</head>`)
+    .replace('<body>', '<body><div class="WordSection1">')
+    .replace('</body>', '</div></body>');
+  // UTF-8 BOM → Word가 인코딩을 확실히 인식
+  const blob = new Blob(['\uFEFF', wordHtml], { type: 'application/msword' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename.endsWith('.html') ? filename : `${filename}.html`;
+  a.download = filename.endsWith('.doc') ? filename : `${filename}.doc`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

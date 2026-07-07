@@ -6,7 +6,7 @@ import logoDataUrl from '../../assets/report-logo.png?inline';
 import { REPORT_CSS } from '../pump-system/htmlReport/styles';
 import {
   esc, pageHeader, pageFooter, secHeader,
-  makeDocNo, makeCalcDateTime, makeTodayStr,
+  makeDocNo, makeCalcDateTime,
 } from '../pump-system/htmlReport/helpers';
 import { PF_G, RE_LAMINAR_MAX, RE_TURBULENT_MIN } from './engine.ts';
 import { fMethodLabel, pfWarnings } from './interpret.ts';
@@ -32,7 +32,6 @@ export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string 
   const warns = pfWarnings(res, isWater);
 
   const docNo = makeDocNo();
-  const today = makeTodayStr();
   const title = '관마찰손실 계산결과';
   const logo = logoDataUrl as string;
   const auto = (f: 'Q' | 'V' | 'D') => (derivedField === f ? '자동 산출' : '입력값');
@@ -203,13 +202,6 @@ ${REPORT_CSS}
 </style>
 </head>
 <body>
-
-<div class="toolbar">
-  <div class="name">${esc(title)} · ${esc(today)}</div>
-  <div class="actions">
-    <button onclick="window.print()" class="primary">📄 PDF로 저장 / 인쇄</button>
-  </div>
-</div>
 
 ${page1}
 ${page2}

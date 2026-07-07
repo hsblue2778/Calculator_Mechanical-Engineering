@@ -1,14 +1,15 @@
-// 마찰손실 계통 계산기 — ③ 구간 결과(read-only) + ④ 판정 요약 (KPI + 맥락 경고)
-// 판정: 최대(누적손실+요구압) vs 설계 가용정압 P_avail×(1−α) → 여유/부족
+// 마찰손실 계통 계산기 — 판정 요약(KPI) + 구간 결과(read-only) + 맥락 경고
+// 판정: 최대(누적손실+요구압) vs 설계 가용정압 P_avail×(1−α) — 결론 먼저, 상세 표는 아래 → 여유/부족
 
 import Kpi from '../../../components/Kpi';
-import WarningList, { type WarningItem } from '../../../components/WarningList';
+import WarningList from '../../../components/WarningList';
 import { FN_PA_PER_MMAQ } from '../../../data/frictionNetworkRef.ts';
 import {
   VERDICT_LABELS, REGIME_LABELS,
   type FNNetworkResult, type FNFlowUnit, type FNSegmentResult,
 } from '../calc';
 import type { FNSuggestion } from '../design';
+import { buildFnWarnings } from '../warnings';
 import { C } from '../styles';
 import { SectionLabel } from './SettingsPanel';
 
@@ -44,12 +45,35 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered, suggestions
   }
 
   const flowMul = flowUnit === 'LPM' ? 60000 : 3600;   // m³/s → 표시 단위
-  const warnings = buildWarnings(net, pAvailEntered, suggestions, designTotalFlow_m3s, flowUnit);
+  const warnings = buildFnWarnings(net, pAvailEntered, suggestions, designTotalFlow_m3s, flowUnit);
   const short = pAvailEntered && net.margin_Pa < 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <SectionLabel>③ 구간 결과</SectionLabel>
+      <SectionLabel>판정 요약</SectionLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+        <Kpi
+          label={`최대 누적손실+요구압${net.worstId ? ` (${net.worstId})` : ''}`}
+          value={fmtInt(net.worstDemand_Pa)}
+          unit="Pa"
+          subLabel={`${fmt(net.worstDemand_Pa / FN_PA_PER_MMAQ, 1)} mmAq`}
+        />
+        <Kpi
+          label="설계 가용정압 P_avail×(1−α)"
+          value={pAvailEntered ? fmtInt(net.designAvail_Pa) : '—'}
+          unit={pAvailEntered ? 'Pa' : undefined}
+          subLabel={pAvailEntered ? `${fmt(net.designAvail_Pa / FN_PA_PER_MMAQ, 1)} mmAq` : '가용정압 미입력'}
+        />
+        <Kpi
+          label={short ? '정압 부족' : '정압 여유'}
+          value={pAvailEntered ? fmtInt(Math.abs(net.margin_Pa)) : '—'}
+          unit={pAvailEntered ? 'Pa' : undefined}
+          accent={pAvailEntered ? (short ? 'var(--state-error)' : 'var(--state-success)') : undefined}
+          subLabel={pAvailEntered ? (short ? '▲ 가용정압 초과' : 'OK') : '가용정압 미입력'}
+        />
+      </div>
+
+      <SectionLabel>구간 결과</SectionLabel>
 
       <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
         <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', minWidth: 1100 }}>
@@ -80,29 +104,6 @@ export default function ResultsPanel({ net, flowUnit, pAvailEntered, suggestions
             ))}
           </tbody>
         </table>
-      </div>
-
-      <SectionLabel>④ 판정 요약</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
-        <Kpi
-          label={`최대 누적손실+요구압${net.worstId ? ` (${net.worstId})` : ''}`}
-          value={fmtInt(net.worstDemand_Pa)}
-          unit="Pa"
-          subLabel={`${fmt(net.worstDemand_Pa / FN_PA_PER_MMAQ, 1)} mmAq`}
-        />
-        <Kpi
-          label="설계 가용정압 P_avail×(1−α)"
-          value={pAvailEntered ? fmtInt(net.designAvail_Pa) : '—'}
-          unit={pAvailEntered ? 'Pa' : undefined}
-          subLabel={pAvailEntered ? `${fmt(net.designAvail_Pa / FN_PA_PER_MMAQ, 1)} mmAq` : '가용정압 미입력'}
-        />
-        <Kpi
-          label={short ? '정압 부족' : '정압 여유'}
-          value={pAvailEntered ? fmtInt(Math.abs(net.margin_Pa)) : '—'}
-          unit={pAvailEntered ? 'Pa' : undefined}
-          accent={pAvailEntered ? (short ? 'var(--state-error)' : 'var(--state-success)') : undefined}
-          subLabel={pAvailEntered ? (short ? '▲ 가용정압 초과' : 'OK') : '가용정압 미입력'}
-        />
       </div>
 
       <WarningList items={warnings} />
@@ -160,61 +161,3 @@ function ResultRow({ r, flowMul, worst, sug }: {
   );
 }
 
-function buildWarnings(
-  net: FNNetworkResult, pAvailEntered: boolean,
-  suggestions: Record<string, FNSuggestion>,
-  designTotalFlow_m3s: number | null, flowUnit: FNFlowUnit,
-): WarningItem[] {
-  const items: WarningItem[] = [];
-  for (const r of net.rows) {
-    if (r.error) items.push({ level: 'error', title: `구간 ${r.id || '(ID 없음)'}`, msg: `${r.error} — 이 행은 계산에서 제외되었습니다.` });
-  }
-  if (pAvailEntered && net.margin_Pa < 0) {
-    items.push({
-      level: 'error', title: '정압 부족',
-      msg: `최대 누적손실+요구압(${Math.round(net.worstDemand_Pa)} Pa)이 설계 가용정압(${Math.round(net.designAvail_Pa)} Pa)을 초과합니다. 관경 확대·경로 단축 또는 팬/펌프 정압 상향이 필요합니다.`,
-    });
-  }
-  // 설계 총유량 ↔ Σ말단유량 대조 (차이 0.5% 초과 시)
-  if (designTotalFlow_m3s !== null) {
-    const mul = flowUnit === 'LPM' ? 60000 : 3600;
-    const relPct = (net.totalLeafFlow_m3s - designTotalFlow_m3s) / designTotalFlow_m3s * 100;
-    if (Math.abs(relPct) > 0.5) {
-      items.push({
-        level: 'warn', title: '설계 총유량 불일치',
-        msg: `Σ말단유량 ${(net.totalLeafFlow_m3s * mul).toFixed(1)} ${flowUnit} ≠ 설계 총유량 ${(designTotalFlow_m3s * mul).toFixed(1)} ${flowUnit} (${relPct >= 0 ? '+' : ''}${relPct.toFixed(1)}%) — 말단유량 배분을 확인하세요.`,
-      });
-    }
-  }
-  for (const r of net.rows) {
-    if (r.error) continue;
-    if (r.verdict === 'high') {
-      const d = suggestions[r.id]?.suggest_mm ?? r.suggestedD_mm;
-      items.push({
-        level: 'warn', title: `구간 ${r.id} ▲유속초과`,
-        msg: `V=${r.V_ms.toFixed(2)} m/s가 적용 최대를 초과 — 제안 관경 ${d.toFixed(1)} mm 이상으로 확대 검토.`,
-      });
-    } else if (r.verdict === 'low') {
-      items.push({
-        level: 'warn', title: `구간 ${r.id} ▼과대관경`,
-        msg: `V=${r.V_ms.toFixed(3)} m/s가 적용 최소 미만 — 관경 축소(비용·침전 측면) 검토.`,
-      });
-    }
-    if (r.compressWarn) {
-      items.push({
-        level: 'warn', title: `구간 ${r.id} ⚠구간분할 필요`,
-        msg: `누적 ΔP(${Math.round(r.cum_Pa)} Pa)가 절대압의 10%를 초과 — 비압축성 가정 한계. 구간을 분할해 압력별로 재계산하세요.`,
-      });
-    }
-    if (r.regime === 'transition') {
-      items.push({
-        level: 'info', title: `구간 ${r.id} ⚠천이역`,
-        msg: `Re=${Math.round(r.Re)} (2,300~4,000) — 천이역은 f 불확실성이 큼. 이 계산기는 엑셀 방식대로 Swamee-Jain을 적용합니다.`,
-      });
-    }
-  }
-  if (net.tempClamped) {
-    items.push({ level: 'info', title: '온도 clamp', msg: '입력 온도가 유체 참조표 범위를 벗어나 경계값 물성으로 계산했습니다.' });
-  }
-  return items;
-}

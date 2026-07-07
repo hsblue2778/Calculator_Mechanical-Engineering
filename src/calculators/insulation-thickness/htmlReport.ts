@@ -5,7 +5,7 @@ import logoDataUrl from '../../assets/report-logo.png?inline';
 import { REPORT_CSS } from '../pump-system/htmlReport/styles';
 import {
   esc, pageHeader, pageFooter, secHeader,
-  makeDocNo, makeCalcDateTime, makeTodayStr,
+  makeDocNo, makeCalcDateTime,
 } from '../pump-system/htmlReport/helpers';
 import type {
   PipeOdSpec, InsulationMaterial, InsulationInputs, InsulationOutputs,
@@ -104,7 +104,6 @@ const TOTAL_PAGES = 3;
 export function buildInsulationReportHtml(props: ReportProps): string {
   const { pipe, mat, k, inputs, result } = props;
   const docNo = makeDocNo();
-  const today = makeTodayStr();
   const title = '보온재 선정 계산기 계산결과';
   const docLabel = title;
   const logo = logoDataUrl as string;
@@ -299,13 +298,6 @@ ${REPORT_CSS}
 </style>
 </head>
 <body>
-
-<div class="toolbar">
-  <div class="name">${esc(title)} · ${esc(today)}</div>
-  <div class="actions">
-    <button onclick="window.print()" class="primary">📄 PDF로 저장 / 인쇄</button>
-  </div>
-</div>
 
 ${page1}
 ${page2}
