@@ -49,13 +49,13 @@ function genId(): string {
   return 'inst-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
-// 기록 ⋯ 메뉴에 노출할 내보내기·체이닝 액션 — 각 계산기의 현재 구현 현황 그대로
+// 기록 ⋯ 메뉴에 노출할 내보내기·체이닝 액션 — 전 계산기 CSV·Word·PDF 지원
 const ENTRY_EXPORT_ACTIONS: Record<string, EntryAction[]> = {
-  'pipe-friction': ['csv', 'html', 'pdf', 'chain'],
-  'pipe-sizing': ['csv', 'html', 'pdf'],
-  'insulation-thickness': ['csv', 'html', 'pdf'],
-  'pump-hvac': ['html', 'pdf'],
-  'friction-network': [],                 // 내보내기 미구현 — 이름변경·삭제만
+  'pipe-friction': ['csv', 'word', 'pdf', 'chain'],
+  'pipe-sizing': ['csv', 'word', 'pdf'],
+  'insulation-thickness': ['csv', 'word', 'pdf'],
+  'pump-hvac': ['csv', 'word', 'pdf'],
+  'friction-network': ['csv', 'word', 'pdf'],
 };
 
 export default function App() {

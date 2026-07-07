@@ -3,7 +3,7 @@
 //       부속류 / 장비류 / 정수두잔류압력 / 안전율프리셋 / 결과 / PDF
 
 import { useId } from 'react';
-import { FileDown, Printer } from 'lucide-react';
+import { Download, FileText, Printer } from 'lucide-react';
 import { SaveBtn } from './FormComponents';
 import { PipeMultiTable } from './PipeMultiTable';
 import HeadPressureSection from './HeadPressureSection';
@@ -18,9 +18,10 @@ import {
 import { generatePumpCurveFamily, findOperatingPoint, type EquipKind, type SystemMode, type PumpCurveAtHz, type PumpHvacResult } from '../calc';
 import type { PumpFieldConfig, FluidId } from '../configs/types';
 import { C } from '../styles';
-import { downloadHtmlFile, printHtmlReport } from '../../../utils/exportUtils';
+import { downloadCsv, downloadWordFile, printHtmlReport } from '../../../utils/exportUtils';
 import { useInitialAction } from '../../../utils/useInitialAction';
 import { buildPumpHvacReportHtml } from '../htmlReport/index';
+import { buildPumpHvacCsvRows } from '../csvExport';
 import ResultSection from './ResultSection';
 import { FittingTable, EquipTable } from './FittingEquipTables';
 import WorkspaceLayout from '../workspace/WorkspaceLayout';
@@ -323,9 +324,10 @@ export default function CalculatorTab(props: Props) {
 
   // 기록 ⋯ 메뉴 진입 액션 — 결과 준비 후 1회 자동 실행
   useInitialAction(initialAction, !!result, a => {
+    if (a === 'csv') { handlePumpCsv(); return; }
     const html = buildPumpHvacHtml();
     if (!html) return;
-    if (a === 'html') downloadHtmlFile(`${pdfTitle}.html`, html);
+    if (a === 'word') downloadWordFile(`${pdfTitle}.doc`, html);
     else if (a === 'pdf') printHtmlReport(html);
   }, onInitialActionDone);
 
@@ -676,13 +678,18 @@ export default function CalculatorTab(props: Props) {
       <div className="calc-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
         <PumpReportBtn
-          icon={<FileDown size={14} />} label="HTML로 저장하기"
-          title="편집 가능한 HTML 산출서 파일 다운로드"
+          icon={<Download size={14} />} label="CSV 내보내기"
+          title="계산 조건·결과·손실 상세를 CSV 파일로 다운로드"
+          enabled={!!result}
+          onClick={handlePumpCsv}
+        />
+        <PumpReportBtn
+          icon={<FileText size={14} />} label="Word로 저장"
+          title="PDF 산출서와 동일한 양식의 Word(.doc) 파일 다운로드"
           enabled={!!result}
           onClick={() => {
-            if (!result) return;
             const html = buildPumpHvacHtml();
-            if (html) downloadHtmlFile(`${pdfTitle}.html`, html);
+            if (html) downloadWordFile(`${pdfTitle}.doc`, html);
           }}
         />
         <PumpReportBtn
@@ -697,6 +704,19 @@ export default function CalculatorTab(props: Props) {
       </div>
     </div>
   );
+
+  function handlePumpCsv() {
+    if (!result) return;
+    downloadCsv(`${pdfTitle}.csv`, buildPumpHvacCsvRows({
+      result, fieldLabel, systemMode, fluid, tempC, Q,
+      flowUnitLabel: FLOW_UNITS_PUMP.find(u => u.key === flowUnit)?.label ?? '',
+      HsStr, HdStr, PresStr,
+      presUnit: PRESSURE_UNITS_PUMP.find(u => u.key === presUnit)?.label ?? presUnit,
+      pipeCondition, headMarginStr, powerMarginStr, npshrStr,
+      powerUnitLabel: POWER_UNITS.find(u => u.key === powerUnit)?.label ?? powerUnit,
+      powerFactor,
+    }));
+  }
 
   function buildPumpHvacHtml(): string | null {
     if (!result) return null;

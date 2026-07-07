@@ -106,7 +106,7 @@ export default function OverviewTab() {
           </li>
           <li>
             <b>⑥ 입력 검증·경고·다단위 동시 표시·산출서</b><br />
-            <span style={{ color: C.text }}>→ 0·음수·범위 밖 입력 즉시 차단, 천이역·고조도·수렴 실패 경고, mmAq·kPa·kg/cm²·bar·Pa 동시 표시, CSV/HTML/PDF 산출서와 기록 저장.</span>
+            <span style={{ color: C.text }}>→ 0·음수·범위 밖 입력 즉시 차단, 천이역·고조도·수렴 실패 경고, mmAq·kPa·kg/cm²·bar·Pa 동시 표시, CSV/Word/PDF 산출서와 기록 저장.</span>
           </li>
         </ul>
       </InfoBlock>

@@ -49,7 +49,7 @@ function PipeCrossSection({
     : 0;
 
   return (
-    <VizCard title="① 배관 단면">
+    <VizCard title="배관 단면">
       <svg viewBox="0 0 280 240" style={{ width: '100%' }}>
         <defs>
           <radialGradient id="pipe-fill" cx="50%" cy="50%" r="50%">
@@ -133,7 +133,7 @@ function DewpointGauge({
     'var(--state-success-text)';
 
   return (
-    <VizCard title="② 결로 안전 게이지">
+    <VizCard title="결로 안전 게이지">
       <svg viewBox="0 0 280 160" style={{ width: '100%' }}>
         {/* Ti / Ta — 상단 라벨 (게이지와 분리된 영역) */}
         <text x={xStart} y="14" fill="var(--text-tertiary)" fontSize="10"
@@ -230,7 +230,7 @@ function ThicknessComparison({
   }
 
   return (
-    <VizCard title="③ 시판 두께별 여유 (°C)">
+    <VizCard title="시판 두께별 여유 (°C)">
       <svg viewBox="0 0 280 240" style={{ width: '100%' }}>
         {/* 0 기준선 */}
         <line x1="35" y1={baseY} x2="265" y2={baseY}

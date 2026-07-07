@@ -14,7 +14,7 @@ export default function TriangleSection({ pf }: { pf: PipeFrictionController }) 
   const flowLabel = pfFlowUnitDef(st.flowUnit).label;
 
   return (
-    <FormulaSection title="① 흐름 조건 — 유량·유속·관경 중 2개 입력 (나머지 1개 자동 산출)">
+    <FormulaSection title="흐름 조건 — 유량·유속·관경 중 2개 입력 (나머지 1개 자동 산출)">
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, fontSize: 14 }}>
         <span>Q</span><span>=</span>
         <Frac n={<>π × D²</>} d={<>4</>} />

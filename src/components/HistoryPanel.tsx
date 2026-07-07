@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Pencil, Trash2, GitCompare, MoreVertical,
-  FileDown, FileCode, Printer, ArrowRight,
+  FileDown, FileText, Printer, ArrowRight,
 } from 'lucide-react';
 import {
   list, updateTitle, remove, formatRelativeTime, dateGroupOf,
@@ -11,11 +11,11 @@ import {
 } from '../state/historyStore';
 
 // 기록 항목 ⋯ 메뉴의 내보내기·체이닝 액션 — 계산기별 지원 목록은 App에서 전달
-export type EntryAction = 'csv' | 'html' | 'pdf' | 'chain';
+export type EntryAction = 'csv' | 'word' | 'pdf' | 'chain';
 
 const ENTRY_ACTION_META: Record<EntryAction, { label: string; icon: React.ReactNode }> = {
   csv:   { label: 'CSV로 저장',        icon: <FileDown size={13} /> },
-  html:  { label: 'HTML로 저장',       icon: <FileCode size={13} /> },
+  word:  { label: 'Word로 저장',       icon: <FileText size={13} /> },
   pdf:   { label: 'PDF로 저장',        icon: <Printer size={13} /> },
   chain: { label: '관경 선정으로 보내기', icon: <ArrowRight size={13} /> },
 };
