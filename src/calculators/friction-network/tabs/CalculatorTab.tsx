@@ -32,6 +32,7 @@ interface Props {
   onReset: () => void;
   onSave?: () => void;
   canSave?: boolean;
+  onChain?: () => void;                // 펌프 시스템으로 보내기 (Σ말단유량·최대 요구압)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
@@ -40,7 +41,7 @@ export default function CalculatorTab({
   st, patchSettings, changeSystemType,
   rows, patchRow, addRow, removeRow,
   activeSegments, settingsError, net, suggestions, pAvailEntered, designTotalFlow_m3s,
-  onReset, onSave, canSave, initialAction, onInitialActionDone,
+  onReset, onSave, canSave, onChain, initialAction, onInitialActionDone,
 }: Props) {
   function reportArgs() {
     return {
@@ -70,11 +71,20 @@ export default function CalculatorTab({
     else if (a === 'pdf') handlePdf();
   }, onInitialActionDone);
 
+  // 체이닝은 배관 계통 전용 (덕트 계통은 펌프 대상 아님)
+  const chainEnabled = !!net && st.systemType === 'pipe';
+  const chainTitle = !net
+    ? '구간을 입력해 결과가 나오면 보낼 수 있습니다'
+    : st.systemType === 'duct'
+      ? '덕트 계통은 펌프 대상이 아닙니다 (배관 계통 전용)'
+      : 'Σ말단유량 → 설계유량 Q · 최대 요구압 → 잔류 토출압으로 전달';
+
   const actionBarProps = {
     onSave, canSave,
     canExport: !!net,
     onCsv: handleCsv, onWord: handleWord, onPdf: handlePdf,
     onReset,
+    onChain, chainEnabled, chainTitle,
   };
 
   // 목표 마찰률 R → Pa/m 환산 — 구간 R(mmAq/m) 초과 강조용 (미입력·무효 시 null)

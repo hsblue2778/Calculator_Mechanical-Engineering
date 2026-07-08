@@ -159,6 +159,9 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
     () => initialState?.operatingHzList ?? [60],
   );
 
+  // 체이닝으로 들어온 경우 — 발신 계산기 안내 배너 표시 (계통 압력손실·관경 선정)
+  const chainedFrom = typeof initialState?.chainedFrom === 'string' ? initialState.chainedFrom : undefined;
+
   // 현재 inputs/outputs (onSave용)
   const inputs = {
     systemMode, fluid, tempC, Q, flowUnit,
@@ -399,6 +402,7 @@ export default function PumpSystemCalculator({ field, initialTab, initialState, 
           result={result}
           onSave={onSave ? () => onSave({ inputs, outputs: result }) : undefined}
           canSave={!!result}
+          chainedFrom={chainedFrom}
           initialAction={initialAction}
           onInitialActionDone={onInitialActionDone}
         />
