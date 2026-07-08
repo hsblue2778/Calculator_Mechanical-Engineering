@@ -37,10 +37,11 @@ export interface FrictionNetworkReportArgs {
   suggestions: Record<string, FNSuggestion>;
   pAvailEntered: boolean;
   designTotalFlow_m3s: number | null;
+  fittingSummaries?: Record<string, string>;   // 구간ID → 부속 선택 내역 (ΣK 산출 근거)
 }
 
 export function buildFrictionNetworkReportHtml(args: FrictionNetworkReportArgs): string {
-  const { st, segments, net, suggestions, pAvailEntered, designTotalFlow_m3s } = args;
+  const { st, segments, net, suggestions, pAvailEntered, designTotalFlow_m3s, fittingSummaries } = args;
 
   const docNo = makeDocNo();
   const title = '계통 압력손실 계산결과';
@@ -179,6 +180,8 @@ export function buildFrictionNetworkReportHtml(args: FrictionNetworkReportArgs):
     ${inputRows}
   </table>
   <p class="note">부모ID 트리 기준 말단→상류 Q 합산. 비말단 구간의 말단유량·요구압은 미사용.</p>
+  ${Object.keys(fittingSummaries ?? {}).length > 0 ? `
+  <p class="note">부속 내역 (ΣK 산출 근거 — Perry's 8th Ed K값): ${Object.entries(fittingSummaries!).map(([id, s]) => `<b>${esc(id)}</b> ${esc(s)}`).join(' / ')}</p>` : ''}
 
   ${pageFooter(docNo, 1, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
 </section>`;

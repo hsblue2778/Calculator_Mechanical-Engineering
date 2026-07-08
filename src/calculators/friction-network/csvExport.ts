@@ -19,8 +19,9 @@ export function buildFrictionNetworkCsvRows(args: {
   suggestions: Record<string, FNSuggestion>;
   pAvailEntered: boolean;
   designTotalFlow_m3s: number | null;
+  fittingSummaries?: Record<string, string>;   // 구간ID → 부속 선택 내역
 }): (string | number)[][] {
-  const { st, net, suggestions, pAvailEntered, designTotalFlow_m3s } = args;
+  const { st, net, suggestions, pAvailEntered, designTotalFlow_m3s, fittingSummaries } = args;
   const flowMul = st.flowUnit === 'LPM' ? 60000 : 3600;
   const short = pAvailEntered && net.margin_Pa < 0;
 
@@ -76,6 +77,14 @@ export function buildFrictionNetworkCsvRows(args: {
       fmt(r.cumPlusReq_Pa, 1),
       r.compressWarn ? '⚠구간분할 필요' : '',
     ]);
+  }
+
+  const fitEntries = Object.entries(fittingSummaries ?? {});
+  if (fitEntries.length > 0) {
+    rows.push(['', '', '', '']);
+    rows.push(['-- 구간 부속 내역 --', '', '', '']);
+    rows.push(['구간ID', '부속 내역 (ΣK 산출 근거)', '', '']);
+    for (const [id, s] of fitEntries) rows.push([id, s, '', '']);
   }
 
   return rows;

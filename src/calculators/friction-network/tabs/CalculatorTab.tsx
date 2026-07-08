@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react';
 import { fnRUnit, type FNSystemType } from '../../../data/frictionNetworkRef.ts';
+import { FITTING_K_VALUES } from '../../../data/fitting-k-values';
 import type { FNNetworkResult, FNSegmentInput } from '../calc';
 import type { FNSuggestion } from '../design';
 import type { FNSettingsState, FNSegmentState } from '../index';
@@ -43,10 +44,24 @@ export default function CalculatorTab({
   activeSegments, settingsError, net, suggestions, pAvailEntered, designTotalFlow_m3s,
   onReset, onSave, canSave, onChain, initialAction, onInitialActionDone,
 }: Props) {
+  // 구간별 부속 선택 내역 요약 (구간ID → "90° 엘보 ×4 · 게이트밸브 ×1") — 산출서·CSV 표기용
+  function buildFittingSummaries(): Record<string, string> {
+    const byId: Record<string, string> = {};
+    for (const r of rows) {
+      const id = r.id.trim();
+      if (!id || !r.fittings?.length) continue;
+      byId[id] = r.fittings
+        .map(f => `${FITTING_K_VALUES.find(v => v.id === f.fittingId)?.nameKo ?? f.fittingId} ×${f.qty}`)
+        .join(' · ');
+    }
+    return byId;
+  }
+
   function reportArgs() {
     return {
       st, segments: activeSegments, net: net!,
       suggestions, pAvailEntered, designTotalFlow_m3s,
+      fittingSummaries: buildFittingSummaries(),
     };
   }
   function handleCsv() {
@@ -112,6 +127,7 @@ export default function CalculatorTab({
           addRow={addRow}
           removeRow={removeRow}
           flowUnit={st.flowUnit}
+          systemType={st.systemType}
         />
 
         <ResultsPanel
