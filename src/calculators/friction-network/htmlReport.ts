@@ -181,7 +181,7 @@ export function buildFrictionNetworkReportHtml(args: FrictionNetworkReportArgs):
   </table>
   <p class="note">부모ID 트리 기준 말단→상류 Q 합산. 비말단 구간의 말단유량·요구압은 미사용.</p>
   ${Object.keys(fittingSummaries ?? {}).length > 0 ? `
-  <p class="note">부속 내역 (ΣK 산출 근거 — Perry's 8th Ed K값): ${Object.entries(fittingSummaries!).map(([id, s]) => `<b>${esc(id)}</b> ${esc(s)}`).join(' / ')}</p>` : ''}
+  <p class="note">부속 내역 (ΣK 산출 근거 — 배관: Perry's 8th Ed · 덕트: 편람 표 10·11): ${Object.entries(fittingSummaries!).map(([id, s]) => `<b>${esc(id)}</b> ${esc(s)}`).join(' / ')}</p>` : ''}
 
   ${pageFooter(docNo, 1, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
 </section>`;

@@ -1,6 +1,7 @@
 // 마찰손실 계통 계산기 — 구간 입력 테이블 (가로 스크롤, ID 열 sticky)
 // 행 = 구간. 부모ID 트리(ROOT 최상단), 최대 30행. 자식이 있는 행은 말단유량·요구압 입력 비활성.
-// ΣK 칸 옆 부속 선택기(배관 계통 전용) — K값 카탈로그에서 종류·수량 선택 → ΣK 자동 합산.
+// ΣK 칸 옆 부속 선택기 — 계통 종류에 맞는 K값 카탈로그(배관: Perry's / 덕트: 편람 표 10·11)에서
+// 종류·수량 선택 → ΣK 자동 합산.
 
 import { useState } from 'react';
 import { Plus, Trash2, Wrench } from 'lucide-react';
@@ -8,7 +9,8 @@ import {
   FN_GRADES, FN_MATERIALS, FN_MAX_ROWS, fnMaterial,
   type FNGrade, type FNMaterialId, type FNCondition, type FNSystemType,
 } from '../../../data/frictionNetworkRef.ts';
-import { FITTING_K_VALUES } from '../../../data/fitting-k-values';
+import { FITTING_K_VALUES, type FittingKValue } from '../../../data/fitting-k-values';
+import { DUCT_FITTING_K_VALUES, findFittingK } from '../../../data/duct-fitting-k-values';
 import Modal from '../../../components/Modal';
 import type { FNShape, FNFlowUnit } from '../calc';
 import type { FNSegmentState, FNFittingSel } from '../index';
@@ -21,7 +23,7 @@ interface Props {
   addRow: () => void;
   removeRow: (i: number) => void;
   flowUnit: FNFlowUnit;
-  systemType: FNSystemType;    // 부속 선택기는 배관 계통에서만 노출
+  systemType: FNSystemType;    // 부속 카탈로그 선택 (배관/덕트)
 }
 
 const th: React.CSSProperties = {
@@ -117,7 +119,6 @@ export default function SegmentTable({ rows, patchRow, addRow, removeRow, flowUn
                   <NumCell value={r.L} onChange={v => patchRow(i, { L: v })} />
                   <SumKCell
                     row={r}
-                    showPicker={systemType === 'pipe'}
                     onChange={v => patchRow(i, { sumK: v })}
                     onOpenPicker={() => setEditingRow(i)}
                   />
@@ -171,6 +172,7 @@ export default function SegmentTable({ rows, patchRow, addRow, removeRow, flowUn
       {editingRow !== null && rows[editingRow] && (
         <FittingModal
           row={rows[editingRow]}
+          systemType={systemType}
           onClose={() => setEditingRow(null)}
           onApply={(fittings, sumK) => patchRow(editingRow, { fittings, sumK })}
         />
@@ -179,18 +181,15 @@ export default function SegmentTable({ rows, patchRow, addRow, removeRow, flowUn
   );
 }
 
-// 부속 K값 합계 — 저장된 내역 기준
+// 부속 K값 합계 — 저장된 내역 기준 (배관·덕트 카탈로그 통합 조회)
 function fittingsSumK(fittings: FNFittingSel[] | undefined): number {
   if (!fittings) return 0;
-  return fittings.reduce((acc, f) => {
-    const def = FITTING_K_VALUES.find(v => v.id === f.fittingId);
-    return acc + (def ? def.K * f.qty : 0);
-  }, 0);
+  return fittings.reduce((acc, f) => acc + (findFittingK(f.fittingId)?.K ?? 0) * f.qty, 0);
 }
 
-// ΣK 셀 — 직접 입력 + 부속 선택 버튼 (배관 계통 전용, 내역 있으면 개수 배지)
-function SumKCell({ row, showPicker, onChange, onOpenPicker }: {
-  row: FNSegmentState; showPicker: boolean;
+// ΣK 셀 — 직접 입력 + 부속 선택 버튼 (내역 있으면 개수 배지)
+function SumKCell({ row, onChange, onOpenPicker }: {
+  row: FNSegmentState;
   onChange: (v: string) => void; onOpenPicker: () => void;
 }) {
   const count = row.fittings?.reduce((n, f) => n + f.qty, 0) ?? 0;
@@ -200,55 +199,65 @@ function SumKCell({ row, showPicker, onChange, onOpenPicker }: {
     ? `부속 ${count}개 (K 합계 ${computed.toFixed(2)})${mismatch ? ' — ΣK 수동 수정됨' : ''}`
     : '부속 선택 — 종류·수량을 고르면 K값을 자동 합산합니다';
   return (
-    <td style={{ ...td, minWidth: showPicker ? 104 : 70 }}>
+    <td style={{ ...td, minWidth: 104 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
         <input
           type="number" step="any" value={row.sumK}
           onChange={e => onChange(e.target.value)}
           style={cellInputStyle}
         />
-        {showPicker && (
-          <button
-            onClick={onOpenPicker}
-            title={title}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0,
-              padding: '4px 5px', fontSize: 10.5, fontWeight: 600,
-              color: count > 0 ? C.blue : 'var(--text-tertiary)',
-              backgroundColor: 'transparent',
-              border: `1px solid ${count > 0 ? C.blue : C.border}`, borderRadius: 5,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <Wrench size={11} />{count > 0 ? count : ''}
-          </button>
-        )}
+        <button
+          onClick={onOpenPicker}
+          title={title}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0,
+            padding: '4px 5px', fontSize: 10.5, fontWeight: 600,
+            color: count > 0 ? C.blue : 'var(--text-tertiary)',
+            backgroundColor: 'transparent',
+            border: `1px solid ${count > 0 ? C.blue : C.border}`, borderRadius: 5,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          <Wrench size={11} />{count > 0 ? count : ''}
+        </button>
       </div>
     </td>
   );
 }
 
-// 부속 선택 모달 — K값 카탈로그(Perry's 8th Ed)에서 종류·수량 선택 → ΣK 자동 합산
-function FittingModal({ row, onClose, onApply }: {
+// 부속 선택 모달 — 계통 종류별 K값 카탈로그에서 종류·수량 선택 → ΣK 자동 합산
+//   배관: Perry's 8th Ed (fitting-k-values.ts) · 덕트: 편람 표 10·11 (duct-fitting-k-values.ts)
+function FittingModal({ row, systemType, onClose, onApply }: {
   row: FNSegmentState;
+  systemType: FNSystemType;
   onClose: () => void;
   onApply: (fittings: FNFittingSel[], sumK: string) => void;
 }) {
+  const catalog: FittingKValue[] = systemType === 'duct' ? DUCT_FITTING_K_VALUES : FITTING_K_VALUES;
+  const sourceNote = systemType === 'duct'
+    ? "출처: 덕트설계 편람 표 10·11 (ΔP = ζ·ρv²/2, v = 상류측 풍속)"
+    : "출처: Perry's Chemical Engineers' Handbook 8th Ed (난류 단일 K)";
+
   const [qty, setQty] = useState<Record<string, string>>(() => {
     const m: Record<string, string> = {};
     for (const f of row.fittings ?? []) m[f.fittingId] = String(f.qty);
     return m;
   });
 
-  const sum = FITTING_K_VALUES.reduce((acc, f) => {
+  // 다른 계통 카탈로그로 선택했던 부속 — 목록엔 없지만 내역·합산에는 유지
+  const others = (row.fittings ?? []).filter(f => !catalog.some(c => c.id === f.fittingId));
+  const othersK = others.reduce((acc, f) => acc + (findFittingK(f.fittingId)?.K ?? 0) * f.qty, 0);
+
+  const sum = catalog.reduce((acc, f) => {
     const n = parseInt(qty[f.id] ?? '', 10);
     return acc + (Number.isFinite(n) && n > 0 ? n * f.K : 0);
-  }, 0);
+  }, 0) + othersK;
 
   function apply() {
-    const fittings: FNFittingSel[] = FITTING_K_VALUES
+    const selected: FNFittingSel[] = catalog
       .map(f => ({ fittingId: f.id, qty: parseInt(qty[f.id] ?? '', 10) }))
       .filter(f => Number.isFinite(f.qty) && f.qty > 0);
+    const fittings = [...selected, ...others];
     onApply(fittings, String(Number(sum.toFixed(2))));
     onClose();
   }
@@ -260,8 +269,8 @@ function FittingModal({ row, onClose, onApply }: {
           부속 종류별 수량을 입력하면 K값이 자동 합산되어 ΣK에 적용됩니다. (적용 후에도 ΣK 직접 수정 가능)
         </p>
 
-        <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
-          {FITTING_K_VALUES.map((f, idx) => (
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, maxHeight: '48vh', overflowY: 'auto' }}>
+          {catalog.map((f, idx) => (
             <div
               key={f.id}
               style={{
@@ -288,9 +297,14 @@ function FittingModal({ row, onClose, onApply }: {
           <div>
             <span style={{ fontSize: 14, fontWeight: 700, color: C.heading }}>
               ΣK = <span style={{ fontFamily: 'ui-monospace, monospace' }}>{sum.toFixed(2)}</span>
+              {others.length > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', marginLeft: 6 }}>
+                  (다른 계통 부속 {others.reduce((n, f) => n + f.qty, 0)}개 포함)
+                </span>
+              )}
             </span>
             <p style={{ fontSize: 11, color: 'var(--text-quaternary)', margin: '2px 0 0' }}>
-              출처: Perry's Chemical Engineers' Handbook 8th Ed (난류 단일 K)
+              {sourceNote}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
