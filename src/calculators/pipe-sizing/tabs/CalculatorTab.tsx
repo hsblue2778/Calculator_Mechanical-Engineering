@@ -1,10 +1,11 @@
 // 관경 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileText, ArrowRight } from 'lucide-react';
+import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileText, ArrowRight, ChevronDown } from 'lucide-react';
 import Frac from '../../../components/Frac';
 import FormulaSection from '../../../components/FormulaSection';
 import UnitPanel from '../../../components/UnitPanel';
+import ChainBanner from '../../../components/ChainBanner';
 import {
   FLOW_UNITS, type FlowUnitKey,
   PRESSURE_UNITS, type PressureUnitKey,
@@ -36,7 +37,15 @@ import { C, inputStyle, labelStyle, PA_PER_MM_AQ } from '../styles';
 // 체이닝 전달값 강조 — 연한 보라색
 const CHAIN_BG = 'rgba(147, 51, 234, 0.10)';
 const CHAIN_BORDER = 'rgba(147, 51, 234, 0.55)';
-const CHAIN_TEXT = 'var(--text-secondary)';
+
+// 보내기 ▾ 드롭다운의 대상 항목 (index.tsx에서 payload 빌더와 함께 구성)
+export interface ChainTarget {
+  key: string;
+  label: string;
+  desc: string;
+  disabledReason: string | null;
+  onSend: () => void;
+}
 
 interface Props {
   Q: string; dP: string;
@@ -55,6 +64,7 @@ interface Props {
   onSave?: () => void;
   canSave?: boolean;
   chainedFrom?: string;
+  chainTargets?: ChainTarget[];
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
@@ -66,7 +76,7 @@ export default function CalculatorTab({
   tempC, setTempC, pressureMmHg, setPressureMmHg, condition, setCondition,
   epsStr, setEpsStr, epsDefault, cond,
   flowUnit, setFlowUnit, pressureUnit, setPressureUnit, onReset,
-  onSave, canSave, chainedFrom, initialAction, onInitialActionDone,
+  onSave, canSave, chainedFrom, chainTargets, initialAction, onInitialActionDone,
 }: Props) {
   const mat = PIPE_SIZE_MATERIALS[matIdx];
   const pressDef = PRESSURE_UNITS.find(u => u.key === pressureUnit)!;
@@ -123,15 +133,9 @@ export default function CalculatorTab({
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
       {chainedFrom === 'pipe-friction' && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '10px 14px', fontSize: 13, lineHeight: 1.5,
-          color: CHAIN_TEXT, backgroundColor: CHAIN_BG,
-          border: `1px solid ${CHAIN_BORDER}`, borderRadius: 8,
-        }}>
-          <ArrowRight size={15} style={{ flexShrink: 0 }} />
-          <span>마찰손실 계산기에서 전달된 <b>유량·마찰손실(ΔP/L)</b> 값입니다 (연보라 표시). 이 조건에 맞는 적정 관경을 역산출합니다.</span>
-        </div>
+        <ChainBanner>
+          마찰손실 계산기에서 전달된 <b>유량·마찰손실(ΔP/L)</b> 값입니다 (연보라 표시). 이 조건에 맞는 적정 관경을 역산출합니다.
+        </ChainBanner>
       )}
       {/* 유체·재질·온도·(압력)·상태·조도 — 계산 조건 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
@@ -295,6 +299,7 @@ export default function CalculatorTab({
 
       <ActionBar
         className="calc-actions calc-actions-desktop"
+        chainTargets={chainTargets}
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
@@ -312,6 +317,7 @@ export default function CalculatorTab({
       />
       <ActionBar
         className="calc-actions calc-actions-mobile"
+        chainTargets={chainTargets}
         onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
@@ -370,9 +376,10 @@ function handleSizingPdfPrint(
 }
 
 function ActionBar({
-  className, onSave, canSave, canExport, onCsv, onWord, onPdf, onReset,
+  className, chainTargets, onSave, canSave, canExport, onCsv, onWord, onPdf, onReset,
 }: {
   className: string;
+  chainTargets?: ChainTarget[];
   onSave?: () => void; canSave?: boolean;
   canExport: boolean;
   onCsv: () => void; onWord: () => void; onPdf: () => void; onReset: () => void;
@@ -382,6 +389,7 @@ function ActionBar({
       className={className}
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
+      {chainTargets && <ChainMenuBtn targets={chainTargets} />}
       {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
       <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
         enabled={canExport} onClick={onCsv} />
@@ -403,6 +411,67 @@ function ActionBar({
       >
         <RotateCcw size={14} /> 초기화
       </button>
+    </div>
+  );
+}
+
+// 보내기 ▾ 드롭다운 — 선정 결과를 다른 계산기로 전달 (하단 고정 바 위쪽으로 팝오버)
+function ChainMenuBtn({ targets }: { targets: ChainTarget[] }) {
+  const [open, setOpen] = useState(false);
+  const anyEnabled = targets.some(t => !t.disabledReason);
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        disabled={!anyEnabled}
+        title={anyEnabled ? '선정 결과를 다른 계산기로 전달' : targets[0]?.disabledReason ?? ''}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '10px 16px', fontSize: 13, fontWeight: 600,
+          color: anyEnabled ? 'var(--text-inverse)' : 'var(--border-subtle)',
+          backgroundColor: anyEnabled ? C.blue : 'var(--border-default)',
+          border: 'none', borderRadius: 8,
+          cursor: anyEnabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+        }}
+      >
+        보내기 <ChevronDown size={14} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
+      </button>
+      {open && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: 'absolute', bottom: 'calc(100% + 6px)', right: 0, zIndex: 41,
+            minWidth: 320, padding: 6,
+            backgroundColor: 'var(--bg-surface)', border: `1px solid ${C.border}`,
+            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+          }}>
+            {targets.map(t => (
+              <button
+                key={t.key}
+                disabled={!!t.disabledReason}
+                title={t.disabledReason ?? undefined}
+                onClick={() => { setOpen(false); t.onSend(); }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '9px 12px', borderRadius: 7,
+                  background: 'transparent', border: 'none',
+                  cursor: t.disabledReason ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                  opacity: t.disabledReason ? 0.45 : 1,
+                }}
+                onMouseEnter={e => { if (!t.disabledReason) e.currentTarget.style.background = 'var(--bg-surface-2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.textDark }}>
+                  {t.label} <ArrowRight size={13} />
+                </span>
+                <span style={{ display: 'block', fontSize: 11.5, color: C.text, marginTop: 2 }}>
+                  {t.desc}{t.disabledReason ? ` — ${t.disabledReason}` : ''}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

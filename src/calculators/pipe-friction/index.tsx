@@ -81,6 +81,8 @@ export default function PipeFrictionCalculator({
 }: Props) {
   const [tab, setTab] = useState<TabKey>(normalizeTab(initialTab));
   const pf = usePipeFrictionState(initialState);
+  // 체이닝으로 들어온 경우 — 발신 계산기 안내 배너 표시 (관경 계산기 역검증 등)
+  const chainedFrom = typeof initialState?.chainedFrom === 'string' ? initialState.chainedFrom : undefined;
 
   function loadPreset(p: PFPreset) {
     pf.loadPreset(p);
@@ -96,7 +98,12 @@ export default function PipeFrictionCalculator({
           pf={pf}
           onSave={onSave ? () => onSave({ inputs: pf.saveInputs(), outputs: pf.res }) : undefined}
           canSave={!!pf.res}
-          onChain={onChain && pf.res ? () => onChain('pipe-sizing', buildChainPayload(pf)) : undefined}
+          onChain={onChain && pf.res ? () => {
+            // 화면이 관경 계산기로 교체되므로 보내기 직전 기록에 자동 저장
+            if (onSave) onSave({ inputs: pf.saveInputs(), outputs: pf.res });
+            onChain('pipe-sizing', buildChainPayload(pf));
+          } : undefined}
+          chainedFrom={chainedFrom}
           initialAction={initialAction}
           onInitialActionDone={onInitialActionDone}
         />

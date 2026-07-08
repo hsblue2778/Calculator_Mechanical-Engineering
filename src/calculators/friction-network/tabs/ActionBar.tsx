@@ -1,23 +1,26 @@
-// 계통 압력손실 — 액션 바 (기록 저장 · CSV · Word · PDF · 초기화)
-// pipe-friction ActionBar 패턴 차용 (체이닝 없음)
+// 계통 압력손실 — 액션 바 (펌프로 보내기 · 기록 저장 · CSV · Word · PDF · 초기화)
+// pipe-friction ActionBar 패턴 차용
 
 import { useState } from 'react';
-import { RotateCcw, Printer, Download, Save, Check, FileText } from 'lucide-react';
+import { RotateCcw, Printer, Download, Save, Check, FileText, ArrowRight } from 'lucide-react';
 import { C } from '../styles';
 
 export default function ActionBar({
   className, onSave, canSave, canExport, onCsv, onWord, onPdf, onReset,
+  onChain, chainEnabled, chainTitle,
 }: {
   className: string;
   onSave?: () => void; canSave?: boolean;
   canExport: boolean;
   onCsv: () => void; onWord: () => void; onPdf: () => void; onReset: () => void;
+  onChain?: () => void; chainEnabled?: boolean; chainTitle?: string;
 }) {
   return (
     <div
       className={className}
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
+      {onChain && <ChainBtn onClick={onChain} enabled={!!chainEnabled} title={chainTitle} />}
       {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
       <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
         enabled={canExport} onClick={onCsv} />
@@ -40,6 +43,26 @@ export default function ActionBar({
         <RotateCcw size={14} /> 초기화
       </button>
     </div>
+  );
+}
+
+function ChainBtn({ onClick, enabled, title }: { onClick: () => void; enabled: boolean; title?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!enabled}
+      title={title}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '10px 16px', fontSize: 13, fontWeight: 600,
+        color: enabled ? 'var(--text-inverse)' : 'var(--border-subtle)',
+        backgroundColor: enabled ? C.blue : 'var(--border-default)',
+        border: 'none', borderRadius: 8,
+        cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+      }}
+    >
+      펌프 시스템으로 보내기 <ArrowRight size={14} />
+    </button>
   );
 }
 

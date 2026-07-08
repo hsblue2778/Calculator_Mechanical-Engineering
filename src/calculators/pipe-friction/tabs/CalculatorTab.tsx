@@ -2,6 +2,7 @@
 // 조건 설정 → 단위 → 흐름 조건(2-of-3) → 마찰계수 → 결과/경고 + 우측 실시간 패널
 
 import { AlertTriangle } from 'lucide-react';
+import ChainBanner from '../../../components/ChainBanner';
 import UnitPanel from '../../../components/UnitPanel';
 import { PRESSURE_UNITS, type PressureUnitKey } from '../units';
 import { PF_FLOW_UNITS, type PFFlowUnitKey } from '../pfUnits.ts';
@@ -22,11 +23,12 @@ interface Props {
   onSave?: () => void;
   canSave?: boolean;
   onChain?: () => void;
+  chainedFrom?: string;                // 체이닝 수신 안내 배너 (관경 계산기 역검증 등)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf·chain)
   onInitialActionDone?: () => void;
 }
 
-export default function CalculatorTab({ pf, onSave, canSave, onChain, initialAction, onInitialActionDone }: Props) {
+export default function CalculatorTab({ pf, onSave, canSave, onChain, chainedFrom, initialAction, onInitialActionDone }: Props) {
   const { st, patch, res, error } = pf;
   const pressDef = PRESSURE_UNITS.find(u => u.key === st.pressureUnit)!;
   const showError = !!error && error.field !== 'pair';
@@ -65,6 +67,11 @@ export default function CalculatorTab({ pf, onSave, canSave, onChain, initialAct
   return (
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
+        {chainedFrom === 'pipe-sizing' && (
+          <ChainBanner>
+            관경 계산기에서 전달된 <b>선정 내경 D·유량 Q</b> 값입니다. 배관 길이 L을 입력하면 Colebrook 기반 마찰손실이 정밀 산출됩니다.
+          </ChainBanner>
+        )}
         <ConditionSection pf={pf} />
 
         <UnitPanel

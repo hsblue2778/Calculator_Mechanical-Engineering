@@ -4,6 +4,7 @@
 
 import { useId } from 'react';
 import { Download, FileText, Printer } from 'lucide-react';
+import ChainBanner from '../../../components/ChainBanner';
 import { SaveBtn } from './FormComponents';
 import { PipeMultiTable } from './PipeMultiTable';
 import HeadPressureSection from './HeadPressureSection';
@@ -148,7 +149,8 @@ interface Props {
 
   onSave?: () => void;
   canSave?: boolean;
-  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (html·pdf)
+  chainedFrom?: string;                // 체이닝 수신 안내 배너 (계통 압력손실·관경 선정)
+  initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
 
@@ -176,7 +178,7 @@ export default function CalculatorTab(props: Props) {
     operatingHzList, setOperatingHzList,
     result,
     onSave, canSave,
-    initialAction, onInitialActionDone,
+    chainedFrom, initialAction, onInitialActionDone,
   } = props;
 
   const uid = useId();
@@ -348,6 +350,16 @@ export default function CalculatorTab(props: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {chainedFrom === 'friction-network' && (
+        <ChainBanner>
+          계통 압력손실 시스템에서 전달된 <b>Σ말단유량(설계유량 Q)·최대 요구압(잔류 토출압)</b> 값입니다. 흡입/토출 배관을 입력하면 TDH가 산출됩니다.
+        </ChainBanner>
+      )}
+      {chainedFrom === 'pipe-sizing' && (
+        <ChainBanner>
+          관경 계산기에서 전달된 <b>선정 관경·유량</b> 값입니다. 흡입/토출 배관의 길이를 입력하면 TDH가 산출됩니다.
+        </ChainBanner>
+      )}
       <WorkspaceLayout
         sections={sections}
         result={result}
