@@ -56,6 +56,9 @@ export interface FNSettingsState {
   vLimits: Record<FNGrade, FNVLimitState>;
 }
 
+// 부속 선택 내역 — fitting-k-values.ts 카탈로그 참조 (ΣK 자동 합산용, 계산은 sumK만 사용)
+export interface FNFittingSel { fittingId: string; qty: number }
+
 export interface FNSegmentState {
   id: string; parentId: string;
   grade: FNGrade; shape: FNShape;
@@ -63,6 +66,7 @@ export interface FNSegmentState {
   L: string; sumK: string; equip: string;
   materialId: FNMaterialId; condition: FNCondition;
   terminalFlow: string; pReq: string;
+  fittings?: FNFittingSel[];   // 옵셔널 — 구버전 기록·프리셋 호환
 }
 
 function defaultVLimits(t: FNSystemType): Record<FNGrade, FNVLimitState> {
@@ -99,6 +103,7 @@ export function newRow(prevRows: FNSegmentState[], systemType: FNSystemType): FN
     L: '', sumK: '0', equip: '0',
     materialId: systemType === 'duct' ? 'galv-sheet' : 'steel', condition: 'new',
     terminalFlow: '', pReq: '0',
+    fittings: [],
   };
 }
 
