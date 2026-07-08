@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react';
 import { fnRUnit, type FNSystemType } from '../../../data/frictionNetworkRef.ts';
-import { FITTING_K_VALUES } from '../../../data/fitting-k-values';
+import { findFittingK } from '../../../data/duct-fitting-k-values';
 import type { FNNetworkResult, FNSegmentInput } from '../calc';
 import type { FNSuggestion } from '../design';
 import type { FNSettingsState, FNSegmentState } from '../index';
@@ -51,7 +51,7 @@ export default function CalculatorTab({
       const id = r.id.trim();
       if (!id || !r.fittings?.length) continue;
       byId[id] = r.fittings
-        .map(f => `${FITTING_K_VALUES.find(v => v.id === f.fittingId)?.nameKo ?? f.fittingId} ×${f.qty}`)
+        .map(f => `${findFittingK(f.fittingId)?.nameKo ?? f.fittingId} ×${f.qty}`)
         .join(' · ');
     }
     return byId;
