@@ -125,9 +125,8 @@ input[type="number"] {
   /* 시스템조건 그리드 — 모바일에서는 1열 세로 적층 (내재폭 ~696px 해소) */
   .pump-syscond-grid { grid-template-columns: 1fr !important; }
 
-  /* 헤더 — 패딩 축소, 부제·버튼 라벨 숨김 */
+  /* 헤더 — 패딩 축소, 버튼 라벨 숨김 */
   .app-header { padding: 8px 12px !important; gap: 8px !important; }
-  .app-header-subtitle { display: none; }
   .app-header-btn-label { display: none; }
 
   /* 워크스페이스 본문 패딩 축소 */

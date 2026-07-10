@@ -354,10 +354,10 @@ export default function App() {
           {/* 타이틀 + 검색 */}
           <header style={{ marginBottom: 28 }}>
             <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, letterSpacing: -0.4 }}>
-              기계설비 설계 도구
+              MEP Engineering Tools
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-tertiary)', marginTop: 6, maxWidth: 640 }}>
-              한국 실무 표준에 맞춘 펌프·배관 통합 설계. 카드를 눌러 워크스페이스를 시작하세요.
+              한국 실무 표준에 맞춘 기계설비 설계 도구 모음. 카드를 눌러 워크스페이스를 시작하세요.
             </p>
 
             <div style={{ position: 'relative', marginTop: 18, width: 340, maxWidth: '100%' }}>
@@ -373,7 +373,7 @@ export default function App() {
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="계산기 검색..."
+                placeholder="도구 검색..."
                 style={{
                   width: '100%',
                   border: '1px solid var(--border-default)',
@@ -444,7 +444,6 @@ export default function App() {
         onShowOnboarding={() => setOnboardingOpen(true)}
         unitSystem={unitSystem}
         onUnitSystemChange={handleUnitSystemChange}
-        currentField={activeCalc?.title}
         onHome={goHome}
         onMobileMenuToggle={() => setMobileSidebarOpen(o => !o)}
         hideTools
