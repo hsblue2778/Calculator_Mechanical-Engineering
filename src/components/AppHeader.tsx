@@ -1,4 +1,4 @@
-// 앱 헤더 — 로고·앱명·(컨텍스트 크럼) + 우측 액션(인쇄·도움말·단위계·테마)
+// 앱 헤더 — 앱명(M.E.T) + 우측 액션(인쇄·도움말·단위계·테마)
 
 import { useState } from 'react';
 import { HelpCircle, Printer, Menu } from 'lucide-react';
@@ -14,7 +14,6 @@ interface Props {
   unitSystem: UnitSystem;
   onUnitSystemChange: (next: UnitSystem) => void;
   // Phase 2 대비 옵셔널 (현재 미사용)
-  currentField?: string;
   onHome?: () => void;
   onPrint?: () => void;
   onMobileMenuToggle?: () => void;
@@ -25,7 +24,7 @@ interface Props {
 export default function AppHeader({
   theme, onThemeChange, onShowOnboarding,
   unitSystem, onUnitSystemChange,
-  currentField, onHome, onPrint, onMobileMenuToggle,
+  onHome, onPrint, onMobileMenuToggle,
   hideTools,
 }: Props) {
   return (
@@ -60,42 +59,14 @@ export default function AppHeader({
           onClick={onHome}
           disabled={!onHome}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
+            display: 'flex', alignItems: 'center',
             background: 'transparent', border: 'none',
             cursor: onHome ? 'pointer' : 'default',
             padding: 0, color: 'var(--text-primary)', minWidth: 0,
           }}
         >
-          <div
-            style={{
-              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-              background: 'linear-gradient(135deg, #3B82F6, #0EA5E9)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#FFF', fontWeight: 700,
-            }}
-          >
-            S
-          </div>
-          <div style={{ textAlign: 'left', minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>종합 계산기</div>
-            <div className="app-header-subtitle" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              기계설비 설계 도구
-            </div>
-          </div>
+          <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.4 }}>M.E.T</span>
         </button>
-        {currentField && (
-          <>
-            <span style={{ color: 'var(--text-quaternary)' }}>›</span>
-            <span
-              style={{
-                fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}
-            >
-              {currentField}
-            </span>
-          </>
-        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
