@@ -1,20 +1,19 @@
-// 계산기 카드 — 제목, 한 줄 설명, 하단 탭 링크
-// 하단 링크는 calculators.ts 의 tabs 메타로부터 동적 생성
+// 계산기 카드 — 제목, 한 줄 설명
 
-import type { CalculatorMeta, CardTabKey } from '../config/calculators';
+import type { CalculatorMeta } from '../config/calculators';
 
 interface CalculatorCardProps {
   calculator: CalculatorMeta;
-  onOpen: (tab: CardTabKey | 'calculator') => void;
+  onOpen: () => void;
 }
 
 export default function CalculatorCard({ calculator, onOpen }: CalculatorCardProps) {
   return (
     <div
-      onClick={() => onOpen('calculator')}
+      onClick={onOpen}
       role="button"
       tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onOpen('calculator'); }}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onOpen(); }}
       className="flex flex-col cursor-pointer"
       style={{
         background: 'var(--bg-surface)',
@@ -50,54 +49,6 @@ export default function CalculatorCard({ calculator, onOpen }: CalculatorCardPro
       <p style={{ marginTop: 6, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'keep-all' }}>
         {calculator.description}
       </p>
-
-      {/* 하단 탭 링크 — 메타에 정의된 탭만 표시 */}
-      <div
-        style={{
-          marginTop: 'auto',
-          paddingTop: 14,
-          fontSize: 13,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        {calculator.tabs.map((tab, i) => (
-          <span key={tab.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            {i > 0 && <Divider />}
-            <Link onClick={e => { e.stopPropagation(); onOpen(tab.key); }}>{tab.label}</Link>
-          </span>
-        ))}
-      </div>
     </div>
   );
-}
-
-function Link({
-  children, onClick,
-}: {
-  children: React.ReactNode;
-  onClick: (e: React.MouseEvent) => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        color: 'var(--accent-primary)',
-        fontSize: 13,
-        fontWeight: 500,
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        cursor: 'pointer',
-      }}
-      className="hover:underline"
-    >
-      {children}
-    </button>
-  );
-}
-
-function Divider() {
-  return <span style={{ color: 'var(--border-default)' }}>|</span>;
 }

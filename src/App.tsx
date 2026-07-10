@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Search, History } from 'lucide-react';
 import { calculators } from './config/calculators';
-import type { CalculatorMeta, CardTabKey, FieldContext } from './config/calculators';
+import type { CalculatorMeta, FieldContext } from './config/calculators';
 import CalculatorCard from './components/CalculatorCard';
 import AppHeader from './components/AppHeader';
 import Onboarding from './components/Onboarding';
@@ -25,10 +25,7 @@ import { useTheme } from './state/themeStore';
 import { useUnitSystem } from './state/unitSystemStore';
 import type { UnitSystem } from './state/unitSystemStore';
 
-type TabKey = CardTabKey | 'calculator';
-
 type CalculatorComponentProps = {
-  initialTab?: TabKey;
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
   onChain?: (calculatorId: string, initialState: Record<string, any>) => void;
@@ -417,11 +414,9 @@ export default function App() {
         <style>{`
           .calc-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: 1fr;
             gap: 14px;
           }
-          @media (max-width: 1024px) { .calc-grid { grid-template-columns: repeat(2, 1fr); } }
-          @media (max-width: 640px)  { .calc-grid { grid-template-columns: 1fr; } }
         `}</style>
 
         <ChangelogButton onClick={() => setShowChangelog(true)} />
@@ -508,7 +503,6 @@ export default function App() {
               </div>
               <ActiveComponent
                 key={`${activeInstance.id}-${unitSystem}-${instanceLoadEpoch[activeInstance.id] ?? 0}`}
-                initialTab="calculator"
                 initialState={instanceInitialStates[activeInstance.id]}
                 onSave={handleSave}
                 onChain={openCalculatorWithState}

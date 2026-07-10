@@ -15,18 +15,6 @@ import { pfMaterial, type PFMaterialId, type PipeCondition, PF_MATERIALS } from 
 import { convertPFFlowToSI, convertSIToPFFlow, pfFlowUnitDef, type PFFlowUnitKey, PF_FLOW_UNITS } from './pfUnits.ts';
 import type { PressureUnitKey } from './units';
 
-export interface PFPreset {
-  label: string;
-  hint: string;
-  fluid: PFFluid;
-  tempC: string;
-  materialId: PFMaterialId;
-  condition: PipeCondition;
-  fields: Partial<Record<TriField, string>>;  // 정확히 2개 (Q는 m³/h 기준 문자열, D는 mm)
-  L: string;
-  expect: string;
-}
-
 interface PFState {
   fluid: PFFluid;
   tempC: string;
@@ -241,20 +229,6 @@ export function usePipeFrictionState(initialState?: Record<string, any>) {
     setSt(defaultState());
   }
 
-  function loadPreset(p: PFPreset) {
-    const m = pfMaterial(p.materialId);
-    const order: TriField[] = (['Q', 'V', 'D'] as TriField[]).filter(f => p.fields[f] !== undefined);
-    setSt({
-      ...defaultState(),
-      fluid: p.fluid, tempC: p.tempC,
-      materialId: p.materialId, condition: p.condition,
-      epsStr: String(m.eps_mm[p.condition]), cStr: String(m.hazenC[p.condition]),
-      triQ: p.fields.Q ?? '', triV: p.fields.V ?? '', triD: p.fields.D ?? '',
-      inputOrder: order.slice(0, 2),
-      L: p.L,
-    });
-  }
-
   // 기록 저장용 컨텍스트 — 파생 필드는 산출 표시값 스냅샷으로 저장 (self-describing)
   function saveInputs(): Record<string, any> {
     return {
@@ -273,7 +247,7 @@ export function usePipeFrictionState(initialState?: Record<string, any>) {
     fluidMeta, mat, epsDefault, cDefault, fluidProps,
     triStr, triDisplay, derivedField, editTri,
     engineInput, error, res,
-    changeFlowUnit, changeMaterial, changeCondition, reset, loadPreset, saveInputs,
+    changeFlowUnit, changeMaterial, changeCondition, reset, saveInputs,
   };
 }
 

@@ -1,4 +1,4 @@
-// 관경 계산기 — 메인 컴포넌트 (계산 + 개요 + 예시)
+// 관경 계산기 — 메인 컴포넌트
 // 공식: Darcy-Weisbach + 유동 영역별 마찰계수 (pipe-friction 엔진 공용)
 //   층류 64/Re · 천이 3차 보간 · 난류 Colebrook-White 반복해 · ε: 재질×신관/노후 (수정 가능)
 
@@ -11,28 +11,18 @@ import {
 import { pfKinematicViscosity, pfDensity, pfFluidMeta } from '../../data/fluidProperties.ts';
 import { pfMaterial, type PFMaterialId, type PipeCondition } from '../../data/pipeRoughness.ts';
 import CalculatorTab, { type ChainTarget } from './tabs/CalculatorTab';
-import OverviewTab from './tabs/OverviewTab';
-import ExamplesTab, { type SizingPreset } from './tabs/ExamplesTab';
 import { sizingTable, selectPipeSize, type SizingConditions, type SizingFluid, type SizingRow } from './calc';
 import { displayToMmAq, mmAqToDisplay, convertFlowToLpm } from './units';
 import { PIPE_SIZE_MATERIALS, PIPE_MATERIALS_V2 } from '../../data/pipeSizes';
 import type { FieldContext } from '../../config/calculators';
-import { C, PA_PER_MM_AQ } from './styles';
-
-type TabKey = 'calculator' | 'overview' | 'examples';
+import { PA_PER_MM_AQ } from './styles';
 
 interface Props {
-  initialTab?: string;
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
   onChain?: (calculatorId: string, initialState: Record<string, unknown>) => void;
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
-}
-
-function normalizeTab(t?: string): TabKey {
-  if (t === 'overview' || t === 'examples' || t === 'calculator') return t;
-  return 'calculator';
 }
 
 // PIPE_SIZE_MATERIALS id → pipeRoughness PFMaterialId (ε 기본값 조회용)
@@ -97,10 +87,8 @@ function buildPfChainPayload(args: {
 }
 
 export default function PipeSizingCalculator({
-  initialTab, initialState, onSave, onChain, initialAction, onInitialActionDone,
+  initialState, onSave, onChain, initialAction, onInitialActionDone,
 }: Props) {
-  const [tab, setTab] = useState<TabKey>(normalizeTab(initialTab));
-
   const [matIdx, setMatIdx] = useState<number>(() => initialState?.matIdx ?? 0);
   const [Q, setQ] = useState<string>(() => initialState?.Q ?? '');
   const [dP, setDP] = useState<string>(() => initialState?.dP ?? '');
@@ -228,19 +216,6 @@ export default function PipeSizingCalculator({
     setPressureUnit(newUnit);
   }
 
-  function loadPreset(p: SizingPreset) {
-    setQ(p.Q); setDP(p.dP);
-    setMatIdx(p.matIdx);
-    setFluid('water');
-    setTempC('20');
-    setPressureMmHg('760');
-    setCondition('new');
-    const m = PIPE_SIZE_MATERIALS[p.matIdx] ?? PIPE_SIZE_MATERIALS[0];
-    setEpsStr(String(pfMaterial(PF_MATERIAL_BY_SIZING[m.id] ?? 'steel').eps_mm.new));
-    setFlowUnit('lpm'); setPressureUnit('mmAq');
-    setTab('calculator');
-  }
-
   function reset() {
     setQ(''); setDP(''); setMatIdx(0);
     setFluid('water'); setTempC('20'); setPressureMmHg('760'); setCondition('new');
@@ -250,35 +225,29 @@ export default function PipeSizingCalculator({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <Tabs value={tab} onChange={setTab} />
-
-      {tab === 'calculator' && (
-        <CalculatorTab
-          Q={Q} dP={dP}
-          setQ={setQ}
-          setDP={setDP}
-          matIdx={matIdx}
-          setMatIdx={changeMaterial}
-          fluid={fluid} setFluid={setFluid}
-          tempC={tempC} setTempC={setTempC}
-          pressureMmHg={pressureMmHg} setPressureMmHg={setPressureMmHg}
-          condition={condition} setCondition={changeCondition}
-          epsStr={epsStr} setEpsStr={setEpsStr}
-          epsDefault={epsDefault}
-          cond={cond}
-          flowUnit={flowUnit} setFlowUnit={handleFlowUnitChange}
-          pressureUnit={pressureUnit} setPressureUnit={handlePressureUnitChange}
-          onReset={reset}
-          onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
-          canSave={!!outputs?.selected}
-          chainedFrom={chainedFrom}
-          chainTargets={chainTargets}
-          initialAction={initialAction}
-          onInitialActionDone={onInitialActionDone}
-        />
-      )}
-      {tab === 'overview' && <OverviewTab />}
-      {tab === 'examples' && <ExamplesTab onLoad={loadPreset} />}
+      <CalculatorTab
+        Q={Q} dP={dP}
+        setQ={setQ}
+        setDP={setDP}
+        matIdx={matIdx}
+        setMatIdx={changeMaterial}
+        fluid={fluid} setFluid={setFluid}
+        tempC={tempC} setTempC={setTempC}
+        pressureMmHg={pressureMmHg} setPressureMmHg={setPressureMmHg}
+        condition={condition} setCondition={changeCondition}
+        epsStr={epsStr} setEpsStr={setEpsStr}
+        epsDefault={epsDefault}
+        cond={cond}
+        flowUnit={flowUnit} setFlowUnit={handleFlowUnitChange}
+        pressureUnit={pressureUnit} setPressureUnit={handlePressureUnitChange}
+        onReset={reset}
+        onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
+        canSave={!!outputs?.selected}
+        chainedFrom={chainedFrom}
+        chainTargets={chainTargets}
+        initialAction={initialAction}
+        onInitialActionDone={onInitialActionDone}
+      />
     </div>
   );
 }
@@ -288,35 +257,4 @@ function formatNumericValue(n: number): string {
   if (n < 1) return n.toFixed(2);
   if (n < 10) return n.toFixed(1);
   return n.toFixed(0);
-}
-
-function Tabs({ value, onChange }: { value: TabKey; onChange: (t: TabKey) => void }) {
-  const items: { key: TabKey; label: string }[] = [
-    { key: 'calculator', label: '계산' },
-    { key: 'overview',   label: '개요' },
-    { key: 'examples',   label: '예시' },
-  ];
-  return (
-    <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.border}` }}>
-      {items.map(item => {
-        const active = value === item.key;
-        return (
-          <button
-            key={item.key}
-            onClick={() => onChange(item.key)}
-            style={{
-              padding: '10px 16px', fontSize: 14,
-              fontWeight: active ? 600 : 500,
-              color: active ? C.blue : C.text,
-              background: 'transparent', border: 'none',
-              borderBottom: `2px solid ${active ? C.blue : 'transparent'}`,
-              marginBottom: -1, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            {item.label}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
