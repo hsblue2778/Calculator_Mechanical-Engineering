@@ -1,8 +1,9 @@
-// 계통 압력손실 — 액션 바 (기록 저장 · CSV · Word · PDF · 초기화)
+// 계통 압력손실 — 액션 바 (기록 저장 · 내보내기 ▾ · 초기화)
 // pipe-friction ActionBar 패턴 차용
 
 import { useState } from 'react';
-import { RotateCcw, Printer, Download, Save, Check, FileText } from 'lucide-react';
+import { RotateCcw, Save, Check } from 'lucide-react';
+import ExportMenu from '../../../components/ExportMenu';
 import { C } from '../styles';
 
 export default function ActionBar({
@@ -19,14 +20,7 @@ export default function ActionBar({
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
       {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
-      <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
-        enabled={canExport} onClick={onCsv} />
-      <ActionBtn icon={<FileText size={14} />} label="Word로 저장"
-        enabled={canExport} onClick={onWord}
-        title="PDF 산출서와 동일한 양식의 Word(.doc) 파일 다운로드" />
-      <ActionBtn icon={<Printer size={14} />} label="PDF로 저장"
-        enabled={canExport} onClick={onPdf}
-        title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />
+      <ExportMenu enabled={canExport} onCsv={onCsv} onWord={onWord} onPdf={onPdf} />
       <button
         onClick={onReset}
         style={{
@@ -71,27 +65,3 @@ function SaveBtn({ onClick, enabled }: { onClick: () => void; enabled: boolean }
   );
 }
 
-function ActionBtn({
-  icon, label, enabled, onClick, title,
-}: {
-  icon: React.ReactNode; label: string; enabled: boolean;
-  onClick: () => void; title?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={!enabled}
-      title={title}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? C.textDark : 'var(--text-quaternary)',
-        backgroundColor: C.surface,
-        border: `1px solid ${enabled ? C.borderInput : C.border}`, borderRadius: 8,
-        cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-      }}
-    >
-      {icon} {label}
-    </button>
-  );
-}

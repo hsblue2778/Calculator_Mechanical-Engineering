@@ -9,10 +9,14 @@ import {
 import { fnFluidTempRange } from '../fluids';
 import type { FNFlowUnit, FNNetworkResult } from '../calc';
 import type { FNSettingsState } from '../index';
+import InfoTip from '../../../components/InfoTip';
 import {
   C, inputStyle, labelStyle, cellInputStyle,
   inputStyleOpt, cellInputStyleOpt, cellSelectStyleOpt,
 } from '../styles';
+
+// 라벨 + ⓘ 툴팁 가로 배치용
+const flexLabelStyle: React.CSSProperties = { ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 };
 
 interface Props {
   st: FNSettingsState;
@@ -34,34 +38,42 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
         <div>
-          <label style={labelStyle}>계통 종류</label>
+          <label style={flexLabelStyle}>
+            계통 종류
+            <InfoTip>목표 유속범위·유량 단위 기본값 적용</InfoTip>
+          </label>
           <select value={st.systemType} onChange={e => changeSystemType(e.target.value as FNSystemType)} style={inputStyle}>
             <option value="pipe">배관</option>
             <option value="duct">덕트</option>
           </select>
-          <Hint>목표 유속범위·유량 단위 기본값 적용</Hint>
         </div>
         <div>
-          <label style={labelStyle}>유체</label>
+          <label style={flexLabelStyle}>
+            유체
+            <InfoTip>{st.fluid === 'custom' ? 'ρ·ν 직접입력' : '참조표 선형보간 (범위 밖 clamp)'}</InfoTip>
+          </label>
           <select value={st.fluid} onChange={e => patchSettings({ fluid: e.target.value as FNFluidId })} style={inputStyle}>
             {FN_FLUIDS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
           </select>
-          <Hint>{st.fluid === 'custom' ? 'ρ·ν 직접입력' : '참조표 선형보간 (범위 밖 clamp)'}</Hint>
         </div>
         {st.fluid !== 'custom' && (
           <div>
-            <label style={labelStyle}>온도 (°C)</label>
+            <label style={flexLabelStyle}>
+              온도 (°C)
+              {tempRange && <InfoTip>{tempRange.min}~{tempRange.max}°C 범위 clamp 후 보간</InfoTip>}
+            </label>
             <input type="number" step="any" value={st.tempC}
               onChange={e => patchSettings({ tempC: e.target.value })} style={inputStyle} />
-            {tempRange && <Hint>{tempRange.min}~{tempRange.max}°C 범위 clamp 후 보간</Hint>}
           </div>
         )}
         {showPress && (
           <div>
-            <label style={labelStyle}>절대압 P_abs (bar a)</label>
+            <label style={flexLabelStyle}>
+              절대압 P_abs (bar a)
+              <InfoTip>{fluidDef.pressCorrect ? 'ρ×=P/1.01325 · ν÷=P/1.01325 + 압축성 경고 기준' : '압축성 경고 기준 (ΔP > 0.1·P_abs)'}</InfoTip>
+            </label>
             <input type="number" step="any" value={st.pressAbs}
               onChange={e => patchSettings({ pressAbs: e.target.value })} style={inputStyle} />
-            <Hint>{fluidDef.pressCorrect ? 'ρ×=P/1.01325 · ν÷=P/1.01325 + 압축성 경고 기준' : '압축성 경고 기준 (ΔP > 0.1·P_abs)'}</Hint>
           </div>
         )}
         {st.fluid === 'custom' && (
@@ -72,38 +84,46 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
                 onChange={e => patchSettings({ rhoCustom: e.target.value })} style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>동점성계수 ν (×10⁻⁶ m²/s)</label>
+              <label style={flexLabelStyle}>
+                동점성계수 ν (×10⁻⁶ m²/s)
+                <InfoTip>예: 물 20°C = 1.004</InfoTip>
+              </label>
               <input type="number" step="any" value={st.nuCustom}
                 onChange={e => patchSettings({ nuCustom: e.target.value })} style={inputStyle} />
-              <Hint>예: 물 20°C = 1.004</Hint>
             </div>
           </>
         )}
         <div>
-          <label style={labelStyle}>말단유량 단위</label>
+          <label style={flexLabelStyle}>
+            말단유량 단위
+            <InfoTip>Q = LPM÷60000 · CMH÷3600 (m³/s)</InfoTip>
+          </label>
           <select value={st.flowUnit} onChange={e => patchSettings({ flowUnit: e.target.value as FNFlowUnit })} style={inputStyle}>
             <option value="LPM">LPM (L/min)</option>
             <option value="CMH">CMH (m³/h)</option>
           </select>
-          <Hint>Q = LPM÷60000 · CMH÷3600 (m³/s)</Hint>
         </div>
         <div>
-          <label style={labelStyle}>가용정압 P_avail (Pa) <OptTag /></label>
+          <label style={flexLabelStyle}>
+            가용정압 P_avail (Pa) <OptTag />
+            <InfoTip>팬·펌프가 계통에 쓸 수 있는 정압 (비우면 여유 판정만 생략)</InfoTip>
+          </label>
           <input type="number" step="any" value={st.pAvail}
             onChange={e => patchSettings({ pAvail: e.target.value })} style={inputStyleOpt} />
-          <Hint>팬·펌프가 계통에 쓸 수 있는 정압 (비우면 여유 판정만 생략)</Hint>
         </div>
         <div>
-          <label style={labelStyle}>여유율 α (%)</label>
+          <label style={flexLabelStyle}>
+            여유율 α (%)
+            <InfoTip>설계 가용정압 = P_avail×(1−α)</InfoTip>
+          </label>
           <input type="number" step="any" min="0" value={st.alphaPct}
             onChange={e => patchSettings({ alphaPct: e.target.value })} style={inputStyle} />
-          <Hint>
-            설계 가용정압 = P_avail×(1−α)
-            {designAvail !== null && ` = ${designAvail.toFixed(0)} Pa (${(designAvail / FN_PA_PER_MMAQ).toFixed(1)} mmAq)`}
-          </Hint>
+          {designAvail !== null && (
+            <Hint>설계 가용정압 = {designAvail.toFixed(0)} Pa ({(designAvail / FN_PA_PER_MMAQ).toFixed(1)} mmAq)</Hint>
+          )}
         </div>
         <div>
-          <label style={labelStyle}>설계 총유량 ({st.flowUnit}) — 대조용 <OptTag /></label>
+          <label style={flexLabelStyle}>설계 총유량 ({st.flowUnit}) — 대조용 <OptTag /></label>
           <input type="number" step="any" min="0" value={st.designTotalFlow}
             onChange={e => patchSettings({ designTotalFlow: e.target.value })} style={inputStyleOpt} />
           <TotalFlowHint st={st} net={net} />
@@ -118,7 +138,7 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
       )}
 
       {/* 등급별 목표 유속범위 — 계통 종류가 기본값 선택, 직접 수정 가능 */}
-      <div style={{ backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 16px' }}>
+      <div>
         <p style={{ ...labelStyle, marginBottom: 8 }}>
           목표 유속범위 (m/s) — {st.systemType === 'duct' ? '덕트' : '배관'} 기본값, 수정 가능
         </p>
@@ -140,16 +160,18 @@ export default function SettingsPanel({ st, patchSettings, changeSystemType, net
           })}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }}>목표 마찰률 R <OptTag /></span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            목표 마찰률 R <OptTag />
+            <InfoTip>
+              권장 덕트 {fmtR(FN_TARGET_R_PA_PER_M.duct / fnRUnit(st.targetRUnit).toPaPerM)} · 배관 {fmtR(FN_TARGET_R_PA_PER_M.pipe / fnRUnit(st.targetRUnit).toPaPerM)} {fnRUnit(st.targetRUnit).label} — 제안De 산출 전용, 손실 계산에는 미사용. 비우면 유속 기준만 적용
+            </InfoTip>
+          </span>
           <input type="number" step="any" min="0" value={st.targetR} style={{ ...cellInputStyleOpt, width: 80 }}
             onChange={e => patchSettings({ targetR: e.target.value })} />
           <select value={st.targetRUnit} style={{ ...cellSelectStyleOpt, width: 96 }}
             onChange={e => changeRUnit(st, patchSettings, e.target.value)}>
             {FN_R_UNITS.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
           </select>
-          <span style={{ fontSize: 11, color: 'var(--text-quaternary)' }}>
-            (권장 덕트 {fmtR(FN_TARGET_R_PA_PER_M.duct / fnRUnit(st.targetRUnit).toPaPerM)} · 배관 {fmtR(FN_TARGET_R_PA_PER_M.pipe / fnRUnit(st.targetRUnit).toPaPerM)} {fnRUnit(st.targetRUnit).label}) — 제안De 산출 전용, 손실 계산에는 미사용. 비우면 유속 기준만 적용
-          </span>
         </div>
       </div>
     </div>
@@ -176,14 +198,13 @@ function Hint({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>{children}</p>;
 }
 
-// 선택 입력 필드 라벨 옆 텍스트 태그 (색상 + 텍스트 이중 구분)
+// 선택 입력 필드 라벨 옆 텍스트 태그
 function OptTag() {
   return (
     <span style={{
-      fontSize: 10, fontWeight: 600, color: C.blue, letterSpacing: 0,
-      border: `1px solid ${C.blue}`, borderRadius: 3, padding: '0 4px', marginLeft: 4,
-      verticalAlign: 'middle', textTransform: 'none',
-    }}>선택</span>
+      fontSize: 10, fontWeight: 500, color: 'var(--text-quaternary)', letterSpacing: 0,
+      marginLeft: 2, verticalAlign: 'middle', textTransform: 'none',
+    }}>(선택)</span>
   );
 }
 

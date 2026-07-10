@@ -39,15 +39,13 @@ export const cellSelectStyle: React.CSSProperties = {
   ...cellInputStyle, padding: '5px 2px',
 };
 
-// ── 선택 입력 강조용 변형 — accent 틴트(연한 파란색)로 "비워도 되는 칸" 표시 ──
+// ── 선택 입력 변형 — 중립 스타일 유지, "비워도 되는 칸"은 라벨 옆 (선택) 태그로 구분 ──
 export const inputStyleOpt: React.CSSProperties = {
   ...inputStyle,
-  border: `1px solid var(--accent-primary)`, backgroundColor: 'var(--accent-primary-bg-soft)',
 };
 
 export const cellInputStyleOpt: React.CSSProperties = {
   ...cellInputStyle,
-  border: `1px solid var(--accent-primary)`, backgroundColor: 'var(--accent-primary-bg-soft)',
 };
 
 export const cellSelectStyleOpt: React.CSSProperties = {

@@ -54,9 +54,9 @@ export default function SegmentTable({ rows, patchRow, addRow, removeRow, flowUn
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             padding: '6px 12px', fontSize: 12.5, fontWeight: 600,
-            color: rows.length >= FN_MAX_ROWS ? 'var(--text-quaternary)' : C.blue,
+            color: rows.length >= FN_MAX_ROWS ? 'var(--text-quaternary)' : C.textDark,
             backgroundColor: 'transparent',
-            border: `1px solid ${rows.length >= FN_MAX_ROWS ? C.border : C.blue}`,
+            border: `1px solid ${rows.length >= FN_MAX_ROWS ? C.border : C.borderInput}`,
             borderRadius: 6, cursor: rows.length >= FN_MAX_ROWS ? 'not-allowed' : 'pointer',
             fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
@@ -212,9 +212,9 @@ function SumKCell({ row, onChange, onOpenPicker }: {
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0,
             padding: '4px 5px', fontSize: 10.5, fontWeight: 600,
-            color: count > 0 ? C.blue : 'var(--text-tertiary)',
-            backgroundColor: 'transparent',
-            border: `1px solid ${count > 0 ? C.blue : C.border}`, borderRadius: 5,
+            color: count > 0 ? C.textDark : 'var(--text-tertiary)',
+            backgroundColor: count > 0 ? 'var(--bg-surface-3)' : 'transparent',
+            border: `1px solid ${count > 0 ? C.borderInput : C.border}`, borderRadius: 5,
             cursor: 'pointer', fontFamily: 'inherit',
           }}
         >
