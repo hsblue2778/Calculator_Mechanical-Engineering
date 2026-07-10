@@ -1,4 +1,4 @@
-// 마찰손실 계통 계산기 — 메인 컴포넌트 (계산 + 개요 + 예시)
+// 마찰손실 계통 계산기 — 메인 컴포넌트
 // 공식: 참조 엑셀 '마찰손실 계통 계산기' 이식 — 부모ID 트리 Q 합산 + Q형 Darcy-Weisbach
 //   f: 층류 64/Re · Re≥2300 전부 Swamee-Jain (pipe-friction 엔진 swameeJain 재사용)
 //   판정: 최대(누적손실+요구압) vs 설계 가용정압 P_avail×(1−α)
@@ -16,24 +16,13 @@ import {
 } from './calc';
 import { fnSuggestDe, type FNSuggestion } from './design';
 import CalculatorTab from './tabs/CalculatorTab';
-import OverviewTab from './tabs/OverviewTab';
-import ExamplesTab, { type FNPreset } from './tabs/ExamplesTab';
-import { C } from './styles';
-
-type TabKey = 'calculator' | 'overview' | 'examples';
 
 interface Props {
-  initialTab?: string;
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
   onChain?: (calculatorId: string, initialState: Record<string, unknown>) => void;
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
-}
-
-function normalizeTab(t?: string): TabKey {
-  if (t === 'overview' || t === 'examples' || t === 'calculator') return t;
-  return 'calculator';
 }
 
 // ── 상태 타입 (전부 문자열 보관 — 표시·편집 그대로) ───────────────
@@ -141,8 +130,7 @@ function buildPumpChainPayload(st: FNSettingsState, net: FNNetworkResult): Recor
   return payload;
 }
 
-export default function FrictionNetworkCalculator({ initialTab, initialState, onSave, onChain, initialAction, onInitialActionDone }: Props) {
-  const [tab, setTab] = useState<TabKey>(normalizeTab(initialTab));
+export default function FrictionNetworkCalculator({ initialState, onSave, onChain, initialAction, onInitialActionDone }: Props) {
   const [st, setSt] = useState<FNSettingsState>(() => ({
     ...defaultSettings(), ...(initialState?.settings ?? {}),
   }));
@@ -244,12 +232,6 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
     rho_kgm3: net.rho_kgm3, nu_m2s: net.nu_m2s,
   } : null;
 
-  function loadPreset(p: FNPreset) {
-    setSt({ ...defaultSettings(p.settings.systemType), ...p.settings });
-    setRows(p.segments.map(r => ({ ...r })));
-    setTab('calculator');
-  }
-
   function reset() {
     setSt(defaultSettings());
     setRows([newRow([], 'pipe')]);
@@ -257,69 +239,32 @@ export default function FrictionNetworkCalculator({ initialTab, initialState, on
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <Tabs value={tab} onChange={setTab} />
-
-      {tab === 'calculator' && (
-        <CalculatorTab
-          st={st}
-          patchSettings={patchSettings}
-          changeSystemType={changeSystemType}
-          rows={rows}
-          patchRow={patchRow}
-          addRow={addRow}
-          removeRow={removeRow}
-          activeSegments={activeSegments}
-          settingsError={settingsError}
-          net={net}
-          suggestions={suggestions}
-          pAvailEntered={pAvailEntered}
-          designTotalFlow_m3s={designTotalFlow_m3s}
-          onReset={reset}
-          onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
-          canSave={canSave}
-          onChain={onChain ? () => {
-            if (!net) return;
-            // 화면이 펌프 시스템으로 교체되므로 보내기 직전 기록에 자동 저장 (저장 가능 상태일 때)
-            if (canSave && onSave) onSave({ inputs, outputs });
-            onChain('pump-hvac', buildPumpChainPayload(st, net));
-          } : undefined}
-          initialAction={initialAction}
-          onInitialActionDone={onInitialActionDone}
-        />
-      )}
-      {tab === 'overview' && <OverviewTab />}
-      {tab === 'examples' && <ExamplesTab onLoad={loadPreset} />}
-    </div>
-  );
-}
-
-function Tabs({ value, onChange }: { value: TabKey; onChange: (t: TabKey) => void }) {
-  const items: { key: TabKey; label: string }[] = [
-    { key: 'calculator', label: '계산' },
-    { key: 'overview',   label: '개요' },
-    { key: 'examples',   label: '예시' },
-  ];
-  return (
-    <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.border}` }}>
-      {items.map(item => {
-        const active = value === item.key;
-        return (
-          <button
-            key={item.key}
-            onClick={() => onChange(item.key)}
-            style={{
-              padding: '10px 16px', fontSize: 14,
-              fontWeight: active ? 600 : 500,
-              color: active ? C.blue : C.text,
-              background: 'transparent', border: 'none',
-              borderBottom: `2px solid ${active ? C.blue : 'transparent'}`,
-              marginBottom: -1, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            {item.label}
-          </button>
-        );
-      })}
+      <CalculatorTab
+        st={st}
+        patchSettings={patchSettings}
+        changeSystemType={changeSystemType}
+        rows={rows}
+        patchRow={patchRow}
+        addRow={addRow}
+        removeRow={removeRow}
+        activeSegments={activeSegments}
+        settingsError={settingsError}
+        net={net}
+        suggestions={suggestions}
+        pAvailEntered={pAvailEntered}
+        designTotalFlow_m3s={designTotalFlow_m3s}
+        onReset={reset}
+        onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
+        canSave={canSave}
+        onChain={onChain ? () => {
+          if (!net) return;
+          // 화면이 펌프 시스템으로 교체되므로 보내기 직전 기록에 자동 저장 (저장 가능 상태일 때)
+          if (canSave && onSave) onSave({ inputs, outputs });
+          onChain('pump-hvac', buildPumpChainPayload(st, net));
+        } : undefined}
+        initialAction={initialAction}
+        onInitialActionDone={onInitialActionDone}
+      />
     </div>
   );
 }

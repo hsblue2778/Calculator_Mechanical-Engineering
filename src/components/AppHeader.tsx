@@ -65,7 +65,7 @@ export default function AppHeader({
             padding: 0, color: 'var(--text-primary)', minWidth: 0,
           }}
         >
-          <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.4 }}>M.E.T</span>
+          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.4 }}>M.E.T</span>
         </button>
       </div>
 
