@@ -11,7 +11,7 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Pretendard', 'Inter', 'Noto Sans KR', 'Apple SD Gothic Neo',
+  font-family: 'Pretendard Variable', 'Pretendard', 'Inter', 'Noto Sans KR', 'Apple SD Gothic Neo',
                'Malgun Gothic', system-ui, sans-serif;
   background-color: var(--bg-base);
   color: var(--text-primary);
