@@ -369,7 +369,7 @@ export default function CalculatorTab(props: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div className="pump-import-row" style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <NetworkImportButton onImport={handleNetworkImport} />
       </div>
       {chainedFrom === 'pipe-sizing' && (
