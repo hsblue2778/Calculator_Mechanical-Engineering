@@ -53,7 +53,22 @@ const defaultDisRow = (): PipeRowState => ({
   lUnit: 'm',
 });
 
-export default function PumpSystemCalculator({ field, initialState, onSave, initialAction, onInitialActionDone }: Props) {
+// 초기화 — 28개 useState를 개별 리셋하는 대신 key 리마운트로 공장 기본값 복원
+// (리셋 시 initialState·initialAction 폐기: pipe-sizing/pipe-friction reset()과 동일한 의미론)
+export default function PumpSystemCalculator(props: Props) {
+  const [resetKey, setResetKey] = useState(0);
+  return (
+    <PumpSystemInner
+      key={resetKey}
+      {...props}
+      initialState={resetKey === 0 ? props.initialState : undefined}
+      initialAction={resetKey === 0 ? props.initialAction : undefined}
+      onReset={() => setResetKey(k => k + 1)}
+    />
+  );
+}
+
+function PumpSystemInner({ field, initialState, onSave, initialAction, onInitialActionDone, onReset }: Props & { onReset: () => void }) {
   const fieldConfig = getPumpFieldConfig(field);
 
   // §1 시스템 기본조건
@@ -303,6 +318,7 @@ export default function PumpSystemCalculator({ field, initialState, onSave, init
         result={result}
         onSave={onSave ? () => onSave({ inputs, outputs: result }) : undefined}
         canSave={!!result}
+        onReset={onReset}
         chainedFrom={chainedFrom}
         initialAction={initialAction}
         onInitialActionDone={onInitialActionDone}

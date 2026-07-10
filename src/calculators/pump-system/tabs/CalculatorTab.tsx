@@ -3,7 +3,7 @@
 //       부속류 / 장비류 / 정수두잔류압력 / 안전율프리셋 / 결과 / PDF
 
 import { useId, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, RotateCcw } from 'lucide-react';
 import ChainBanner from '../../../components/ChainBanner';
 import ExportMenu from '../../../components/ExportMenu';
 import InfoTip from '../../../components/InfoTip';
@@ -151,6 +151,7 @@ interface Props {
 
   onSave?: () => void;
   canSave?: boolean;
+  onReset: () => void;
   chainedFrom?: string;                // 체이닝 수신 안내 배너 (관경 선정)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
@@ -179,7 +180,7 @@ export default function CalculatorTab(props: Props) {
     catalogHzStr, setCatalogHzStr,
     operatingHzList, setOperatingHzList,
     result,
-    onSave, canSave,
+    onSave, canSave, onReset,
     chainedFrom, initialAction, onInitialActionDone,
   } = props;
 
@@ -722,6 +723,18 @@ export default function CalculatorTab(props: Props) {
             if (html) printHtmlReport(html);
           }}
         />
+        <button
+          onClick={onReset}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '10px 20px', fontSize: 14, fontWeight: 500,
+            color: 'var(--text-tertiary)', backgroundColor: 'transparent',
+            border: '1px solid var(--border-default)', borderRadius: 8,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          <RotateCcw size={14} /> 초기화
+        </button>
       </div>
     </div>
   );
