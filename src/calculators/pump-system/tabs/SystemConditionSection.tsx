@@ -136,9 +136,9 @@ export default function SystemConditionSection({
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '5px 10px', fontSize: 12, fontWeight: 500,
-                color: useHeatLoadCalc ? '#fff' : C.blue,
+                color: useHeatLoadCalc ? '#fff' : C.textDark,
                 backgroundColor: useHeatLoadCalc ? C.blue : 'transparent',
-                border: `1px solid ${C.blue}`,
+                border: `1px solid ${useHeatLoadCalc ? C.blue : C.borderInput}`,
                 borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
                 whiteSpace: 'nowrap',
               }}
@@ -242,8 +242,8 @@ export default function SystemConditionSection({
             ))}
             {isClosed && (
               <span style={{
-                fontSize: 12, color: C.badgeText, backgroundColor: C.badge,
-                border: `1px solid var(--accent-primary-bg)`, borderRadius: 4, padding: '2px 8px',
+                fontSize: 12, color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-surface-3)',
+                borderRadius: 4, padding: '2px 8px',
               }}>
                 폐회로: 정수두 차 = 0
               </span>

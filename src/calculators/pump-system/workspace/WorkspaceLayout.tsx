@@ -71,7 +71,7 @@ export default function WorkspaceLayout({
         ref={mainRef}
         style={{
           flex: 1, minWidth: 0,
-          display: 'flex', flexDirection: 'column', gap: 16,
+          display: 'flex', flexDirection: 'column', gap: 28,
           paddingRight: 8,
         }}
       >

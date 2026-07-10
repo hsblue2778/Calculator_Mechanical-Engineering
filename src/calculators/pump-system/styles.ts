@@ -40,18 +40,11 @@ export const labelStyle: React.CSSProperties = {
   display: 'block',
 };
 
-export const sectionStyle: React.CSSProperties = {
-  backgroundColor: 'var(--bg-surface)',
-  border: `1px solid var(--border-subtle)`,
-  borderRadius: 8,
-  padding: 16,
-};
+export const sectionStyle: React.CSSProperties = {};
 
 export const sectionTitleStyle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 600,
   color: 'var(--text-primary)',
   marginBottom: 12,
-  paddingBottom: 8,
-  borderBottom: `1px solid var(--border-subtle)`,
 };

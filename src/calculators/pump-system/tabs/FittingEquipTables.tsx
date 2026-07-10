@@ -143,8 +143,8 @@ export function FittingTable({ rows, pipeRefOptions, onAdd, onRemove, onUpdate }
       <button onClick={onAdd} style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
         padding: '6px 12px', fontSize: 13, borderRadius: 6,
-        border: `1px solid ${C.blue}`, backgroundColor: 'var(--accent-primary-bg-soft)',
-        color: C.blue, cursor: 'pointer', fontFamily: 'inherit',
+        border: `1px solid ${C.borderInput}`, backgroundColor: 'transparent',
+        color: C.textDark, cursor: 'pointer', fontFamily: 'inherit',
       }}>
         <Plus size={14} /> 부속 추가
       </button>
@@ -308,8 +308,8 @@ export function EquipTable({ rows, pipeRefOptions, onAdd, onRemove, onUpdate }: 
       <button onClick={onAdd} style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
         padding: '6px 12px', fontSize: 13, borderRadius: 6,
-        border: `1px solid ${C.blue}`, backgroundColor: 'var(--accent-primary-bg-soft)',
-        color: C.blue, cursor: 'pointer', fontFamily: 'inherit',
+        border: `1px solid ${C.borderInput}`, backgroundColor: 'transparent',
+        color: C.textDark, cursor: 'pointer', fontFamily: 'inherit',
       }}>
         <Plus size={14} /> 장비 추가
       </button>
