@@ -2,9 +2,10 @@
 // 섹션: 시스템기본조건(시스템모드포함) / 흡입측배관(다중) / 토출측배관(다중) /
 //       부속류 / 장비류 / 정수두잔류압력 / 안전율프리셋 / 결과 / PDF
 
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { Download, FileText, Printer } from 'lucide-react';
 import ChainBanner from '../../../components/ChainBanner';
+import NetworkImportButton, { type NetworkImportValues } from './NetworkImportButton';
 import { SaveBtn } from './FormComponents';
 import { PipeMultiTable } from './PipeMultiTable';
 import HeadPressureSection from './HeadPressureSection';
@@ -149,7 +150,7 @@ interface Props {
 
   onSave?: () => void;
   canSave?: boolean;
-  chainedFrom?: string;                // 체이닝 수신 안내 배너 (계통 압력손실·관경 선정)
+  chainedFrom?: string;                // 체이닝 수신 안내 배너 (관경 선정)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
@@ -182,6 +183,20 @@ export default function CalculatorTab(props: Props) {
   } = props;
 
   const uid = useId();
+
+  // 계통 설계 불러오기 — 가져온 기록 제목 (수신 배너 표시용, 리마운트 시 자연 초기화)
+  const [importedNetworkTitle, setImportedNetworkTitle] = useState<string | null>(null);
+
+  function handleNetworkImport(v: NetworkImportValues) {
+    // 값+단위 동시 주입 — 환산하는 handleFlowUnitChange/handlePresUnitChange가 아닌 raw setter 사용
+    setQ(v.Q); setFlowUnit(v.flowUnit);
+    setPresStr(v.PresStr); setPresUnit(v.presUnit);
+    if (v.fluid && fieldConfig.availableFluids.includes(v.fluid)) {
+      setFluid(v.fluid);
+      if (v.tempC) setTempC(v.tempC);
+    }
+    setImportedNetworkTitle(v.title);
+  }
 
   const Q_num = parseFloat(Q);
   const Q_m3s = Number.isFinite(Q_num) && Q_num > 0
@@ -350,14 +365,17 @@ export default function CalculatorTab(props: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {chainedFrom === 'friction-network' && (
-        <ChainBanner>
-          계통 압력손실 시스템에서 전달된 <b>Σ말단유량(설계유량 Q)·최대 요구압(잔류 토출압)</b> 값입니다. 흡입/토출 배관을 입력하면 TDH가 산출됩니다.
-        </ChainBanner>
-      )}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <NetworkImportButton onImport={handleNetworkImport} />
+      </div>
       {chainedFrom === 'pipe-sizing' && (
         <ChainBanner>
           관경 계산기에서 전달된 <b>선정 관경·유량</b> 값입니다. 흡입/토출 배관의 길이를 입력하면 TDH가 산출됩니다.
+        </ChainBanner>
+      )}
+      {importedNetworkTitle && (
+        <ChainBanner>
+          계통 설계 '{importedNetworkTitle}'에서 가져온 <b>Σ말단유량(설계유량 Q)·최대 요구압(잔류 토출압)</b> 값입니다. 흡입/토출 배관을 입력하면 TDH가 산출됩니다.
         </ChainBanner>
       )}
       <WorkspaceLayout

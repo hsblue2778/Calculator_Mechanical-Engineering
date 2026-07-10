@@ -12,7 +12,7 @@ import {
 } from '../../data/frictionNetworkRef.ts';
 import {
   computeNetwork, validateSettings,
-  type FNSettings, type FNSegmentInput, type FNFlowUnit, type FNShape, type FNNetworkResult,
+  type FNSettings, type FNSegmentInput, type FNFlowUnit, type FNShape,
 } from './calc';
 import { fnSuggestDe, type FNSuggestion } from './design';
 import CalculatorTab from './tabs/CalculatorTab';
@@ -20,7 +20,6 @@ import CalculatorTab from './tabs/CalculatorTab';
 interface Props {
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
-  onChain?: (calculatorId: string, initialState: Record<string, unknown>) => void;
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
@@ -104,33 +103,7 @@ function isBlankRow(r: FNSegmentState): boolean {
 
 const num = (s: string) => parseFloat(s);
 
-function fmtFlow(n: number): string {
-  if (!Number.isFinite(n)) return '';
-  if (n >= 100) return n.toFixed(1);
-  if (n >= 10) return n.toFixed(2);
-  return n.toFixed(3);
-}
-
-// 계통 계산 결과 → 펌프 시스템 initialState 페이로드
-// Σ말단유량 → 설계유량 Q · 최대(누적손실+요구압) → 잔류 토출압 (펌프가 감당할 계통 요구압)
-function buildPumpChainPayload(st: FNSettingsState, net: FNNetworkResult): Record<string, unknown> {
-  const mul = st.flowUnit === 'LPM' ? 60000 : 3600;
-  const payload: Record<string, unknown> = {
-    Q: fmtFlow(net.totalLeafFlow_m3s * mul),
-    flowUnit: st.flowUnit === 'LPM' ? 'lpm' : 'm3h',
-    PresStr: (net.worstDemand_Pa / 1000).toFixed(2),
-    presUnit: 'kPa',
-    chainedFrom: 'friction-network',
-  };
-  // 펌프는 물 계열 전용 — 물일 때만 유체·온도 전달, 그 외는 펌프 기본값에 맡김
-  if (st.fluid === 'water') {
-    payload.fluid = 'water';
-    payload.tempC = st.tempC;
-  }
-  return payload;
-}
-
-export default function FrictionNetworkCalculator({ initialState, onSave, onChain, initialAction, onInitialActionDone }: Props) {
+export default function FrictionNetworkCalculator({ initialState, onSave, initialAction, onInitialActionDone }: Props) {
   const [st, setSt] = useState<FNSettingsState>(() => ({
     ...defaultSettings(), ...(initialState?.settings ?? {}),
   }));
@@ -256,12 +229,6 @@ export default function FrictionNetworkCalculator({ initialState, onSave, onChai
         onReset={reset}
         onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
         canSave={canSave}
-        onChain={onChain ? () => {
-          if (!net) return;
-          // 화면이 펌프 시스템으로 교체되므로 보내기 직전 기록에 자동 저장 (저장 가능 상태일 때)
-          if (canSave && onSave) onSave({ inputs, outputs });
-          onChain('pump-hvac', buildPumpChainPayload(st, net));
-        } : undefined}
         initialAction={initialAction}
         onInitialActionDone={onInitialActionDone}
       />

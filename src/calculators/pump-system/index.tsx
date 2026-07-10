@@ -146,7 +146,7 @@ export default function PumpSystemCalculator({ field, initialState, onSave, init
     () => initialState?.operatingHzList ?? [60],
   );
 
-  // 체이닝으로 들어온 경우 — 발신 계산기 안내 배너 표시 (계통 압력손실·관경 선정)
+  // 체이닝으로 들어온 경우 — 발신 계산기 안내 배너 표시 (관경 선정)
   const chainedFrom = typeof initialState?.chainedFrom === 'string' ? initialState.chainedFrom : undefined;
 
   // 현재 inputs/outputs (onSave용)
