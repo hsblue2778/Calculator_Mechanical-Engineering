@@ -1,7 +1,8 @@
 // 냉수배관 보온 두께 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, ChevronDown, FileText } from 'lucide-react';
+import { RotateCcw, AlertTriangle, Save, Check, ChevronDown } from 'lucide-react';
+import ExportMenu from '../../../components/ExportMenu';
 import {
   PIPE_OD_TABLE, INSULATION_MATERIALS,
   calculate, validate, type InsulationInputs,
@@ -191,14 +192,9 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
             result={result}
           />
         ) : (
-          <div style={{
-            backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
-            borderRadius: 8, padding: 24, textAlign: 'center',
-          }}>
-            <p style={{ fontSize: 13, color: C.text, margin: 0 }}>
-              외기 온도 · 관내 온도 · 상대습도를 입력하면 결과가 표시됩니다.
-            </p>
-          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-quaternary)', margin: 0, padding: '8px 2px' }}>
+            외기 온도 · 관내 온도 · 상대습도를 입력하면 결과가 표시됩니다.
+          </p>
         )}
 
         <ActionBar
@@ -245,20 +241,7 @@ function ActionBar({
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
       {onSave && <SaveBtn onClick={onSave} enabled={canSave} />}
-      <ExportBtn
-        icon={<Download size={14} />} label="CSV 내보내기"
-        enabled={canExport} onClick={onCsv}
-      />
-      <ExportBtn
-        icon={<FileText size={14} />} label="Word로 저장"
-        enabled={canExport} onClick={onWord}
-        title="PDF 산출서와 동일한 양식의 Word(.doc) 파일 다운로드"
-      />
-      <ExportBtn
-        icon={<Printer size={14} />} label="PDF로 저장"
-        enabled={canExport} onClick={onPdf}
-        title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택"
-      />
+      <ExportMenu enabled={canExport} onCsv={onCsv} onWord={onWord} onPdf={onPdf} />
       <button
         onClick={onReset}
         style={{
@@ -272,33 +255,6 @@ function ActionBar({
         <RotateCcw size={14} /> 초기화
       </button>
     </div>
-  );
-}
-
-function ExportBtn({
-  icon, label, enabled, onClick, title,
-}: {
-  icon: React.ReactNode; label: string; enabled: boolean;
-  onClick: () => void; title?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={!enabled}
-      title={title}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? C.textDark : 'var(--text-quaternary)',
-        backgroundColor: C.surface,
-        border: `1px solid ${enabled ? C.borderInput : C.border}`,
-        borderRadius: 8,
-        cursor: enabled ? 'pointer' : 'not-allowed',
-        fontFamily: 'inherit',
-      }}
-    >
-      {icon} {label}
-    </button>
   );
 }
 

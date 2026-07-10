@@ -32,9 +32,9 @@ export default function UnitRadios({ label, value, onChange, options }: Props) {
               style={{
                 padding: '5px 10px', fontSize: 12, cursor: 'pointer',
                 fontFamily: 'inherit',
-                border: `1px solid ${selected ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
-                backgroundColor: selected ? 'var(--accent-primary-bg-soft)' : 'var(--bg-surface)',
-                color: selected ? 'var(--accent-primary-hover)' : 'var(--text-secondary)',
+                border: `1px solid ${selected ? 'var(--border-strong)' : 'var(--border-subtle)'}`,
+                backgroundColor: selected ? 'var(--bg-surface-3)' : 'var(--bg-surface)',
+                color: selected ? 'var(--text-primary)' : 'var(--text-secondary)',
                 fontWeight: selected ? 600 : 400,
                 borderRadius: 5,
                 transition: 'all 0.12s',

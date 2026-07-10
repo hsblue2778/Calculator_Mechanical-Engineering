@@ -224,8 +224,8 @@ export function PipeMultiTable({ title, prefix, rows, onChange }: Props) {
       <button onClick={addRow} style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
         padding: '6px 12px', fontSize: 13, borderRadius: 6,
-        border: `1px solid ${C.blue}`, backgroundColor: 'var(--accent-primary-bg-soft)',
-        color: C.blue, cursor: 'pointer', fontFamily: 'inherit',
+        border: `1px solid ${C.borderInput}`, backgroundColor: 'transparent',
+        color: C.textDark, cursor: 'pointer', fontFamily: 'inherit',
       }}>
         <Plus size={14} /> + {prefix === 'SP' ? '흡입측' : '토출측'} 배관 추가
       </button>

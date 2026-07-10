@@ -34,17 +34,9 @@ export default function StickyResults({ net, flowUnit, pAvailEntered }: Props) {
     return (
       <aside className="calc-sticky-results" style={asideStyle}>
         <div style={eyebrowStyle}>실시간 결과</div>
-        <div
-          style={{
-            background: 'var(--bg-surface-2)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 10,
-            padding: 24, textAlign: 'center',
-            color: 'var(--text-quaternary)', fontSize: 12, lineHeight: 1.6,
-          }}
-        >
-          구간을 입력하면<br/>결과가 표시됩니다
-        </div>
+        <p style={{ padding: '8px 4px', color: 'var(--text-quaternary)', fontSize: 12, lineHeight: 1.6 }}>
+          구간을 입력하면 결과가 표시됩니다
+        </p>
       </aside>
     );
   }

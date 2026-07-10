@@ -65,17 +65,9 @@ export default function StickyResults({ selected, noSolution, mat, pressureUnit,
             <span>선택 가능한 관경이 없습니다. 유량을 줄이거나 허용 압력강하를 높이세요. (현재 최대 {mat.sizes[mat.sizes.length - 1].nominalA}A)</span>
           </div>
         ) : (
-          <div
-            style={{
-              background: 'var(--bg-surface-2)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 10,
-              padding: 24, textAlign: 'center',
-              color: 'var(--text-quaternary)', fontSize: 12,
-            }}
-          >
-            입력을 시작하면<br/>결과가 표시됩니다
-          </div>
+          <p style={{ padding: '8px 4px', color: 'var(--text-quaternary)', fontSize: 12, lineHeight: 1.6 }}>
+            입력을 시작하면 결과가 표시됩니다
+          </p>
         )}
       </aside>
     );

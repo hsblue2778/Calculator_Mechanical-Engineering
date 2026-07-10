@@ -15,17 +15,9 @@ export default function StickyResults({ pf, pressDef }: { pf: PipeFrictionContro
     return (
       <aside className="calc-sticky-results" style={asideStyle}>
         <PanelTitle />
-        <div
-          style={{
-            background: 'var(--bg-surface-2)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 10,
-            padding: 24, textAlign: 'center',
-            color: 'var(--text-quaternary)', fontSize: 12,
-          }}
-        >
-          유량·유속·관경 중 2개와<br/>길이를 입력하면<br/>결과가 표시됩니다
-        </div>
+        <p style={{ padding: '8px 4px', color: 'var(--text-quaternary)', fontSize: 12, lineHeight: 1.6 }}>
+          유량·유속·관경 중 2개와 길이를 입력하면 결과가 표시됩니다
+        </p>
       </aside>
     );
   }

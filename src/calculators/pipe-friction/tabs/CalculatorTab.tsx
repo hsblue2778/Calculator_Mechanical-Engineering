@@ -66,7 +66,7 @@ export default function CalculatorTab({ pf, onSave, canSave, onChain, chainedFro
 
   return (
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
-      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 28, paddingRight: 8 }}>
         {chainedFrom === 'pipe-sizing' && (
           <ChainBanner>
             관경 계산기에서 전달된 <b>선정 내경 D·유량 Q</b> 값입니다. 배관 길이 L을 입력하면 Colebrook 기반 마찰손실이 정밀 산출됩니다.

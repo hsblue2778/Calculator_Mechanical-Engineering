@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Save, Check } from 'lucide-react';
+import InfoTip from '../../../components/InfoTip';
 import { C, inputStyle, labelStyle, sectionStyle, sectionTitleStyle } from '../styles';
 import { PIPE_SIZE_MATERIALS } from '../../../data/pipeSizes';
 import { LENGTH_UNITS, type LengthUnitKey } from '../units';
@@ -14,14 +15,16 @@ export function FieldNum({
 }) {
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
+      <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+        {label}
+        {hint && <InfoTip>{hint}</InfoTip>}
+      </label>
       <input type="number" value={value} step="any"
         min={allowNegative ? undefined : 0}
         onChange={e => onChange(e.target.value)}
         style={inputStyle}
         onFocus={e => { e.currentTarget.style.borderColor = C.blue; }}
         onBlur={e => { e.currentTarget.style.borderColor = C.borderInput; }} />
-      {hint && <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4 }}>{hint}</p>}
     </div>
   );
 }
@@ -37,8 +40,8 @@ export function PresetField({
         <label style={{ ...labelStyle, marginBottom: 0 }}>{label}</label>
         {isPreset && (
           <span style={{
-            fontSize: 10, color: 'var(--accent-primary-hover)', backgroundColor: 'var(--accent-primary-bg-soft)',
-            border: '1px solid var(--accent-primary-bg)', borderRadius: 4, padding: '1px 6px',
+            fontSize: 10, color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-surface-3)',
+            borderRadius: 4, padding: '1px 6px',
           }}>프리셋 적용 중</span>
         )}
       </div>
@@ -55,9 +58,10 @@ export function UnitBtn({ label, active, onClick }: { label: string; active: boo
   return (
     <button onClick={onClick} style={{
       padding: '6px 10px', fontSize: 12, borderRadius: 4,
-      border: `1px solid ${active ? C.blue : C.borderInput}`,
-      backgroundColor: active ? 'var(--accent-primary-bg-soft)' : C.surface,
-      color: active ? C.blue : C.textDark,
+      border: `1px solid ${active ? 'var(--border-strong)' : C.borderInput}`,
+      backgroundColor: active ? 'var(--bg-surface-3)' : C.surface,
+      color: active ? 'var(--text-primary)' : C.textDark,
+      fontWeight: active ? 600 : 400,
       cursor: 'pointer', fontFamily: 'inherit',
     }}>{label}</button>
   );

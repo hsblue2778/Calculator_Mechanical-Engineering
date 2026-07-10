@@ -3,8 +3,10 @@
 //       부속류 / 장비류 / 정수두잔류압력 / 안전율프리셋 / 결과 / PDF
 
 import { useId, useState } from 'react';
-import { Download, FileText, Printer } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import ChainBanner from '../../../components/ChainBanner';
+import ExportMenu from '../../../components/ExportMenu';
+import InfoTip from '../../../components/InfoTip';
 import NetworkImportButton, { type NetworkImportValues } from './NetworkImportButton';
 import { SaveBtn } from './FormComponents';
 import { PipeMultiTable } from './PipeMultiTable';
@@ -19,7 +21,6 @@ import {
 } from '../units';
 import { generatePumpCurveFamily, findOperatingPoint, type EquipKind, type SystemMode, type PumpCurveAtHz, type PumpHvacResult } from '../calc';
 import type { PumpFieldConfig, FluidId } from '../configs/types';
-import { C } from '../styles';
 import { downloadCsv, downloadWordFile, printHtmlReport } from '../../../utils/exportUtils';
 import { useInitialAction } from '../../../utils/useInitialAction';
 import { buildPumpHvacReportHtml } from '../htmlReport/index';
@@ -197,6 +198,9 @@ export default function CalculatorTab(props: Props) {
     }
     setImportedNetworkTitle(v.title);
   }
+
+  // §4b 펌프 후보 곡선 — 선택 입력이라 기본 접힘
+  const [pumpCurveOpen, setPumpCurveOpen] = useState(false);
 
   const Q_num = parseFloat(Q);
   const Q_m3s = Number.isFinite(Q_num) && Q_num > 0
@@ -419,9 +423,7 @@ export default function CalculatorTab(props: Props) {
               <option value="new">신관</option>
               <option value="old">노후</option>
             </select>
-            <span style={{ color: 'var(--text-quaternary)' }}>
-              전 구간 공통 — 재질×상태별 절대조도 ε 자동 적용 (마찰계수는 영역별 자동 산출)
-            </span>
+            <InfoTip>전 구간 공통 — 재질×상태별 절대조도 ε 자동 적용 (마찰계수는 영역별 자동 산출)</InfoTip>
           </div>
           <PipeMultiTable
             title="흡입측 배관"
@@ -461,16 +463,20 @@ export default function CalculatorTab(props: Props) {
           />
         </div>
 
-        {/* §4b 펌프 후보 곡선 (선택 입력) */}
-        <div id="sec-pump-curve" style={{
-          border: `1px solid var(--border-subtle)`,
-          borderRadius: 8,
-          padding: '14px 16px',
-          backgroundColor: 'var(--bg-surface)',
-        }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>
+        {/* §4b 펌프 후보 곡선 (선택 입력) — 기본 접힘 */}
+        <details
+          id="sec-pump-curve"
+          open={pumpCurveOpen}
+          onToggle={e => setPumpCurveOpen((e.target as HTMLDetailsElement).open)}
+        >
+          <summary style={{
+            cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+            display: 'flex', alignItems: 'center', gap: 6, listStyle: 'none',
+          }}>
+            <ChevronDown size={14} style={{ transform: pumpCurveOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }} />
             펌프 후보 곡선 (선택)
-          </p>
+          </summary>
+          <div style={{ marginTop: 10 }}>
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 10px 0' }}>
             펌프 카탈로그의 H-Q 곡선에서 5~7개 점을 입력하세요. 비워두면 시스템 곡선만 표시됩니다.
           </p>
@@ -532,10 +538,11 @@ export default function CalculatorTab(props: Props) {
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       padding: '4px 10px',
-                      border: `1px solid ${isChecked ? 'var(--accent-primary, #2563eb)' : 'var(--border-input)'}`,
+                      border: `1px solid ${isChecked ? 'var(--border-strong)' : 'var(--border-input)'}`,
                       borderRadius: 6, cursor: 'pointer', fontSize: 13,
-                      backgroundColor: isChecked ? 'var(--accent-primary-bg-soft)' : 'var(--bg-surface)',
-                      color: isChecked ? 'var(--accent-primary, #2563eb)' : 'var(--text-primary)',
+                      backgroundColor: isChecked ? 'var(--bg-surface-3)' : 'var(--bg-surface)',
+                      color: 'var(--text-primary)',
+                      fontWeight: isChecked ? 600 : 400,
                     }}
                   >
                     <input
@@ -636,7 +643,8 @@ export default function CalculatorTab(props: Props) {
               fontFamily: 'inherit',
             }}
           >+ 점 추가</button>
-        </div>
+          </div>
+        </details>
 
         {/* §5 정수두·잔류압력 + 안전율 프리셋 */}
         <div id="sec-head">
@@ -692,14 +700,9 @@ export default function CalculatorTab(props: Props) {
               catalogHz={validCatalogHz}
             />
           ) : (
-            <div style={{
-              backgroundColor: C.surfaceAlt, border: `1px solid ${C.border}`,
-              borderRadius: 8, padding: 24, textAlign: 'center',
-            }}>
-              <p style={{ fontSize: 13, color: C.text, margin: 0 }}>
-                유량·흡입/토출 배관 정보·길이를 모두 입력하면 결과가 표시됩니다.
-              </p>
-            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-quaternary)', margin: 0, padding: '8px 2px' }}>
+              유량·흡입/토출 배관 정보·길이를 모두 입력하면 결과가 표시됩니다.
+            </p>
           )}
         </div>
       </WorkspaceLayout>
@@ -707,26 +710,14 @@ export default function CalculatorTab(props: Props) {
       {/* §7 버튼 영역 — .calc-actions로 화면 하단 고정(sticky) */}
       <div className="calc-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
-        <PumpReportBtn
-          icon={<Download size={14} />} label="CSV 내보내기"
-          title="계산 조건·결과·손실 상세를 CSV 파일로 다운로드"
+        <ExportMenu
           enabled={!!result}
-          onClick={handlePumpCsv}
-        />
-        <PumpReportBtn
-          icon={<FileText size={14} />} label="Word로 저장"
-          title="PDF 산출서와 동일한 양식의 Word(.doc) 파일 다운로드"
-          enabled={!!result}
-          onClick={() => {
+          onCsv={handlePumpCsv}
+          onWord={() => {
             const html = buildPumpHvacHtml();
             if (html) downloadWordFile(`${pdfTitle}.doc`, html);
           }}
-        />
-        <PumpReportBtn
-          icon={<Printer size={14} />} label="PDF로 저장"
-          title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택"
-          enabled={!!result}
-          onClick={() => {
+          onPdf={() => {
             const html = buildPumpHvacHtml();
             if (html) printHtmlReport(html);
           }}
@@ -779,30 +770,6 @@ export default function CalculatorTab(props: Props) {
   }
 }
 
-function PumpReportBtn({
-  icon, label, title, enabled, onClick,
-}: {
-  icon: React.ReactNode; label: string; title: string;
-  enabled: boolean; onClick: () => void;
-}) {
-  return (
-    <button
-      disabled={!enabled}
-      onClick={onClick}
-      title={title}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? C.textDark : 'var(--text-quaternary)',
-        backgroundColor: C.surface,
-        border: `1px solid ${enabled ? C.borderInput : C.border}`,
-        borderRadius: 8, cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-      }}
-    >
-      {icon} {label}
-    </button>
-  );
-}
 
 function fmtNum(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '';

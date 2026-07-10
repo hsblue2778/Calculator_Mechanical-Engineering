@@ -20,12 +20,7 @@ export default function UnitPanel({
   pressureOptions, pressureValue, onPressureChange,
 }: Props) {
   return (
-    <div style={{
-      backgroundColor: 'var(--bg-surface-2)',
-      border: '1px solid var(--border-subtle)',
-      borderRadius: 8,
-      padding: 14,
-    }}>
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <SlidersHorizontal size={14} color="var(--text-tertiary)" />
         <span style={{
