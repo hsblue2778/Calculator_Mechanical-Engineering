@@ -1,9 +1,11 @@
 // 관경 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, Printer, Download, AlertTriangle, Save, Check, FileText, ArrowRight, ChevronDown } from 'lucide-react';
+import { RotateCcw, AlertTriangle, Save, Check, ArrowRight, ChevronDown } from 'lucide-react';
 import Frac from '../../../components/Frac';
-import FormulaSection from '../../../components/FormulaSection';
+import FormulaDisclosure from '../../../components/FormulaDisclosure';
+import InfoTip from '../../../components/InfoTip';
+import ExportMenu from '../../../components/ExportMenu';
 import UnitPanel from '../../../components/UnitPanel';
 import ChainBanner from '../../../components/ChainBanner';
 import {
@@ -131,7 +133,7 @@ export default function CalculatorTab({
 
   return (
     <div className="calc-workspace" style={{ display: 'flex', minHeight: 0, gap: 0 }}>
-      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingRight: 8 }}>
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 28, paddingRight: 8 }}>
       {chainedFrom === 'pipe-friction' && (
         <ChainBanner>
           마찰손실 계산기에서 전달된 <b>유량·마찰손실(ΔP/L)</b> 값입니다 (연보라 표시). 이 조건에 맞는 적정 관경을 역산출합니다.
@@ -140,7 +142,10 @@ export default function CalculatorTab({
       {/* 유체·재질·온도·(압력)·상태·조도 — 계산 조건 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
         <div>
-          <label style={labelStyle}>유체 종류</label>
+          <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+            유체 종류
+            <InfoTip>{fluid === 'air' ? '이상기체 ν·ρ (온도·압력 반영)' : '온도별 ν·ρ 물성표 적용'}</InfoTip>
+          </label>
           <select
             value={fluid}
             onChange={e => setFluid(e.target.value as SizingFluid)}
@@ -149,12 +154,12 @@ export default function CalculatorTab({
             <option value="water">물</option>
             <option value="air">공기</option>
           </select>
-          <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
-            {fluid === 'air' ? '이상기체 ν·ρ (온도·압력 반영)' : '온도별 ν·ρ 물성표 적용'}
-          </p>
         </div>
         <div style={{ position: 'relative' }}>
-          <label style={labelStyle}>배관 재질</label>
+          <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+            배관 재질
+            <InfoTip>{mat.description} · {mat.sizes[0].nominalA}A ~ {mat.sizes[mat.sizes.length - 1].nominalA}A</InfoTip>
+          </label>
           <select
             value={matIdx}
             onChange={e => setMatIdx(Number(e.target.value))}
@@ -171,36 +176,36 @@ export default function CalculatorTab({
               </option>
             ))}
           </select>
-          <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
-            {mat.description} · {mat.sizes[0].nominalA}A ~ {mat.sizes[mat.sizes.length - 1].nominalA}A
-          </p>
         </div>
         <div>
-          <label style={labelStyle}>{fluidLabel} 온도 (°C)</label>
+          <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {fluidLabel} 온도 (°C)
+            <InfoTip>{fluidMeta.tempMin}~{fluidMeta.tempMax}°C · ν·ρ 물성표 선형보간 자동 적용</InfoTip>
+          </label>
           <input
             type="number" step="any" value={tempC}
             onChange={e => setTempC(e.target.value)}
             style={inputStyle}
           />
-          <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
-            {fluidMeta.tempMin}~{fluidMeta.tempMax}°C · ν·ρ 물성표 선형보간 자동 적용
-          </p>
         </div>
         {fluid === 'air' && (
           <div>
-            <label style={labelStyle}>압력 (mmHg)</label>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+              압력 (mmHg)
+              <InfoTip>기본 760 (1atm) · 유효 {PF_PRESSURE_MIN_MMHG}~{PF_PRESSURE_MAX_MMHG} · ρ·ν에 반영</InfoTip>
+            </label>
             <input
               type="number" step="any" value={pressureMmHg}
               onChange={e => setPressureMmHg(e.target.value)}
               style={inputStyle}
             />
-            <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
-              기본 760 (1atm) · 유효 {PF_PRESSURE_MIN_MMHG}~{PF_PRESSURE_MAX_MMHG} · ρ·ν에 반영
-            </p>
           </div>
         )}
         <div>
-          <label style={labelStyle}>배관 상태</label>
+          <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+            배관 상태
+            <InfoTip>ε 기본값 선택 (내식 재질은 노후=신관)</InfoTip>
+          </label>
           <select
             value={condition}
             onChange={e => setCondition(e.target.value as PipeCondition)}
@@ -208,13 +213,11 @@ export default function CalculatorTab({
           >
             {PIPE_CONDITIONS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
-          <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
-            ε 기본값 선택 (내식 재질은 노후=신관)
-          </p>
         </div>
         <div>
           <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>절대조도 ε (mm)</span>
+            <InfoTip>기본값 {epsDefault} — 수정 시 수정값으로 계산</InfoTip>
             {epsEdited && (
               <span style={{
                 fontSize: 10, fontWeight: 600, color: 'var(--state-warn-text)',
@@ -228,9 +231,6 @@ export default function CalculatorTab({
             onChange={e => setEpsStr(e.target.value)}
             style={inputStyle}
           />
-          <p style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4, paddingLeft: 2 }}>
-            기본값 {epsDefault} — 수정 시 수정값으로 계산
-          </p>
         </div>
       </div>
 
@@ -243,22 +243,11 @@ export default function CalculatorTab({
         onPressureChange={v => setPressureUnit(v as PressureUnitKey)}
       />
 
-      <FormulaSection title="마찰손실 (Darcy-Weisbach + 영역별 마찰계수)">
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-          <span>ΔP/L</span><span>=</span>
-          <span>ρ(T) · g ·</span>
-          <Frac
-            n={<>f · V²</>}
-            d={<>D · 2g</>}
-          />
-          <span style={{ marginLeft: 8, color: C.text, fontSize: 12 }}>[Pa/m]</span>
-        </div>
-        <p style={{ fontSize: 11, color: C.text, margin: '6px 0 0 0' }}>
-          f: 유동 영역별 자동 — 층류 64/Re · 천이(2,300~4,000) 3차 보간 · 난류 Colebrook-White 반복해 · Re = V·D/ν(T)
-        </p>
-        <p style={{ fontSize: 11, color: 'var(--text-quaternary)', margin: '2px 0 12px 0' }}>
-          관마찰손실 계산기와 동일 엔진 (ε: Moody·ASHRAE Ch.22·NFPA 13·KDS 57 / 물성: {fluid === 'air' ? '공기 ν·ρ 이상기체·압력 반영' : '물 ν표·NIST ρ'})
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <span style={{
+          fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
+          textTransform: 'uppercase', letterSpacing: '0.04em',
+        }}>마찰손실 (Darcy-Weisbach + 영역별 마찰계수)</span>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
           <FieldNumber
@@ -270,7 +259,25 @@ export default function CalculatorTab({
             value={dP} onChange={handleDPChange} highlight={hlDP}
           />
         </div>
-      </FormulaSection>
+
+        <FormulaDisclosure>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+            <span>ΔP/L</span><span>=</span>
+            <span>ρ(T) · g ·</span>
+            <Frac
+              n={<>f · V²</>}
+              d={<>D · 2g</>}
+            />
+            <span style={{ marginLeft: 8, color: C.text, fontSize: 12 }}>[Pa/m]</span>
+          </div>
+          <p style={{ fontSize: 11, color: C.text, margin: '6px 0 0 0' }}>
+            f: 유동 영역별 자동 — 층류 64/Re · 천이(2,300~4,000) 3차 보간 · 난류 Colebrook-White 반복해 · Re = V·D/ν(T)
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-quaternary)', margin: '2px 0 0 0' }}>
+            관마찰손실 계산기와 동일 엔진 (ε: Moody·ASHRAE Ch.22·NFPA 13·KDS 57 / 물성: {fluid === 'air' ? '공기 ν·ρ 이상기체·압력 반영' : '물 ν표·NIST ρ'})
+          </p>
+        </FormulaDisclosure>
+      </div>
 
       {inputErr ? (
         <ErrorBanner message={inputErr.message} />
@@ -391,14 +398,7 @@ function ActionBar({
     >
       {chainTargets && <ChainMenuBtn targets={chainTargets} />}
       {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
-      <ActionBtn icon={<Download size={14} />} label="CSV 내보내기"
-        enabled={canExport} onClick={onCsv} />
-      <ActionBtn icon={<FileText size={14} />} label="Word로 저장"
-        enabled={canExport} onClick={onWord}
-        title="PDF 산출서와 동일한 양식의 Word(.doc) 파일 다운로드" />
-      <ActionBtn icon={<Printer size={14} />} label="PDF로 저장"
-        enabled={canExport} onClick={onPdf}
-        title="인쇄 다이얼로그에서 '대상: PDF로 저장' 선택" />
+      <ExportMenu enabled={canExport} onCsv={onCsv} onWord={onWord} onPdf={onPdf} />
       <button
         onClick={onReset}
         style={{
@@ -541,31 +541,6 @@ function ErrorBanner({ message }: { message: string }) {
       <AlertTriangle size={16} />
       <span>{message}</span>
     </div>
-  );
-}
-
-function ActionBtn({
-  icon, label, enabled, onClick, title,
-}: {
-  icon: React.ReactNode; label: string; enabled: boolean;
-  onClick: () => void; title?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={!enabled}
-      title={title}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? C.textDark : 'var(--text-quaternary)',
-        backgroundColor: C.surface,
-        border: `1px solid ${enabled ? C.borderInput : C.border}`, borderRadius: 8,
-        cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-      }}
-    >
-      {icon} {label}
-    </button>
   );
 }
 
