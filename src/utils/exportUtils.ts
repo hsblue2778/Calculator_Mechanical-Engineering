@@ -50,7 +50,7 @@ const WORD_CSS_VARS: Record<string, string> = {
   'ink': '#0B1120', 'ink-2': '#1F2937', 'mute': '#475569',
   'line': '#94A3B8', 'line-soft': '#CBD5E1',
   'paper': '#FFFFFF', 'paper-2': '#F8FAFC', 'paper-3': '#F1F5F9',
-  'accent': '#1F3A6E', 'accent-2': '#A4133C', 'accent-soft': '#EEF2F9', 'hi': '#FEF9C3',
+  'accent': '#1F3A6E', 'accent-2': '#A4133C', 'accent-soft': '#EEF2F9',
 };
 
 const WORD_HEAD_EXTRA = `<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->

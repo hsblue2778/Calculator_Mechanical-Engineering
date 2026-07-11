@@ -1,13 +1,15 @@
 // HTML 산출서 — 2~5페이지 콘텐츠 생성
-// 레퍼런스: reference/handoff_html_export/HVAC 펌프 산출서.html
-// 데이터: PrintReportContent.tsx §1~§9 와 동일 매핑
+// 구성: 결과 요약(KPI+판정)+최종 결과+입력 → 배관·부속 → 장비·양정·정수두·안전율 → NPSHa 근거·운전점·표준
 
-import { esc, pageHeader, pageFooter, secHeader, makeCalcDateTime } from './helpers';
+import {
+  esc, pageHeader, pageFooter, secHeader, makeCalcDateTime,
+  kpiStrip, verdictBadge, verdictLine, type VerdictTone,
+} from './helpers';
 import type { PumpHvacReportProps } from './types';
 import { PRESSURE_UNITS_PUMP } from '../units';
 import type { EquipKind } from '../calc';
 
-const TOTAL_PAGES = 5;
+const TOTAL_PAGES = 6;
 
 function getBepVerdict(Q_op: number, Q_BEP: number): string {
   if (Q_BEP <= 0) return 'na';
@@ -25,9 +27,10 @@ const KIND_KO: Record<EquipKind, string> = {
   'other': '기타',
 };
 
-// ── 2페이지: §1 입력요약 + §2 배관마찰 + §3 부속류 ──────────────
+// ── 2페이지: §1 결과 요약 + §2 최종 결과 + §3 입력 요약 ──────────
 export function buildPage2(props: PumpHvacReportProps, logoDataUrl: string, docNo: string): string {
-  const { result: r, fieldLabel, systemMode, fluid, tempC, Q_m3s, Q_display, flowUnitLabel } = props;
+  const { result: r, fieldLabel, systemMode, fluid, tempC, Q_m3s, Q_display, flowUnitLabel,
+    headMarginStr, powerMarginStr, npshrStr, BEP_Q_m3h, operatingPoint } = props;
   const isClosed = systemMode === 'closed';
 
   const FLUID_LABELS: Record<string, string> = {
@@ -39,8 +42,50 @@ export function buildPage2(props: PumpHvacReportProps, logoDataUrl: string, docN
   const Q_m3h = (Q_m3s * 3600).toFixed(3);
   const docLabel = `${esc(fieldLabel)} 펌프 시스템 계산결과`;
 
-  // §1 입력요약 행들
-  const sec1Rows = `
+  // §1 결과 요약 — KPI 밴드 + 판정
+  const kpis = kpiStrip([
+    { label: '총양정 TDH', value: r.TDH_m.toFixed(2), unit: 'm', sub: isClosed ? '폐회로: 정수두 차 0 포함' : '정수두 + 손실 + 잔류압' },
+    { label: '설계 양정', value: r.designHead_m.toFixed(2), unit: 'm', sub: `TDH × (1 + ${esc(headMarginStr)}%)` },
+    { label: '설계 동력', value: (r.designPower_W / 1000).toFixed(2), unit: 'kW', sub: `이론 × ${esc(powerMarginStr)}배${r.recommendedMotorRating_kW > 0 ? ` · 권장 모터 ${r.recommendedMotorRating_kW} kW` : ''}` },
+    { label: 'NPSHa', value: r.NPSHa_m.toFixed(2), unit: 'm', sub: r.NPSHr_m > 0 ? `NPSHr ${r.NPSHr_m.toFixed(2)} m · 실여유 ${r.NPSHmargin_actual_m != null ? r.NPSHmargin_actual_m.toFixed(2) : '—'} m` : 'NPSHr 미입력' },
+  ]);
+
+  const npshTone: VerdictTone =
+    r.NPSHverdict === 'pass' ? 'ok' :
+    r.NPSHverdict === 'low-margin' ? 'warn' :
+    r.NPSHverdict === 'risk' ? 'risk' : 'info';
+  const npshLabel =
+    r.NPSHverdict === 'pass' ? 'NPSH 통과' :
+    r.NPSHverdict === 'low-margin' ? 'NPSH 여유 부족' :
+    r.NPSHverdict === 'risk' ? '캐비테이션 위험' : 'NPSHr 미입력';
+  const verdictParts: string[] = [`NPSH ${verdictBadge(npshTone, npshLabel)}`];
+  if (r.cvVerdict !== 'na') {
+    const cvTone: VerdictTone = r.cvVerdict === 'ok' ? 'ok' : (r.cvVerdict === 'too-low' ? 'risk' : 'warn');
+    const cvLabel: Record<string, string> = {
+      'ok': '권장 범위', 'low-margin': '권위 부족', 'too-low': '제어성 위험',
+      'high-margin': '다소 과도', 'too-high': '동력 낭비',
+    };
+    verdictParts.push(`컨트롤 밸브 권위 β ${r.cvAuthority.toFixed(2)} ${verdictBadge(cvTone, cvLabel[r.cvVerdict] ?? '—')}`);
+  }
+  const hasBep = BEP_Q_m3h != null && BEP_Q_m3h > 0;
+  if (operatingPoint && hasBep) {
+    const bep = getBepVerdict(operatingPoint.Q_m3h, BEP_Q_m3h!);
+    const bepTone: VerdictTone = bep === 'optimal' ? 'ok' : bep === 'acceptable' ? 'warn' : 'risk';
+    const bepLabel: Record<string, string> = { optimal: '최적', acceptable: '허용', 'out-of-range': '범위 이탈' };
+    verdictParts.push(`BEP 대비 운전점 ${((operatingPoint.Q_m3h / BEP_Q_m3h!) * 100).toFixed(0)}% ${verdictBadge(bepTone, bepLabel[bep] ?? '—')}`);
+  }
+
+  // §2 최종 결과 — NPSHa 비고
+  const npshNote = (() => {
+    if (r.NPSHverdict === 'na') return 'NPSHr 미입력 — 펌프 선정 단계에서 비교 <span class="badge-ok">마진 양호</span>';
+    if (r.NPSHverdict === 'pass') return `여유 통과 (NPSHa − NPSHr = ${r.NPSHmargin_actual_m?.toFixed(2)} m) <span class="badge-ok">통과</span>`;
+    if (r.NPSHverdict === 'low-margin') return `여유 부족 (NPSHa − NPSHr = ${r.NPSHmargin_actual_m?.toFixed(2)} m) <span class="badge-warn">주의</span>`;
+    if (r.NPSHverdict === 'risk') return `캐비테이션 위험 (NPSHa − NPSHr = ${r.NPSHmargin_actual_m?.toFixed(2)} m) <span class="badge-warn">위험</span>`;
+    return '—';
+  })();
+
+  // §3 입력요약 행들
+  const sec3Rows = `
     <tr><td>분야</td><td class="c">${esc(fieldLabel)}</td><td class="c">—</td><td>—</td></tr>
     <tr><td>시스템 모드</td><td class="c">${esc(isClosed ? '폐회로 (Closed)' : '개방계 (Open)')}</td><td class="c">—</td><td>사용자 선택</td></tr>
     <tr><td>운전 유체</td><td class="c">${esc(fluidLabel)}</td><td class="c">—</td><td>Phase 1.0 청수/온수 한정</td></tr>
@@ -51,29 +96,56 @@ export function buildPage2(props: PumpHvacReportProps, logoDataUrl: string, docN
     <tr><td>포화수증기압 P_vapor</td><td class="num">${r.P_vapor_Pa.toFixed(2)}</td><td class="c">Pa</td><td>Antoine 식, Engineering Toolbox</td></tr>
     <tr><td>중력가속도 g</td><td class="num">9.81</td><td class="c">m/s²</td><td>표준값</td></tr>`;
 
-  // §2 배관마찰 행들
-  const sucRows = r.sucPipes.map(p => `
-    <tr>
-      <td class="c">${esc(p.pipeLabel)}</td><td class="c">흡입</td>
-      <td class="c">${esc(p.materialNameKo)}</td><td class="c">${esc(p.scheduleLabel)}</td>
-      <td class="c">${esc(p.nominalA)}A</td>
-      <td class="num">${p.id_mm.toFixed(1)}</td><td class="num">${p.L_m.toFixed(2)}</td>
-      <td class="num">${p.f.toFixed(3)}</td><td class="num">${p.V_ms.toFixed(4)}</td>
-      <td class="num">${Math.round(p.Re).toLocaleString()}</td>
-      <td class="num">${p.hf_m.toFixed(5)}</td>
-    </tr>`).join('');
-  const disRows = r.disPipes.map(p => `
-    <tr>
-      <td class="c">${esc(p.pipeLabel)}</td><td class="c">토출</td>
-      <td class="c">${esc(p.materialNameKo)}</td><td class="c">${esc(p.scheduleLabel)}</td>
-      <td class="c">${esc(p.nominalA)}A</td>
-      <td class="num">${p.id_mm.toFixed(1)}</td><td class="num">${p.L_m.toFixed(2)}</td>
-      <td class="num">${p.f.toFixed(3)}</td><td class="num">${p.V_ms.toFixed(4)}</td>
-      <td class="num">${Math.round(p.Re).toLocaleString()}</td>
-      <td class="num">${p.hf_m.toFixed(5)}</td>
-    </tr>`).join('');
+  return `
+<!-- ─── 2페이지: 결과 요약 + 최종 결과 + 입력 요약 ─── -->
+<section class="sheet">
+  ${pageHeader(logoDataUrl, docLabel, docNo, 2, TOTAL_PAGES)}
+  ${secHeader('1.', '결과 요약')}
+  ${kpis}
+  ${verdictLine(verdictParts)}
 
-  // §3 부속류
+  ${secHeader('2.', '최종 결과')}
+  <table class="k">
+    <colgroup><col style="width:30%"><col style="width:18%"><col style="width:10%"><col style="width:42%"></colgroup>
+    <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
+    <tr><td>총양정 TDH</td><td class="num">${r.TDH_m.toFixed(4)}</td><td class="c">m</td><td>${isClosed ? '폐회로: 정수두 차 0 포함' : '—'}</td></tr>
+    <tr class="hl"><td>설계 양정</td><td class="num">${r.designHead_m.toFixed(4)}</td><td class="c">m</td><td>TDH × (1 + ${esc(headMarginStr)}%)</td></tr>
+    <tr><td>NPSHa</td><td class="num">${r.NPSHa_m.toFixed(4)}</td><td class="c">m</td><td>${npshNote}</td></tr>
+    <tr><td>이론 동력</td><td class="num">${(r.theoPower_W / 1000).toFixed(4)}</td><td class="c">kW</td><td>η = 0.65, P = ρ·g·Q·H/η</td></tr>
+    <tr><td>이론 동력 (HP)</td><td class="num">${(r.theoPower_W / 745.7).toFixed(4)}</td><td class="c">HP</td><td>1 HP = 745.7 W</td></tr>
+    <tr class="hl"><td>설계 동력</td><td class="num">${(r.designPower_W / 1000).toFixed(4)}</td><td class="c">kW</td><td>이론 동력 × ${esc(powerMarginStr)}배</td></tr>
+    <tr><td>권장 모터 정격 (IEC 60034-1)</td><td class="num">${r.recommendedMotorRating_kW > 0 ? r.recommendedMotorRating_kW : '—'}</td><td class="c">kW</td><td>설계 동력 이상 최소 IEC 표준 정격 / IE3 효율등급 이상 권장</td></tr>
+  </table>
+  ${npshrStr.trim() === '' ? '<div class="note">NPSHr(펌프 카탈로그) 미입력 — NPSH 비교는 펌프 선정 단계에서 수행하십시오.</div>' : ''}
+
+  ${secHeader('3.', '입력 요약')}
+  <table class="k">
+    <colgroup><col style="width:20%"><col style="width:18%"><col style="width:10%"><col style="width:52%"></colgroup>
+    <tr><th>항목</th><th>값</th><th>단위</th><th>비고 / 출처</th></tr>
+    ${sec3Rows}
+  </table>
+  ${pageFooter(docNo, 2, TOTAL_PAGES)}
+</section>`;
+}
+
+// ── 3페이지: §4 배관마찰 + §5 부속류 ─────────────────────────────
+export function buildPage3(props: PumpHvacReportProps, logoDataUrl: string, docNo: string): string {
+  const { result: r, fieldLabel } = props;
+  const docLabel = `${esc(fieldLabel)} 펌프 시스템 계산결과`;
+
+  const pipeRow = (p: typeof r.sucPipes[number], side: string) => `
+    <tr>
+      <td class="c">${esc(p.pipeLabel)}</td><td class="c">${side}</td>
+      <td class="c">${esc(p.materialNameKo)}</td><td class="c">${esc(p.scheduleLabel)}</td>
+      <td class="c">${esc(p.nominalA)}A</td>
+      <td class="num">${p.id_mm.toFixed(1)}</td><td class="num">${p.L_m.toFixed(2)}</td>
+      <td class="num">${p.f.toFixed(3)}</td><td class="num">${p.V_ms.toFixed(4)}</td>
+      <td class="num">${Math.round(p.Re).toLocaleString()}</td>
+      <td class="num">${p.hf_m.toFixed(5)}</td>
+    </tr>`;
+  const sucRows = r.sucPipes.map(p => pipeRow(p, '흡입')).join('');
+  const disRows = r.disPipes.map(p => pipeRow(p, '토출')).join('');
+
   const fittingRows = r.fittingDetails.map(d => `
     <tr>
       <td class="c">${esc(d.fittingLabel)}</td><td class="c">${esc(d.pipeLabel)}</td>
@@ -81,8 +153,8 @@ export function buildPage2(props: PumpHvacReportProps, logoDataUrl: string, docN
       <td class="num">${d.K.toFixed(2)}</td><td class="num">${d.V_ms.toFixed(4)}</td>
       <td class="num">${d.qty}</td><td class="num">${d.h_total_m.toFixed(5)}</td>
     </tr>`).join('');
-  const sec3Html = r.fittingDetails.length > 0 ? `
-  ${secHeader('3.', '부속류 손실 (K-Method)')}
+  const sec5Html = r.fittingDetails.length > 0 ? `
+  ${secHeader('5.', '부속류 손실 (K-Method)')}
   <table class="k">
     <colgroup><col style="width:7%"><col style="width:11%"><col style="width:42%"><col style="width:8%"><col style="width:11%"><col style="width:7%"><col style="width:14%"></colgroup>
     <tr><th>번호</th><th>배관참조</th><th>부속명</th><th>K</th><th>유속 (m/s)</th><th>수량</th><th>손실합계 (m)</th></tr>
@@ -92,17 +164,11 @@ export function buildPage2(props: PumpHvacReportProps, logoDataUrl: string, docN
   <div class="note"><code>h_K = K · V² / (2g)</code> — Perry's Chemical Engineers' Handbook 8th Ed (2008). K값 범위: 난류 (Re &gt; 4,000) 기준 단일 K</div>` : '';
 
   return `
-<!-- ─── 2페이지: 입력요약 + 마찰손실 ─── -->
+<!-- ─── 3페이지: 배관 마찰손실 + 부속류 ─── -->
 <section class="sheet">
-  ${pageHeader(logoDataUrl, docLabel, docNo, 2, TOTAL_PAGES)}
-  ${secHeader('1.', '입력 요약')}
-  <table class="k">
-    <colgroup><col style="width:20%"><col style="width:18%"><col style="width:10%"><col style="width:52%"></colgroup>
-    <tr><th>항목</th><th>값</th><th>단위</th><th>비고 / 출처</th></tr>
-    ${sec1Rows}
-  </table>
-  ${secHeader('2.', '배관 마찰손실')}
-  <table class="k">
+  ${pageHeader(logoDataUrl, docLabel, docNo, 3, TOTAL_PAGES)}
+  ${secHeader('4.', '배관 마찰손실')}
+  <table class="k dense">
     <colgroup>
       <col style="width:7%"><col style="width:7%"><col style="width:11%"><col style="width:8%">
       <col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:8%"><col style="width:10%"><col style="width:8%"><col style="width:18%">
@@ -121,20 +187,20 @@ export function buildPage2(props: PumpHvacReportProps, logoDataUrl: string, docN
     마찰계수 f 유동 영역별 자동 산출 — 층류 64/Re · 천이(2,300~4,000) 3차 보간 · 난류 Colebrook-White(1939) 반복해 ·
     Re = V·D/ν(운전 온도 기준) · 절대조도 ε: 재질×신관/노후 (Moody 1944 · ASHRAE Ch.22 · NFPA 13 · KDS 57)
   </div>
-  ${sec3Html}
-  ${pageFooter(docNo, 2, TOTAL_PAGES)}
+  ${sec5Html}
+  ${pageFooter(docNo, 3, TOTAL_PAGES)}
 </section>`;
 }
 
-// ── 3페이지: §4 장비류 + §5 양정구성 + §6 정수두 + §7 안전율 ───
-export function buildPage3(props: PumpHvacReportProps, logoDataUrl: string, docNo: string): string {
+// ── 4페이지: §6 장비류 + §7 양정구성 + §8 정수두 + §9 안전율 ─────
+export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docNo: string): string {
   const { result: r, fieldLabel, systemMode, HsStr, HdStr, PresStr, presUnit, PatmStr,
     headMarginStr, powerMarginStr, npshMarginStr, presetApplied } = props;
   const isClosed = systemMode === 'closed';
   const docLabel = `${esc(fieldLabel)} 펌프 시스템 계산결과`;
   const presLabel = PRESSURE_UNITS_PUMP.find(u => u.key === presUnit)?.label ?? 'kPa';
 
-  // §4 장비류
+  // §6 장비류
   const equipRows = r.equipDetails.map(e => `
     <tr>
       <td class="c">${esc(e.equipLabel)}</td><td class="c">${esc(e.pipeLabel)}</td>
@@ -144,8 +210,8 @@ export function buildPage3(props: PumpHvacReportProps, logoDataUrl: string, docN
       <td class="c">${e.dirtyApplied ? 'Dirty ×2.5' : '—'}</td>
       <td class="num">${e.h_m.toFixed(5)}</td>
     </tr>`).join('');
-  const sec4Html = r.equipDetails.length > 0 ? `
-  ${secHeader('4.', '장비류 손실')}
+  const sec6Html = r.equipDetails.length > 0 ? `
+  ${secHeader('6.', '장비류 손실')}
   <table class="k">
     <colgroup><col style="width:7%"><col style="width:11%"><col style="width:14%"><col style="width:30%"><col style="width:14%"><col style="width:10%"><col style="width:14%"></colgroup>
     <tr><th>번호</th><th>배관참조</th><th>종류</th><th>장비명</th><th>입력 ΔP (Pa)</th><th>Dirty</th><th>손실수두 (m)</th></tr>
@@ -153,7 +219,7 @@ export function buildPage3(props: PumpHvacReportProps, logoDataUrl: string, docN
     <tr class="total"><td colspan="6">합계</td><td class="num">${r.equipLoss_m.toFixed(5)}</td></tr>
   </table>` : '';
 
-  // §5 양정구성
+  // §7 양정구성
   const bd = r.headBreakdown_m;
   const TDH = r.TDH_m;
   const pct = (v: number) => TDH > 0 ? ((v / TDH) * 100).toFixed(1) + '%' : '—';
@@ -171,18 +237,18 @@ export function buildPage3(props: PumpHvacReportProps, logoDataUrl: string, docN
   ].map(row => `
     <tr><td>${esc(row.label)}</td><td class="num">${row.value.toFixed(4)}</td><td class="num">${pct(row.value)}</td><td class="c">${esc(row.note)}</td></tr>`).join('');
 
-  // §6 정수두
+  // §8 정수두
   const patmLabel = isClosed ? '시스템 충진 절대압 P_fill' : '흡입측 표면 절대압 P_atm';
   const HsLabel = isClosed ? '펌프 위치 수두 차 Hs' : '흡입측 정수두 Hs';
   const HdVal = isClosed ? '0 (폐회로 모드)' : `${esc(HdStr)} m`;
   const staticVal = isClosed ? '0 (폐회로 모드)' : `${r.staticHead_m.toFixed(3)} m`;
 
   return `
-<!-- ─── 3페이지: 장비류 + 양정구성 + 정수두 ─── -->
+<!-- ─── 4페이지: 장비류 + 양정구성 + 정수두 + 안전율 ─── -->
 <section class="sheet">
-  ${pageHeader(logoDataUrl, docLabel, docNo, 3, TOTAL_PAGES)}
-  ${sec4Html}
-  ${secHeader('5.', '양정 구성 분석')}
+  ${pageHeader(logoDataUrl, docLabel, docNo, 4, TOTAL_PAGES)}
+  ${sec6Html}
+  ${secHeader('7.', '양정 구성 분석')}
   <table class="k">
     <colgroup><col style="width:34%"><col style="width:18%"><col style="width:18%"><col style="width:30%"></colgroup>
     <tr><th>항목</th><th>값 (m)</th><th>TDH 대비 (%)</th><th>비고</th></tr>
@@ -191,7 +257,7 @@ export function buildPage3(props: PumpHvacReportProps, logoDataUrl: string, docN
   </table>
   <div class="note">출처: ASHRAE Pumping Authority guideline — 컨트롤 밸브 권위 β = ΔP_CV / TDH (권장 0.25~0.50)</div>
 
-  ${secHeader('6.', '정수두 · 잔류압력')}
+  ${secHeader('8.', '정수두 · 잔류압력')}
   <table class="k">
     <colgroup><col style="width:34%"><col style="width:22%"><col style="width:44%"></colgroup>
     <tr><th>항목</th><th>값</th><th>비고</th></tr>
@@ -202,7 +268,7 @@ export function buildPage3(props: PumpHvacReportProps, logoDataUrl: string, docN
     <tr><td>${esc(patmLabel)}</td><td class="num">${esc(PatmStr)} kPa</td><td>NPSHa 계산 기준 (${isClosed ? 'P_fill' : 'P_atm'})</td></tr>
   </table>
 
-  ${secHeader('7.', '안전율 프리셋')}
+  ${secHeader('9.', '안전율 프리셋')}
   <table class="k">
     <colgroup><col style="width:34%"><col style="width:22%"><col style="width:44%"></colgroup>
     <tr><th>항목</th><th>적용값</th><th>비고</th></tr>
@@ -210,13 +276,13 @@ export function buildPage3(props: PumpHvacReportProps, logoDataUrl: string, docN
     <tr><td>동력 여유</td><td class="num">${esc(powerMarginStr)} 배</td><td>${presetApplied.power ? `${esc(fieldLabel)} 기본값` : '사용자 수정'}</td></tr>
     <tr><td>NPSH 여유</td><td class="num">${esc(npshMarginStr)} m</td><td>${presetApplied.npsh ? `${esc(fieldLabel)} 기본값` : '사용자 수정'}</td></tr>
   </table>
-  ${pageFooter(docNo, 3, TOTAL_PAGES)}
+  ${pageFooter(docNo, 4, TOTAL_PAGES)}
 </section>`;
 }
 
-// ── 4페이지: §8 NPSHa + §9 최종결과 + §10 운전점 ────────────────
-export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docNo: string): string {
-  const { result: r, fieldLabel, systemMode, PatmStr, headMarginStr, powerMarginStr,
+// ── 5페이지: §10 NPSHa 근거 + §11 운전점 + §12 적용표준 ──────────
+export function buildPage5(props: PumpHvacReportProps, logoDataUrl: string, docNo: string): string {
+  const { result: r, fieldLabel, systemMode, PatmStr,
     Q_m3s, npshrStr, pumpCurve, BEP_Q_m3h, operatingPoint, pumpCurveFamily, catalogHz } = props;
   const isClosed = systemMode === 'closed';
   const docLabel = `${esc(fieldLabel)} 펌프 시스템 계산결과`;
@@ -224,7 +290,7 @@ export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docN
   const patmLabel = isClosed ? 'P_fill' : 'P_atm';
   const patm_Pa = ((parseFloat(PatmStr) || 101.325) * 1000).toFixed(0);
 
-  // §8 NPSHa 변수
+  // §10 NPSHa 변수 추적 (계산 근거 — 격하 스타일)
   const npshNpshrRows = r.NPSHr_m > 0 ? `
     <tr>
       <td>NPSHr (카탈로그)</td>
@@ -243,16 +309,7 @@ export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docN
       }</td>
     </tr>` : '';
 
-  // §9 최종결과 NPSHa 비고
-  const npshNote = (() => {
-    if (r.NPSHverdict === 'na') return 'NPSHr 미입력 — 펌프 선정 단계에서 비교 <span class="badge-ok">마진 양호</span>';
-    if (r.NPSHverdict === 'pass') return `여유 통과 (NPSHa − NPSHr = ${r.NPSHmargin_actual_m?.toFixed(2)} m) <span class="badge-ok">통과</span>`;
-    if (r.NPSHverdict === 'low-margin') return `여유 부족 (NPSHa − NPSHr = ${r.NPSHmargin_actual_m?.toFixed(2)} m) <span class="badge-warn">주의</span>`;
-    if (r.NPSHverdict === 'risk') return `캐비테이션 위험 (NPSHa − NPSHr = ${r.NPSHmargin_actual_m?.toFixed(2)} m) <span class="badge-warn">위험</span>`;
-    return '—';
-  })();
-
-  // §10 운전점 추가 행들
+  // §11 운전점 추가 행들
   const hasPumpCurve = pumpCurve && pumpCurve.length >= 2;
   const opPoint = operatingPoint ?? null;
   const hasBep = BEP_Q_m3h != null && BEP_Q_m3h > 0;
@@ -274,7 +331,7 @@ export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docN
   // VFD 시리즈 표
   const hasFamily = pumpCurveFamily && pumpCurveFamily.length > 0;
   const vfdTable = hasFamily ? `
-  <p style="font-size:10pt;font-weight:700;margin:10px 0 4px 0">인버터(VFD) 운전 시리즈 — 상사칙(Affinity Laws) 적용</p>
+  <p class="step-title">인버터(VFD) 운전 시리즈 — 상사칙(Affinity Laws) 적용</p>
   <table class="k">
     <tr>
       <th>Hz</th><th>Q [m³/h]</th><th>H [m]</th><th>P [kW]</th>
@@ -286,8 +343,8 @@ export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docN
       const bepQAtHz = hasBep && effectiveCatalogHz > 0 ? (BEP_Q_m3h! * curve.hz / effectiveCatalogHz) : null;
       const bepPct = op && bepQAtHz ? ((op.Q_m3h / bepQAtHz) * 100).toFixed(0) + '%' : '—';
       const vLabel: Record<string, string> = { optimal: '최적', acceptable: '허용', 'out-of-range': '권장 외', na: '—' };
-      return `<tr${isCat ? ' style="background:#EFF6FF"' : ''}>
-        <td${isCat ? ' style="font-weight:700"' : ''}>${curve.hz} Hz${isCat ? ' (카탈로그)' : ''}</td>
+      return `<tr${isCat ? ' class="hl"' : ''}>
+        <td>${curve.hz} Hz${isCat ? ' (카탈로그)' : ''}</td>
         <td class="num">${op ? op.Q_m3h.toFixed(2) : '—'}</td>
         <td class="num">${op ? op.H_m.toFixed(2) : '—'}</td>
         <td class="num">${op ? (op.P_W / 1000).toFixed(3) : '—'}</td>
@@ -299,18 +356,18 @@ export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docN
 
   // 펌프 H-Q 입력점 표
   const hqTable = hasPumpCurve ? `
-  <p style="font-size:10pt;font-weight:700;margin:8px 0 4px 0">펌프 H-Q 곡선 입력 점 (${effectiveCatalogHz}Hz 기준)</p>
-  <table class="k">
+  <p class="step-title">펌프 H-Q 곡선 입력 점 (${effectiveCatalogHz}Hz 기준)</p>
+  <table class="k steps">
     <tr><th>점</th><th>Q [m³/h]</th><th>H [m]</th></tr>
     ${pumpCurve!.map((p, i) => `<tr><td class="c">${i + 1}</td><td class="num">${p.Q_m3h.toFixed(2)}</td><td class="num">${p.H_m.toFixed(2)}</td></tr>`).join('')}
   </table>` : '<div class="note">펌프 H-Q 곡선 미입력 — 시스템 곡선만 계산됨</div>';
 
   return `
-<!-- ─── 4페이지: NPSHa + 최종결과 + 운전점 ─── -->
+<!-- ─── 5페이지: NPSHa 근거 + 운전점 ─── -->
 <section class="sheet">
-  ${pageHeader(logoDataUrl, docLabel, docNo, 4, TOTAL_PAGES)}
-  ${secHeader('8.', 'NPSHa 변수 추적표')}
-  <table class="k">
+  ${pageHeader(logoDataUrl, docLabel, docNo, 5, TOTAL_PAGES)}
+  ${secHeader('10.', 'NPSHa 변수 추적표 (계산 근거)')}
+  <table class="k steps">
     <colgroup><col style="width:24%"><col style="width:18%"><col style="width:10%"><col style="width:48%"></colgroup>
     <tr><th>변수</th><th>값</th><th>단위</th><th>출처 / 공식</th></tr>
     <tr><td>${esc(patmLabel)}</td><td class="num">${esc(patm_Pa)}</td><td class="c">Pa</td><td>사용자 입력 / ${isClosed ? '폐회로 충진압력' : '대기압 기준'}</td></tr>
@@ -325,20 +382,7 @@ export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docN
   </table>
   <div class="note">출처: Hydraulic Institute Standards HI 9.6.1${isClosed ? ' / ASHRAE Handbook — Closed-Loop Hydronic System' : ''}</div>
 
-  ${secHeader('9.', '최종 결과')}
-  <table class="k">
-    <colgroup><col style="width:30%"><col style="width:18%"><col style="width:10%"><col style="width:42%"></colgroup>
-    <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
-    <tr><td>총양정 TDH</td><td class="num">${r.TDH_m.toFixed(4)}</td><td class="c">m</td><td>${isClosed ? '폐회로: 정수두 차 0 포함' : '—'}</td></tr>
-    <tr class="hl"><td>설계 양정</td><td class="num">${r.designHead_m.toFixed(4)}</td><td class="c">m</td><td>TDH × (1 + ${esc(headMarginStr)}%)</td></tr>
-    <tr><td>NPSHa</td><td class="num">${r.NPSHa_m.toFixed(4)}</td><td class="c">m</td><td>${npshNote}</td></tr>
-    <tr><td>이론 동력</td><td class="num">${(r.theoPower_W / 1000).toFixed(4)}</td><td class="c">kW</td><td>η = 0.65, P = ρ·g·Q·H/η</td></tr>
-    <tr><td>이론 동력 (HP)</td><td class="num">${(r.theoPower_W / 745.7).toFixed(4)}</td><td class="c">HP</td><td>1 HP = 745.7 W</td></tr>
-    <tr class="hl"><td>설계 동력</td><td class="num">${(r.designPower_W / 1000).toFixed(4)}</td><td class="c">kW</td><td>이론 동력 × ${esc(powerMarginStr)}배</td></tr>
-    <tr><td>권장 모터 정격 (IEC 60034-1)</td><td class="num">${r.recommendedMotorRating_kW > 0 ? r.recommendedMotorRating_kW : '—'}</td><td class="c">kW</td><td>설계 동력 이상 최소 IEC 표준 정격 / IE3 효율등급 이상 권장</td></tr>
-  </table>
-
-  ${secHeader('10.', '운전점 요약')}
+  ${secHeader('11.', '운전점 요약')}
   <table class="k">
     <colgroup><col style="width:30%"><col style="width:30%"><col style="width:40%"></colgroup>
     <tr><th>항목</th><th>값</th><th>비고</th></tr>
@@ -351,26 +395,25 @@ export function buildPage4(props: PumpHvacReportProps, logoDataUrl: string, docN
   </table>
   ${vfdTable}
   ${hqTable}
-  ${pageFooter(docNo, 4, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
+  ${pageFooter(docNo, 5, TOTAL_PAGES)}
 </section>`;
 }
 
-// ── 5페이지: §11 적용표준 ────────────────────────────────────────
-export function buildPage5(props: PumpHvacReportProps, logoDataUrl: string, docNo: string): string {
+// ── 6페이지: §12 적용표준 ────────────────────────────────────────
+export function buildPage6(props: PumpHvacReportProps, logoDataUrl: string, docNo: string): string {
   const { fieldLabel, systemMode } = props;
   const isClosed = systemMode === 'closed';
   const docLabel = `${esc(fieldLabel)} 펌프 시스템 계산결과`;
   const calcDateTime = makeCalcDateTime();
-
   const closedRef = isClosed
     ? '<li><b>ASHRAE Handbook</b> — Closed-Loop Hydronic Systems 항목 (폐회로 NPSHa 식)</li>'
     : '';
 
   return `
-<!-- ─── 5페이지: 적용 표준 ─── -->
+<!-- ─── 6페이지: 적용 표준 ─── -->
 <section class="sheet">
-  ${pageHeader(logoDataUrl, docLabel, docNo, 5, TOTAL_PAGES)}
-  ${secHeader('11.', `적용 표준 (${esc(fieldLabel)})`)}
+  ${pageHeader(logoDataUrl, docLabel, docNo, 6, TOTAL_PAGES)}
+  ${secHeader('12.', `적용 표준 (${esc(fieldLabel)})`)}
   <ul class="refs">
     <li><b>ASHRAE Handbook</b> — HVAC Systems and Equipment (Pumps Chapter)</li>
     ${closedRef}
@@ -390,9 +433,9 @@ export function buildPage5(props: PumpHvacReportProps, logoDataUrl: string, docN
     Phase 1.0 청수/온수 한정 — EG/PG 브라인은 Phase 1.5에서 추가 예정 · kW / HP 단위 선택 가능
   </div>
 
-  <div style="margin-top:auto;text-align:right;font-size:9pt;color:var(--mute);padding-top:18mm">
+  <div style="margin-top:auto;text-align:right;font-size:9pt;color:var(--mute);padding-top:10mm">
     계산 일시: ${esc(calcDateTime)}
   </div>
-  ${pageFooter(docNo, 5, TOTAL_PAGES, 'Mechanical Engineering Calculation')}
+  ${pageFooter(docNo, 6, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
 </section>`;
 }

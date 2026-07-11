@@ -7,7 +7,6 @@ export const REPORT_CSS = `
     --paper:#FFFFFF; --paper-2:#F8FAFC; --paper-3:#F1F5F9;
     --accent:#1F3A6E; --accent-2:#A4133C;
     --accent-soft:#EEF2F9;
-    --hi:#FEF9C3;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:#E5E7EB;color:var(--ink);font-family:'Pretendard',-apple-system,system-ui,sans-serif;}
