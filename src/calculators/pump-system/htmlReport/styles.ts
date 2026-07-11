@@ -129,6 +129,11 @@ export const REPORT_CSS = `
   table.k tr.hl td{background:var(--accent-soft);font-weight:700;color:var(--ink)}
   table.k tr.hl td:first-child{border-left:3px solid var(--accent)}
 
+  /* 열이 많은 와이드 표 — A4 폭 안에 들어가도록 축소 */
+  table.k.dense{font-size:8.5pt}
+  table.k.dense th, table.k.dense td{padding:4px 5px;font-size:8.5pt}
+  table.k.dense th{font-size:8pt}
+
   /* 계산 근거(수식·대입) — 한 단계 격하된 보조 블록 */
   table.k.steps{border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);font-size:8.5pt;}
   table.k.steps th{color:var(--mute);font-size:8pt;border-bottom:1px solid var(--line-soft);background:var(--paper-2)}
