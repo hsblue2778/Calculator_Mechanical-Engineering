@@ -6,7 +6,7 @@ export const REPORT_CSS = `
     --ink:#0B1120; --ink-2:#1F2937; --mute:#475569; --line:#94A3B8; --line-soft:#CBD5E1;
     --paper:#FFFFFF; --paper-2:#F8FAFC; --paper-3:#F1F5F9;
     --accent:#1F3A6E; --accent-2:#A4133C;
-    --hi:#FEF9C3;
+    --accent-soft:#EEF2F9;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:#E5E7EB;color:var(--ink);font-family:'Pretendard',-apple-system,system-ui,sans-serif;}
@@ -40,7 +40,7 @@ export const REPORT_CSS = `
   }
   .doc-head .brand{display:flex;align-items:center;gap:10px}
   .doc-head .brand img{height:28px;width:auto;display:block}
-  .doc-head .brand .label{font-size:9pt;color:var(--mute);letter-spacing:1.5px}
+  .doc-head .brand .label{font-size:13pt;color:var(--ink);font-weight:700;letter-spacing:-.2px}
   .doc-head .meta{text-align:right;font-size:9pt;color:var(--mute);line-height:1.45}
   .doc-head .meta .doc-no{color:var(--ink);font-weight:600;letter-spacing:.5px}
 
@@ -101,25 +101,68 @@ export const REPORT_CSS = `
   .cover-foot .biglogo img{height:60px;width:auto;display:block}
 
   h2.sec{
-    font-size:11.5pt;margin:18px 0 8px;
+    font-size:11pt;margin:16px 0 6px;
     color:var(--ink);font-weight:700;
-    border-left:4px solid var(--accent); padding:2px 10px;
-    background:var(--paper-3);
+    padding:0 0 3px;
+    border-bottom:1.5px solid var(--accent);
+    page-break-after:avoid;
   }
   h2.sec .num{color:var(--accent);margin-right:8px;font-weight:700}
 
-  table.k{width:100%;border-collapse:collapse;margin:6px 0 14px;font-size:9.5pt;}
+  /* 조용한 표 — 세로선 없이 가로 룰만 (booktabs) */
+  table.k{
+    width:100%;border-collapse:collapse;margin:6px 0 14px;font-size:9.5pt;
+    border-top:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);
+  }
   table.k th, table.k td{
-    border:1px solid var(--line); padding:5px 8px; text-align:left; vertical-align:middle;
+    border:none;border-bottom:1px solid var(--line-soft);
+    padding:5px 8px; text-align:left; vertical-align:middle;
     white-space:nowrap;
   }
   table.k td.wrap, table.k th.wrap{white-space:normal;}
-  table.k th{background:#E2E8F0;font-weight:600;color:var(--ink);text-align:center;font-size:9pt;letter-spacing:.3px}
+  table.k th{background:transparent;border-bottom:1px solid var(--ink-2);font-weight:600;color:var(--ink);text-align:center;font-size:9pt;letter-spacing:.3px}
   table.k td.num{text-align:right;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}
   table.k td.c{text-align:center}
-  table.k tr.total td{background:var(--paper-3);font-weight:700}
-  table.k tr.hl td{background:var(--hi)}
-  table.k tr.hl td:first-child{font-weight:700}
+  table.k tr{page-break-inside:avoid}
+  table.k tr.total td{background:var(--paper-2);font-weight:700;border-top:1px solid var(--ink-2)}
+  table.k tr.hl td{background:var(--accent-soft);font-weight:700;color:var(--ink)}
+  table.k tr.hl td:first-child{border-left:3px solid var(--accent)}
+
+  /* 열이 많은 와이드 표 — A4 폭 안에 들어가도록 축소 */
+  table.k.dense{font-size:8.5pt}
+  table.k.dense th, table.k.dense td{padding:4px 5px;font-size:8.5pt}
+  table.k.dense th{font-size:8pt}
+
+  /* 계산 근거(수식·대입) — 한 단계 격하된 보조 블록 */
+  table.k.steps{border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);font-size:8.5pt;}
+  table.k.steps th{color:var(--mute);font-size:8pt;border-bottom:1px solid var(--line-soft);background:var(--paper-2)}
+  table.k.steps td{background:var(--paper-2);color:var(--ink-2);border-bottom:1px solid #E8EDF3}
+  table.k.steps code{background:transparent;font-size:8pt;color:var(--ink-2)}
+  table.k.steps tr.hl td{background:var(--paper-2);color:var(--accent);border-left:none}
+  table.k.steps tr.hl td:first-child{border-left:none}
+  .step-title{font-size:9.5pt;font-weight:700;color:var(--ink-2);margin:10px 0 4px}
+
+  /* 결과 요약 KPI 밴드 — Word 호환을 위해 table 마크업 (셀 폭은 인라인 %) */
+  table.kpi{
+    width:100%;border-collapse:collapse;table-layout:fixed;margin:6px 0 4px;
+    border-top:2.5px solid var(--accent);border-bottom:1px solid var(--line-soft);
+    page-break-inside:avoid;
+  }
+  table.kpi td.kpi-cell{padding:10px 12px 9px;vertical-align:top;border-left:1px solid var(--line-soft);background:var(--paper)}
+  table.kpi td.kpi-cell:first-child{border-left:none}
+  .kpi-label{font-size:8pt;color:var(--mute);letter-spacing:.6px;margin-bottom:3px}
+  .kpi-value{font-size:16pt;font-weight:700;color:var(--accent);line-height:1.15;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+  .kpi-value .kpi-unit{font-size:9pt;font-weight:500;color:var(--mute);margin-left:3px}
+  .kpi-sub{font-size:8pt;color:var(--mute);margin-top:3px;white-space:normal}
+  .kpi-verdicts{margin:6px 0 14px;font-size:9pt;color:var(--ink-2)}
+
+  /* 판정 뱃지 (요약용 — 표 안 badge-ok/warn보다 큼) */
+  .verdict{display:inline-block;padding:2px 10px;border-radius:4px;font-size:9pt;font-weight:700}
+  .verdict.ok{background:#DCFCE7;color:#15803D}
+  .verdict.warn{background:#FEF3C7;color:#B45309}
+  .verdict.risk{background:#FEE2E2;color:#B91C1C}
+  .verdict.info{background:var(--paper-3);color:var(--mute)}
+
   .badge-ok{display:inline-block;padding:1px 8px;border-radius:3px;background:#DCFCE7;color:#15803D;font-size:8.5pt;font-weight:600}
   .badge-warn{display:inline-block;padding:1px 8px;border-radius:3px;background:#FEE2E2;color:#B91C1C;font-size:8.5pt;font-weight:600}
 

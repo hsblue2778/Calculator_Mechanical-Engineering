@@ -72,7 +72,7 @@ export default function NetworkImportButton({ onImport }: { onImport: (v: Networ
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
-          <div style={{
+          <div className="pump-import-panel" style={{
             position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 41,
             minWidth: 320, padding: 6,
             backgroundColor: 'var(--bg-surface)', border: `1px solid ${C.border}`,

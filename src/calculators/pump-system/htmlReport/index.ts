@@ -7,7 +7,7 @@
 import logoDataUrl from '../../../assets/report-logo.png?inline';
 import { REPORT_CSS } from './styles';
 import { buildCoverPage } from './cover';
-import { buildPage2, buildPage3, buildPage4, buildPage5 } from './pages';
+import { buildPage2, buildPage3, buildPage4, buildPage5, buildPage6 } from './pages';
 import { makeDocNo } from './helpers';
 import type { PumpHvacReportProps } from './types';
 
@@ -24,6 +24,7 @@ export function buildPumpHvacReportHtml(props: PumpHvacReportProps): string {
   const page3Html   = buildPage3(props, logo, docNo);
   const page4Html   = buildPage4(props, logo, docNo);
   const page5Html   = buildPage5(props, logo, docNo);
+  const page6Html   = buildPage6(props, logo, docNo);
 
   return `<!doctype html>
 <html lang="ko">
@@ -43,6 +44,7 @@ ${page2Html}
 ${page3Html}
 ${page4Html}
 ${page5Html}
+${page6Html}
 
 </body>
 </html>`;

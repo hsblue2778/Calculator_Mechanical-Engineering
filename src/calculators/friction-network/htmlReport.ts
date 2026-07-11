@@ -1,12 +1,13 @@
 // 계통 압력손실 — HTML 산출서 (펌프 양식 채용, 표지 페이지 없음)
 // 디자인 출처: pump-system/htmlReport (REPORT_CSS, pageHeader/pageFooter/secHeader)
-// 내용: 계통 조건 → 구간 입력 → 구간 수리 특성 → 구간 손실·누적 → 판정 요약·경고 → 출처
+// 구성: 결과 요약(KPI+판정) → 계통 조건 → 판정 상세·경고 → 구간 표(입력/수리/손실) → 출처
 
 import logoDataUrl from '../../assets/report-logo.png?inline';
 import { REPORT_CSS } from '../pump-system/htmlReport/styles';
 import {
   esc, pageHeader, pageFooter, secHeader,
   makeDocNo, makeCalcDateTime,
+  kpiStrip, verdictBadge, verdictLine,
 } from '../pump-system/htmlReport/helpers';
 import {
   FN_GRADES, FN_PA_PER_MMAQ, fnFluidDef, fnMaterial, fnRUnit,
@@ -159,65 +160,37 @@ export function buildFrictionNetworkReportHtml(args: FrictionNetworkReportArgs):
       <td class="wrap">${esc(w.msg)}</td>
     </tr>`).join('');
 
+  // §1 결과 요약 — KPI 밴드 + 판정
+  const kpis = kpiStrip([
+    { label: '최대 누적손실+요구압', value: fmtInt(net.worstDemand_Pa), unit: 'Pa', sub: `${fmt(net.worstDemand_Pa / FN_PA_PER_MMAQ, 1)} mmAq${net.worstId ? ` · 최불리 구간 ${esc(net.worstId)} ★` : ''}` },
+    { label: '설계 가용정압', value: pAvailEntered ? fmtInt(net.designAvail_Pa) : '—', unit: pAvailEntered ? 'Pa' : undefined, sub: `P_avail × (1 − α ${esc(st.alphaPct)}%)` },
+    { label: '정압 여유', value: pAvailEntered ? `${net.margin_Pa >= 0 ? '+' : '−'}${fmtInt(Math.abs(net.margin_Pa))}` : '—', unit: pAvailEntered ? 'Pa' : undefined, sub: pAvailEntered ? `${fmt(Math.abs(net.margin_Pa) / FN_PA_PER_MMAQ, 1)} mmAq ${short ? '부족' : '여유'}` : '가용정압 미입력' },
+    { label: 'Σ말단유량', value: fmt(net.totalLeafFlow_m3s * flowMul, 1), unit: st.flowUnit, sub: esc(totalFlowNote) },
+  ]);
+  const errorWarnCount = warns.filter(w => w.level === 'error').length;
+  const verdictParts: string[] = [
+    pAvailEntered
+      ? `정압 판정 ${verdictBadge(short ? 'risk' : 'ok', short ? '정압 부족' : '정압 여유')}`
+      : verdictBadge('info', '가용정압 미입력 — 판정 생략'),
+    ...(errorWarnCount > 0 ? [verdictBadge('risk', `위험 경고 ${errorWarnCount}건`)] : []),
+  ];
+
   const page1 = `
 <section class="sheet">
   ${pageHeader(logo, title, docNo, 1, TOTAL_PAGES)}
 
-  ${secHeader('1.', '계통 조건')}
+  ${secHeader('1.', '결과 요약')}
+  ${kpis}
+  ${verdictLine(verdictParts)}
+
+  ${secHeader('2.', '계통 조건')}
   <table class="k">
     <colgroup><col style="width:22%"><col style="width:26%"><col style="width:16%"><col style="width:36%"></colgroup>
     <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
     ${condRows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${esc(r[1])}</td><td class="c">${esc(r[2])}</td><td class="wrap">${esc(r[3])}</td></tr>`).join('')}
   </table>
 
-  ${secHeader('2.', '구간 입력')}
-  <table class="k">
-    <tr>
-      <th>구간 ID</th><th>부모 ID</th><th>등급</th><th>형상</th><th>치수 (mm)</th>
-      <th>L (m)</th><th>ΣK</th><th>기기손실 (Pa)</th><th>재질 (상태)</th>
-      <th>말단유량 (${esc(st.flowUnit)})</th><th>요구압 (Pa)</th>
-    </tr>
-    ${inputRows}
-  </table>
-  <p class="note">부모ID 트리 기준 말단→상류 Q 합산. 비말단 구간의 말단유량·요구압은 미사용.</p>
-  ${Object.keys(fittingSummaries ?? {}).length > 0 ? `
-  <p class="note">부속 내역 (ΣK 산출 근거 — 배관: Perry's 8th Ed · 덕트: 편람 표 10·11): ${Object.entries(fittingSummaries!).map(([id, s]) => `<b>${esc(id)}</b> ${esc(s)}`).join(' / ')}</p>` : ''}
-
-  ${pageFooter(docNo, 1, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
-</section>`;
-
-  const page2 = `
-<section class="sheet">
-  ${pageHeader(logo, title, docNo, 2, TOTAL_PAGES)}
-
-  ${secHeader('3.', '구간 수리 특성')}
-  <table class="k">
-    <tr>
-      <th>구간</th><th>말단</th><th>Q (${esc(st.flowUnit)})</th><th>De (mm)</th><th>V (m/s)</th>
-      <th>유속판정</th><th>제안De (mm)</th><th>제안 규격</th><th>Re</th><th>유동</th><th>f</th>
-    </tr>
-    ${hydroRows}
-  </table>
-  <p class="note">★ = 최대 (누적손실+요구압) 구간 · 제안De = max(유속 기준, 마찰률 R 기준) · f: 층류 64/Re · Re≥2,300 Swamee-Jain</p>
-
-  ${secHeader('4.', '구간 손실 · 누적')}
-  <table class="k">
-    <tr>
-      <th>구간</th><th>ΔP마찰 (Pa)</th><th>R (mmAq/m)</th><th>ΔP부차 (Pa)</th><th>ΔP기기 (Pa)</th><th>ΔP구간 (Pa)</th>
-      <th>누적ΔP (Pa)</th><th>누적 (mmAq)</th><th>누적+요구압 (Pa)</th>
-    </tr>
-    ${lossRows}
-  </table>
-  <p class="note">R = ΔP마찰/L (단위 마찰손실)${targetR_Pa_per_m !== null ? ` · ▲ = 목표 마찰률 R(${fmtUnitR(targetR_Pa_per_m / FN_PA_PER_MMAQ)} mmAq/m) 초과` : ''} · 누적ΔP = ΔP구간 + 부모 누적 (ROOT→0) · ⚠ = 누적ΔP &gt; 0.1·P_abs (압축성 한계 — 구간분할 필요)</p>
-
-  ${pageFooter(docNo, 2, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
-</section>`;
-
-  const page3 = `
-<section class="sheet">
-  ${pageHeader(logo, title, docNo, 3, TOTAL_PAGES)}
-
-  ${secHeader('5.', '판정 요약')}
+  ${secHeader('3.', '판정 요약 상세')}
   <table class="k">
     <colgroup><col style="width:30%"><col style="width:70%"></colgroup>
     <tr><th>항목</th><th>값</th></tr>
@@ -236,7 +209,54 @@ export function buildFrictionNetworkReportHtml(args: FrictionNetworkReportArgs):
     ${warnRows}
   </table>` : '<p class="note">경고 없음 — 전 구간 유효.</p>'}
 
-  ${secHeader('6.', '적용 공식 · 출처')}
+  ${pageFooter(docNo, 1, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
+</section>`;
+
+  const page2 = `
+<section class="sheet">
+  ${pageHeader(logo, title, docNo, 2, TOTAL_PAGES)}
+
+  ${secHeader('4.', '구간 입력')}
+  <table class="k dense">
+    <tr>
+      <th>구간 ID</th><th>부모 ID</th><th>등급</th><th>형상</th><th>치수 (mm)</th>
+      <th>L (m)</th><th>ΣK</th><th>기기손실 (Pa)</th><th>재질 (상태)</th>
+      <th>말단유량 (${esc(st.flowUnit)})</th><th>요구압 (Pa)</th>
+    </tr>
+    ${inputRows}
+  </table>
+  <p class="note">부모ID 트리 기준 말단→상류 Q 합산. 비말단 구간의 말단유량·요구압은 미사용.</p>
+  ${Object.keys(fittingSummaries ?? {}).length > 0 ? `
+  <p class="note">부속 내역 (ΣK 산출 근거 — 배관: Perry's 8th Ed · 덕트: 편람 표 10·11): ${Object.entries(fittingSummaries!).map(([id, s]) => `<b>${esc(id)}</b> ${esc(s)}`).join(' / ')}</p>` : ''}
+
+  ${secHeader('5.', '구간 수리 특성')}
+  <table class="k dense">
+    <tr>
+      <th>구간</th><th>말단</th><th>Q (${esc(st.flowUnit)})</th><th>De (mm)</th><th>V (m/s)</th>
+      <th>유속판정</th><th>제안De (mm)</th><th>제안 규격</th><th>Re</th><th>유동</th><th>f</th>
+    </tr>
+    ${hydroRows}
+  </table>
+  <p class="note">★ = 최대 (누적손실+요구압) 구간 · 제안De = max(유속 기준, 마찰률 R 기준) · f: 층류 64/Re · Re≥2,300 Swamee-Jain</p>
+
+  ${pageFooter(docNo, 2, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
+</section>`;
+
+  const page3 = `
+<section class="sheet">
+  ${pageHeader(logo, title, docNo, 3, TOTAL_PAGES)}
+
+  ${secHeader('6.', '구간 손실 · 누적')}
+  <table class="k dense">
+    <tr>
+      <th>구간</th><th>ΔP마찰 (Pa)</th><th>R (mmAq/m)</th><th>ΔP부차 (Pa)</th><th>ΔP기기 (Pa)</th><th>ΔP구간 (Pa)</th>
+      <th>누적ΔP (Pa)</th><th>누적 (mmAq)</th><th>누적+요구압 (Pa)</th>
+    </tr>
+    ${lossRows}
+  </table>
+  <p class="note">R = ΔP마찰/L (단위 마찰손실)${targetR_Pa_per_m !== null ? ` · ▲ = 목표 마찰률 R(${fmtUnitR(targetR_Pa_per_m / FN_PA_PER_MMAQ)} mmAq/m) 초과` : ''} · 누적ΔP = ΔP구간 + 부모 누적 (ROOT→0) · ⚠ = 누적ΔP &gt; 0.1·P_abs (압축성 한계 — 구간분할 필요)</p>
+
+  ${secHeader('7.', '적용 공식 · 출처')}
   <ul class="refs">
     <li><b>ΔP 마찰</b> = 8fLρQ²/(π²·De⁵) — Q형 Darcy-Weisbach</li>
     <li><b>마찰계수 f</b> — 층류 64/Re · Re≥2,300 Swamee-Jain(1976) 0.25/[log₁₀(ε/(3.7De)+5.74/Re⁰·⁹)]²</li>

@@ -75,3 +75,35 @@ export function pageFooter(docNo: string, pageNum: number, totalPages: number, n
 export function secHeader(num: string, title: string): string {
   return `<h2 class="sec"><span class="num">${esc(num)}</span>${esc(title)}</h2>`;
 }
+
+export interface KpiItem {
+  label: string;
+  /** 이미 이스케이프/포맷된 HTML 허용 (숫자 문자열 권장) — esc 하지 않음 */
+  value: string;
+  unit?: string;
+  /** 이미 이스케이프된 HTML 허용 — esc 하지 않음 */
+  sub?: string;
+}
+
+/** 결과 요약 KPI 밴드 — Word 호환을 위해 table 마크업 (셀 폭 인라인 %) */
+export function kpiStrip(items: KpiItem[]): string {
+  const w = (100 / items.length).toFixed(1);
+  return `<table class="kpi"><tr>${items.map(it => `
+    <td class="kpi-cell" style="width:${w}%">
+      <div class="kpi-label">${esc(it.label)}</div>
+      <div class="kpi-value">${it.value}${it.unit ? `<span class="kpi-unit">${esc(it.unit)}</span>` : ''}</div>
+      ${it.sub ? `<div class="kpi-sub">${it.sub}</div>` : ''}
+    </td>`).join('')}</tr></table>`;
+}
+
+export type VerdictTone = 'ok' | 'warn' | 'risk' | 'info';
+
+/** 판정 뱃지 (요약용) */
+export function verdictBadge(tone: VerdictTone, text: string): string {
+  return `<span class="verdict ${tone}">${esc(text)}</span>`;
+}
+
+/** 뱃지·라벨 여러 개를 한 줄로 (' · ' 구분) — parts는 이미 이스케이프된 HTML */
+export function verdictLine(parts: string[]): string {
+  return `<div class="kpi-verdicts">${parts.join(' · ')}</div>`;
+}

@@ -6,6 +6,7 @@ import { REPORT_CSS } from '../pump-system/htmlReport/styles';
 import {
   esc, pageHeader, pageFooter, secHeader,
   makeDocNo, makeCalcDateTime,
+  kpiStrip, verdictBadge, verdictLine, type VerdictTone,
 } from '../pump-system/htmlReport/helpers';
 import type {
   PipeOdSpec, InsulationMaterial, InsulationInputs, InsulationOutputs,
@@ -159,29 +160,36 @@ export function buildInsulationReportHtml(props: ReportProps): string {
     ${result.warnings.map((w, i) => `<tr><td class="c">${i + 1}</td><td>${esc(w)}</td></tr>`).join('')}
   </table>` : '';
 
-  // 페이지 1: §1 입력 + §2 결과 요약 + §3 결과 상세
+  // §1 결과 요약 — KPI 밴드 + 판정
+  const gradeTone: VerdictTone =
+    result.grade === '안전' ? 'ok' : result.grade === '주의' ? 'warn' : 'risk';
+  const kpis = kpiStrip([
+    { label: '추천 시판 두께', value: result.d_recommended_mm != null ? `${result.d_recommended_mm}` : '50+', unit: 'mm', sub: `안전 두께 ${fmt(result.d_safe_mm, 2)} mm (한계 × ${esc(inputs.safetyFactor)})` },
+    { label: '한계 두께 d', value: fmt(result.d_mm, 2), unit: 'mm', sub: 'Tˢ = Tᴅ 이론 최소' },
+    { label: '노점 온도 Tᴅ', value: fmt(result.Td, 2), unit: '°C', sub: `외기 ${esc(inputs.Ta)}°C · RH ${esc(inputs.RH)}%` },
+    { label: '노점 대비 여유', value: result.margin != null ? `${result.margin >= 0 ? '+' : ''}${result.margin.toFixed(2)}` : '—', unit: '°C', sub: `표면 Tˢ ${fmt(result.Ts, 2)} °C (추천 두께 검산)` },
+  ]);
+  const verdictParts: string[] = [
+    `결로 위험 등급 ${verdictBadge(gradeTone, result.grade === '초과' ? '초과 (50 mm 라인업 밖)' : result.grade)}`,
+    ...(result.warnings.length > 0 ? [verdictBadge('warn', `주의 사항 ${result.warnings.length}건`)] : []),
+  ];
+
+  // 페이지 1: §1 결과 요약 + §2 입력 + §3 결과 상세
   const page1 = `
 <section class="sheet">
   ${pageHeader(logo, docLabel, docNo, 1, TOTAL_PAGES)}
 
-  ${secHeader('1.', '입력 요약')}
+  ${secHeader('1.', '결과 요약')}
+  ${kpis}
+  ${verdictLine(verdictParts)}
+  <div class="note">등급 기준 · 안전 (여유 ≥ 3 °C) · 주의 (1 ~ 3 °C) · 위험 (&lt; 1 °C) · 초과 (시판 최대 50 mm로 부족)</div>
+
+  ${secHeader('2.', '입력 요약')}
   <table class="k">
     <colgroup><col style="width:24%"><col style="width:30%"><col style="width:14%"><col style="width:32%"></colgroup>
     <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
     ${inputRows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${esc(r[1])}</td><td class="c">${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join('')}
   </table>
-
-  ${secHeader('2.', '결과 요약')}
-  <table class="k">
-    <colgroup><col style="width:34%"><col style="width:33%"><col style="width:33%"></colgroup>
-    <tr><th>결로 위험 등급</th><th>추천 시판 두께</th><th>노점 대비 여유</th></tr>
-    <tr class="hl">
-      <td class="c" style="font-size:14pt;font-weight:700">${esc(result.grade)}</td>
-      <td class="c" style="font-size:14pt;font-weight:700">${result.d_recommended_mm != null ? `${result.d_recommended_mm} mm` : '50 mm 초과'}</td>
-      <td class="c" style="font-size:12pt;font-weight:700">${result.margin != null ? `${result.margin >= 0 ? '+' : ''}${result.margin.toFixed(2)} °C` : '—'}</td>
-    </tr>
-  </table>
-  <div class="note">등급 기준 · 안전 (여유 ≥ 3 °C) · 주의 (1 ~ 3 °C) · 위험 (&lt; 1 °C)</div>
 
   ${secHeader('3.', '계산 결과 상세')}
   <table class="k">
@@ -202,36 +210,36 @@ export function buildInsulationReportHtml(props: ReportProps): string {
 
   ${secHeader('4.', '계산 프로세스 (단계별 검증)')}
 
-  <p style="font-size:10pt;font-weight:700;margin:10px 0 4px 0">STEP 1 · 노점 온도 Tᴅ 산출 (Magnus 식)</p>
+  <p class="step-title">STEP 1 · 노점 온도 Tᴅ 산출 (Magnus 식)</p>
   <div class="note">외기 온도와 상대습도로부터 공기 중 수증기가 응결하기 시작하는 온도를 계산. 표면이 이 온도 이하로 떨어지면 결로 발생.</div>
-  <table class="k">
+  <table class="k steps">
     <colgroup><col style="width:18%"><col style="width:82%"></colgroup>
-    <tr><td>공식</td><td><code>γ = a · Tₐ / (b + Tₐ) + ln(RH / 100)<br/>Tᴅ = b · γ / (a − γ)</code></td></tr>
-    <tr><td>변수</td><td><code>a = ${MAGNUS_A}, b = ${MAGNUS_B} · Tₐ = ${Ta} °C · RH = ${RH} %</code></td></tr>
-    <tr><td>대입</td><td><code>γ = ${MAGNUS_A} × ${Ta} / (${MAGNUS_B} + ${Ta}) + ln(${RH}/100) = ${num(ps.gamma_term1, 6)} + (${num(ps.gamma_term2, 6)}) = ${num(ps.gamma, 6)}</code></td></tr>
-    <tr class="hl"><td>결과</td><td><code>∴ Tᴅ = ${num(ps.Td, 2)} °C</code></td></tr>
+    <tr><td>공식</td><td class="wrap"><code>γ = a · Tₐ / (b + Tₐ) + ln(RH / 100)<br/>Tᴅ = b · γ / (a − γ)</code></td></tr>
+    <tr><td>변수</td><td class="wrap"><code>a = ${MAGNUS_A}, b = ${MAGNUS_B} · Tₐ = ${Ta} °C · RH = ${RH} %</code></td></tr>
+    <tr><td>대입</td><td class="wrap"><code>γ = ${MAGNUS_A} × ${Ta} / (${MAGNUS_B} + ${Ta}) + ln(${RH}/100) = ${num(ps.gamma_term1, 6)} + (${num(ps.gamma_term2, 6)}) = ${num(ps.gamma, 6)}</code></td></tr>
+    <tr class="hl"><td>결과</td><td class="wrap"><code>∴ Tᴅ = ${num(ps.Td, 2)} °C</code></td></tr>
   </table>
 
-  <p style="font-size:10pt;font-weight:700;margin:10px 0 4px 0">STEP 2 · 한계 두께 d 산출 (정상상태 직렬 열저항)</p>
+  <p class="step-title">STEP 2 · 한계 두께 d 산출 (정상상태 직렬 열저항)</p>
   <div class="note">표면 온도 Tˢ가 정확히 노점 Tᴅ가 되는 이론 최소 두께. 원통 열저항 ln(D외/D)/(2πk)와 외표면 대류 1/(hₒπD외)을 직렬로 놓고 풀어 도출.</div>
-  <table class="k">
+  <table class="k steps">
     <colgroup><col style="width:18%"><col style="width:82%"></colgroup>
-    <tr><td>공식</td><td><code>d = (D / 2) · (e^X − 1) · X = (2k / (hₒ · D)) · (Tₐ − Tᵢ) / (Tₐ − Tᴅ)</code></td></tr>
-    <tr><td>변수</td><td><code>D = ${pipe.od_m.toFixed(4)} m · k = ${k} W/(m·K) · hₒ = ${ho} W/(m²·K) · Tᵢ = ${Ti} °C</code></td></tr>
-    <tr><td>P</td><td><code>2k / (hₒ · D) = (2 × ${k}) / (${ho} × ${pipe.od_m.toFixed(4)}) = ${num(ps.P, 6)}</code></td></tr>
-    <tr><td>Q</td><td><code>(Tₐ − Tᵢ) / (Tₐ − Tᴅ) = (${Ta} − ${Ti}) / (${Ta} − ${num(ps.Td, 2)}) = ${num(ps.Q, 6)}</code></td></tr>
-    <tr><td>X · e^X</td><td><code>X = P · Q = ${num(ps.X, 6)} · e^X = ${num(ps.eX, 6)}</code></td></tr>
-    <tr><td>대입</td><td><code>d = (${pipe.od_m.toFixed(4)} / 2) × (${num(ps.eX, 6)} − 1) = ${num(ps.d_m, 6)} m</code></td></tr>
-    <tr class="hl"><td>결과</td><td><code>∴ d = ${num(ps.d_mm, 2)} mm</code></td></tr>
+    <tr><td>공식</td><td class="wrap"><code>d = (D / 2) · (e^X − 1) · X = (2k / (hₒ · D)) · (Tₐ − Tᵢ) / (Tₐ − Tᴅ)</code></td></tr>
+    <tr><td>변수</td><td class="wrap"><code>D = ${pipe.od_m.toFixed(4)} m · k = ${k} W/(m·K) · hₒ = ${ho} W/(m²·K) · Tᵢ = ${Ti} °C</code></td></tr>
+    <tr><td>P</td><td class="wrap"><code>2k / (hₒ · D) = (2 × ${k}) / (${ho} × ${pipe.od_m.toFixed(4)}) = ${num(ps.P, 6)}</code></td></tr>
+    <tr><td>Q</td><td class="wrap"><code>(Tₐ − Tᵢ) / (Tₐ − Tᴅ) = (${Ta} − ${Ti}) / (${Ta} − ${num(ps.Td, 2)}) = ${num(ps.Q, 6)}</code></td></tr>
+    <tr><td>X · e^X</td><td class="wrap"><code>X = P · Q = ${num(ps.X, 6)} · e^X = ${num(ps.eX, 6)}</code></td></tr>
+    <tr><td>대입</td><td class="wrap"><code>d = (${pipe.od_m.toFixed(4)} / 2) × (${num(ps.eX, 6)} − 1) = ${num(ps.d_m, 6)} m</code></td></tr>
+    <tr class="hl"><td>결과</td><td class="wrap"><code>∴ d = ${num(ps.d_mm, 2)} mm</code></td></tr>
   </table>
 
-  <p style="font-size:10pt;font-weight:700;margin:10px 0 4px 0">STEP 3 · 안전 두께 (한계 × 안전계수)</p>
+  <p class="step-title">STEP 3 · 안전 두께 (한계 × 안전계수)</p>
   <div class="note">설치·시공 오차, 재료 열화, 환경 변동을 흡수하기 위해 한계 두께에 안전계수를 곱한 값. 통상 1.0 ~ 1.5.</div>
-  <table class="k">
+  <table class="k steps">
     <colgroup><col style="width:18%"><col style="width:82%"></colgroup>
-    <tr><td>공식</td><td><code>d_safe = d × SF</code></td></tr>
-    <tr><td>대입</td><td><code>d_safe = ${num(ps.d_mm, 2)} × ${SF}</code></td></tr>
-    <tr class="hl"><td>결과</td><td><code>∴ d_safe = ${num(ps.d_safe_mm, 2)} mm</code></td></tr>
+    <tr><td>공식</td><td class="wrap"><code>d_safe = d × SF</code></td></tr>
+    <tr><td>대입</td><td class="wrap"><code>d_safe = ${num(ps.d_mm, 2)} × ${SF}</code></td></tr>
+    <tr class="hl"><td>결과</td><td class="wrap"><code>∴ d_safe = ${num(ps.d_safe_mm, 2)} mm</code></td></tr>
   </table>
 
   ${pageFooter(docNo, 2, TOTAL_PAGES)}
@@ -239,30 +247,30 @@ export function buildInsulationReportHtml(props: ReportProps): string {
 
   // 페이지 3: §4 계산 프로세스 (STEP 4~5) + §5 표준
   const step5Html = ps.d_rec_m != null && ps.D_outer != null && ps.R_ins != null && ps.R_conv != null && ps.dT != null && ps.Ts != null && ps.margin != null ? `
-  <table class="k">
+  <table class="k steps">
     <colgroup><col style="width:18%"><col style="width:82%"></colgroup>
-    <tr><td>공식</td><td><code>D외 = D + 2·d_rec · R_ins = ln(D외/D) / (2π·k) · R_conv = 1 / (hₒ·π·D외)<br/>ΔT = (Tₐ − Tᵢ) · R_conv / (R_ins + R_conv) · Tˢ = Tₐ − ΔT</code></td></tr>
-    <tr><td>D외</td><td><code>${pipe.od_m.toFixed(4)} + 2 × ${num(ps.d_rec_m, 4)} = ${num(ps.D_outer, 4)} m</code></td></tr>
-    <tr><td>R_ins</td><td><code>ln(${num(ps.D_outer, 4)} / ${pipe.od_m.toFixed(4)}) / (2π × ${k}) = ${num(ps.R_ins, 6)} (m·K/W)</code></td></tr>
-    <tr><td>R_conv</td><td><code>1 / (${ho} × π × ${num(ps.D_outer, 4)}) = ${num(ps.R_conv, 6)} (m·K/W)</code></td></tr>
-    <tr><td>ΔT</td><td><code>(${Ta} − ${Ti}) × ${num(ps.R_conv, 6)} / (${num(ps.R_ins, 6)} + ${num(ps.R_conv, 6)}) = ${num(ps.dT, 4)} °C</code></td></tr>
-    <tr><td>Tˢ · 여유</td><td><code>Tˢ = ${Ta} − ${num(ps.dT, 4)} = ${num(ps.Ts, 2)} °C · 여유 = Tˢ − Tᴅ = ${num(ps.margin, 2)} °C</code></td></tr>
-    <tr class="hl"><td>결과</td><td><code>∴ Tˢ = ${num(ps.Ts, 2)} °C, 여유 = ${num(ps.margin, 2)} °C → 등급 「${result.grade}」</code></td></tr>
+    <tr><td>공식</td><td class="wrap"><code>D외 = D + 2·d_rec · R_ins = ln(D외/D) / (2π·k) · R_conv = 1 / (hₒ·π·D외)<br/>ΔT = (Tₐ − Tᵢ) · R_conv / (R_ins + R_conv) · Tˢ = Tₐ − ΔT</code></td></tr>
+    <tr><td>D외</td><td class="wrap"><code>${pipe.od_m.toFixed(4)} + 2 × ${num(ps.d_rec_m, 4)} = ${num(ps.D_outer, 4)} m</code></td></tr>
+    <tr><td>R_ins</td><td class="wrap"><code>ln(${num(ps.D_outer, 4)} / ${pipe.od_m.toFixed(4)}) / (2π × ${k}) = ${num(ps.R_ins, 6)} (m·K/W)</code></td></tr>
+    <tr><td>R_conv</td><td class="wrap"><code>1 / (${ho} × π × ${num(ps.D_outer, 4)}) = ${num(ps.R_conv, 6)} (m·K/W)</code></td></tr>
+    <tr><td>ΔT</td><td class="wrap"><code>(${Ta} − ${Ti}) × ${num(ps.R_conv, 6)} / (${num(ps.R_ins, 6)} + ${num(ps.R_conv, 6)}) = ${num(ps.dT, 4)} °C</code></td></tr>
+    <tr><td>Tˢ · 여유</td><td class="wrap"><code>Tˢ = ${Ta} − ${num(ps.dT, 4)} = ${num(ps.Ts, 2)} °C · 여유 = Tˢ − Tᴅ = ${num(ps.margin, 2)} °C</code></td></tr>
+    <tr class="hl"><td>결과</td><td class="wrap"><code>∴ Tˢ = ${num(ps.Ts, 2)} °C, 여유 = ${num(ps.margin, 2)} °C → 등급 「${result.grade}」</code></td></tr>
   </table>` : '<div class="note">추천 시판 두께가 없어 검산 생략 (50 mm 초과 또는 보온 불필요).</div>';
 
   const page3 = `
 <section class="sheet">
   ${pageHeader(logo, docLabel, docNo, 3, TOTAL_PAGES)}
 
-  <p style="font-size:10pt;font-weight:700;margin:10px 0 4px 0">STEP 4 · 시판 두께 매칭</p>
+  <p class="step-title">STEP 4 · 시판 두께 매칭</p>
   <div class="note">시판 보온재는 정해진 두께 라인업 [13·19·25·32·38·50] mm으로만 공급되므로, 안전 두께 이상이 되는 가장 작은 값을 선정.</div>
-  <table class="k">
+  <table class="k steps">
     <colgroup><col style="width:30%"><col style="width:40%"><col style="width:30%"></colgroup>
     <tr><th>시판 두께</th><th>d_safe (${num(ps.d_safe_mm, 2)} mm) 충족</th><th>선정</th></tr>
     ${matchRows}
   </table>
 
-  <p style="font-size:10pt;font-weight:700;margin:10px 0 4px 0">STEP 5 · 시공 후 표면 온도 검산</p>
+  <p class="step-title">STEP 5 · 시공 후 표면 온도 검산</p>
   <div class="note">실제 시판 두께를 적용했을 때 외표면 온도가 노점 위로 충분히 올라오는지 검증. 여유 = Tˢ − Tᴅ가 클수록 안전.</div>
   ${step5Html}
 

@@ -432,7 +432,7 @@ export default function App() {
 
   // 워크스페이스 화면
   return (
-    <div style={{ height: '100vh', backgroundColor: 'var(--bg-base)', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-viewport" style={{ backgroundColor: 'var(--bg-base)', display: 'flex', flexDirection: 'column' }}>
       <AppHeader
         theme={theme}
         onThemeChange={setTheme}
