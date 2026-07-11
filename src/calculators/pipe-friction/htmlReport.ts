@@ -1,12 +1,13 @@
 // 관마찰손실 — HTML 산출서 (펌프 양식 채용, 표지 페이지 없음)
 // 디자인 출처: pump-system/htmlReport (REPORT_CSS, pageHeader/pageFooter/secHeader)
-// 내용: 조건·물성 산출 → 마찰계수 산출 과정(영역 판정·Colebrook 반복) → D-W 대입 → 최종 결과 → 출처
+// 구성: 결과 요약(KPI+판정) → 입력·조건 → 최종 결과 상세 → 계산 근거(격하) → 출처
 
 import logoDataUrl from '../../assets/report-logo.png?inline';
 import { REPORT_CSS } from '../pump-system/htmlReport/styles';
 import {
   esc, pageHeader, pageFooter, secHeader,
   makeDocNo, makeCalcDateTime,
+  kpiStrip, verdictBadge, verdictLine, type VerdictTone,
 } from '../pump-system/htmlReport/helpers';
 import { PF_G, RE_LAMINAR_MAX, RE_TURBULENT_MIN } from './engine.ts';
 import { fMethodLabel, pfWarnings } from './interpret.ts';
@@ -117,50 +118,43 @@ export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string 
     <tr>
       <td class="c">${w.level === 'error' ? '<span class="badge-warn">위험</span>' : w.level === 'warn' ? '<span class="badge-warn">주의</span>' : '<span class="badge-ok">참고</span>'}</td>
       <td>${esc(w.title)}</td>
-      <td>${esc(w.msg)}</td>
+      <td class="wrap">${esc(w.msg)}</td>
     </tr>`).join('');
+
+  // §1 결과 요약 — KPI 밴드 + 판정
+  const toneOf = (k: string): VerdictTone =>
+    k === 'high' ? 'risk' : k === 'low' ? 'warn' : k === 'none' ? 'info' : 'ok';
+  const kpis = kpiStrip([
+    { label: '총 마찰손실 ΔP', value: (res.deltaP_Pa * pressDef.factor).toFixed(pressDef.dp), unit: pressDef.label, sub: `수두 hL ${res.hL_m.toFixed(3)} m · L ${esc(st.L)} m` },
+    { label: '단위 마찰손실', value: (res.deltaP_per_m_Pa * pressDef.factor).toFixed(pressDef.dpM), unit: `${pressDef.label}/m`, sub: isWater ? `권장 ${RANGES.unitLossPa.optMin}~${RANGES.unitLossPa.optMax} Pa/m` : `= ${res.deltaP_per_m_Pa.toFixed(1)} Pa/m` },
+    { label: '유속 V', value: res.V_ms.toFixed(2), unit: 'm/s', sub: `관 내경 D ${(res.D_m * 1000).toFixed(1)} mm` },
+    { label: '레이놀즈수 Re', value: formatRe(res.Re), sub: `${esc(regime.label)} · f = ${res.f.toFixed(5)}` },
+  ]);
+  const verdictParts: string[] = [];
+  if (isWater) {
+    verdictParts.push(`단위 마찰손실 ${verdictBadge(toneOf(rangeU.key), rangeU.label)}`);
+    verdictParts.push(`유속 ${verdictBadge(toneOf(rangeV.key), rangeV.label)}`);
+  } else {
+    verdictParts.push(`유동 영역 ${verdictBadge('info', regime.label)}`);
+  }
+  if (warns.some(w => w.level === 'error')) verdictParts.push(verdictBadge('risk', '경고 확인 필요'));
 
   const page1 = `
 <section class="sheet">
   ${pageHeader(logo, title, docNo, 1, TOTAL_PAGES)}
 
-  ${secHeader('1.', '입력 · 조건 요약')}
+  ${secHeader('1.', '결과 요약')}
+  ${kpis}
+  ${verdictLine(verdictParts)}
+
+  ${secHeader('2.', '입력 · 조건 요약')}
   <table class="k">
     <colgroup><col style="width:24%"><col style="width:30%"><col style="width:12%"><col style="width:34%"></colgroup>
     <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
     ${inputRows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${esc(r[1])}</td><td class="c">${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join('')}
   </table>
 
-  ${secHeader('2.', '물성 · 흐름 조건 산출')}
-  <table class="k">
-    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
-    <tr><th>#</th><th>식 / 대입</th></tr>
-    ${propItems.map((s, i) => `<tr><td class="c">${i + 1}</td><td><code>${s}</code></td></tr>`).join('')}
-  </table>
-
-  ${secHeader('3.', '마찰계수 f 산출')}
-  <table class="k">
-    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
-    <tr><th>#</th><th>과정</th></tr>
-    ${fRows.map((s, i) => `<tr><td class="c">${i + 1}</td><td><code>${s}</code></td></tr>`).join('')}
-  </table>
-  <div class="note">층류 f=64/Re · 천이(2,300~4,000) 3차 보간(불확정 구간) · 난류 Colebrook-White 반복해 — Swamee-Jain은 검산 병기</div>
-
-  ${pageFooter(docNo, 1, TOTAL_PAGES)}
-</section>`;
-
-  const page2 = `
-<section class="sheet">
-  ${pageHeader(logo, title, docNo, 2, TOTAL_PAGES)}
-
-  ${secHeader('4.', 'Darcy-Weisbach 대입 과정')}
-  <table class="k">
-    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
-    <tr><th>#</th><th>식 / 대입</th></tr>
-    ${dwItems.map((s, i) => `<tr><td class="c">${i + 1}</td><td><code>${s}</code></td></tr>`).join('')}
-  </table>
-
-  ${secHeader('5.', '최종 결과')}
+  ${secHeader('3.', '최종 결과 상세')}
   <table class="k">
     <colgroup><col style="width:30%"><col style="width:24%"><col style="width:14%"><col style="width:32%"></colgroup>
     <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
@@ -174,7 +168,37 @@ export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string 
     ${warnRows}
   </table>` : '<div class="note">권장 범위 내 — 추가 경고 없음</div>'}
 
-  ${secHeader('6.', '적용 표준 · 출처')}
+  ${pageFooter(docNo, 1, TOTAL_PAGES)}
+</section>`;
+
+  const page2 = `
+<section class="sheet">
+  ${pageHeader(logo, title, docNo, 2, TOTAL_PAGES)}
+
+  ${secHeader('4.', '계산 근거')}
+  <p class="step-title">물성 · 흐름 조건 산출</p>
+  <table class="k steps">
+    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
+    <tr><th>#</th><th>식 / 대입</th></tr>
+    ${propItems.map((s, i) => `<tr><td class="c">${i + 1}</td><td class="wrap"><code>${s}</code></td></tr>`).join('')}
+  </table>
+
+  <p class="step-title">마찰계수 f 산출</p>
+  <table class="k steps">
+    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
+    <tr><th>#</th><th>과정</th></tr>
+    ${fRows.map((s, i) => `<tr><td class="c">${i + 1}</td><td class="wrap"><code>${s}</code></td></tr>`).join('')}
+  </table>
+  <div class="note">층류 f=64/Re · 천이(2,300~4,000) 3차 보간(불확정 구간) · 난류 Colebrook-White 반복해 — Swamee-Jain은 검산 병기</div>
+
+  <p class="step-title">Darcy-Weisbach 대입</p>
+  <table class="k steps">
+    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
+    <tr><th>#</th><th>식 / 대입</th></tr>
+    ${dwItems.map((s, i) => `<tr><td class="c">${i + 1}</td><td class="wrap"><code>${s}</code></td></tr>`).join('')}
+  </table>
+
+  ${secHeader('5.', '적용 표준 · 출처')}
   <ul class="refs">
     <li><b>Darcy-Weisbach · Colebrook-White(1939) · Swamee-Jain(1976)</b> — 마찰손실·마찰계수</li>
     <li><b>천이역 3차 보간</b> — EPANET 2 천이역 보간 방식 준용 (경계 2,300/4,000)</li>

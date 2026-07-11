@@ -7,6 +7,7 @@ import { REPORT_CSS } from '../pump-system/htmlReport/styles';
 import {
   esc, pageHeader, pageFooter, secHeader,
   makeDocNo, makeCalcDateTime,
+  kpiStrip, verdictBadge, verdictLine, type VerdictTone,
 } from '../pump-system/htmlReport/helpers';
 import { velocityRange, type SizingRow, type SizingFluid } from './calc';
 import { fMethodLabel } from '../pipe-friction/interpret.ts';
@@ -37,7 +38,7 @@ interface ReportProps {
   pressureMmHg: string;
 }
 
-const TOTAL_PAGES = 2;
+const TOTAL_PAGES = 3;
 
 export function buildPipeSizingReportHtml(props: ReportProps): string {
   const { selected, rows, analysis, mat, Q, dP, tempC, condLabel, epsStr, flowUnit, pressureUnit, fluid, pressureMmHg } = props;
@@ -118,45 +119,38 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
     </tr>`;
   }).join('');
 
-  // 페이지 1: §1 입력 + §2 공식 + §3 대입 + §4 선정 결과
+  // §1 결과 요약 — KPI 밴드 + 판정
+  const toneOf = (k: string): VerdictTone =>
+    k === 'high' ? 'risk' : k === 'low' ? 'warn' : k === 'none' ? 'info' : 'ok';
+  const kpis = kpiStrip([
+    { label: '선정 관경', value: `${selected.size.nominalA}A`, sub: `내경 ID ${ID_mm.toFixed(1)} mm · ${esc(mat.nameKo)}` },
+    { label: '유속 V', value: selected.v_ms.toFixed(2), unit: 'm/s', sub: `권장 ${velRange.optMin}~${velRange.optMax} m/s` },
+    { label: '단위 마찰손실', value: drop_display.toFixed(pressDef.dp), unit: `${pressDef.label}/m`, sub: `허용 ${esc(dP)} ${esc(pressDef.label)}/m 이하` },
+    ...(analysis ? [{ label: '레이놀즈수 Re', value: formatRe(analysis.Re), sub: `${esc(regime!.label)} · f = ${selected.f.toFixed(5)}` }] : []),
+  ]);
+  const verdictParts: string[] = [
+    `허용 압력강하 ${verdictBadge('ok', '적합')}`,
+    ...(rangeV ? [`유속 ${verdictBadge(toneOf(rangeV.key), rangeV.label)}`] : []),
+    ...(rangeU ? [`단위손실 ${verdictBadge(toneOf(rangeU.key), rangeU.label)}`] : []),
+  ];
+
+  // 페이지 1: §1 결과 요약 + §2 입력 + §3 선정 결과 상세
   const page1 = `
 <section class="sheet">
   ${pageHeader(logo, docLabel, docNo, 1, TOTAL_PAGES)}
 
-  ${secHeader('1.', '입력 요약')}
+  ${secHeader('1.', '결과 요약')}
+  ${kpis}
+  ${verdictLine(verdictParts)}
+
+  ${secHeader('2.', '입력 요약')}
   <table class="k">
     <colgroup><col style="width:24%"><col style="width:34%"><col style="width:14%"><col style="width:28%"></colgroup>
     <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
     ${inputRows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${esc(r[1])}</td><td class="c">${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join('')}
   </table>
 
-  ${secHeader('2.', '사용 공식 — Darcy-Weisbach + 영역별 마찰계수')}
-  <table class="k">
-    <colgroup><col style="width:24%"><col style="width:76%"></colgroup>
-    <tr><th>구분</th><th>식</th></tr>
-    <tr><td>단위 마찰손실</td><td><code>ΔP/L = ρ(T) · g · f · (1/D) · V²/(2g)   [Pa/m] → mmAq/m = ΔP/L ÷ 9.80665</code></td></tr>
-    <tr><td>유속</td><td><code>V = Q / (π · D² / 4)   [m/s]</code></td></tr>
-    <tr><td>레이놀즈수</td><td><code>Re = V · D / ν(T)</code></td></tr>
-    <tr><td>마찰계수</td><td><code>층류(Re&lt;2,300) f=64/Re · 천이(≤4,000) 3차 보간 · 난류 Colebrook-White: 1/√f = −2log₁₀(ε/(3.7D)+2.51/(Re√f))</code></td></tr>
-  </table>
-  <table class="k">
-    <colgroup><col style="width:24%"><col style="width:76%"></colgroup>
-    <tr><th>기호</th><th>의미</th></tr>
-    <tr><td class="c">f</td><td>마찰계수 — 유동 영역별 자동 산출 (관마찰손실 계산기와 동일 엔진)</td></tr>
-    <tr><td class="c">ε</td><td>절대조도 [mm] — 재질×신관/노후 (Moody 1944·ASHRAE Ch.22·NFPA 13·KDS 57)</td></tr>
-    <tr><td class="c">ν, ρ</td><td>${esc(fluidLabel)} 동점성계수·밀도 — ${fluid === 'air' ? '이상기체식 (온도·압력 반영, 참조 엑셀 공기 물성표)' : '온도별 물성표 선형보간 (물 ν: 참조 엑셀 물성표 / ρ: NIST WebBook)'}</td></tr>
-    <tr><td class="c">D</td><td>관 내경 [m] = D[mm] / 1,000</td></tr>
-    <tr><td class="c">g</td><td>중력가속도 = ${G} m/s²</td></tr>
-  </table>
-
-  ${secHeader('3.', '대입 과정 (선정 관경)')}
-  <table class="k">
-    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
-    <tr><th>#</th><th>식 / 대입</th></tr>
-    ${substitutionItems.map((s, i) => `<tr><td class="c">${i + 1}</td><td><code>${s}</code></td></tr>`).join('')}
-  </table>
-
-  ${secHeader('4.', '선정 결과')}
+  ${secHeader('3.', '선정 결과 상세')}
   <table class="k">
     <colgroup><col style="width:30%"><col style="width:30%"><col style="width:14%"><col style="width:26%"></colgroup>
     <tr><th>항목</th><th>값</th><th>단위</th><th>비고</th></tr>
@@ -167,12 +161,12 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
   ${pageFooter(docNo, 1, TOTAL_PAGES)}
 </section>`;
 
-  // 페이지 2: §5 관경별 상세 + §6 해석 + §7 표준
+  // 페이지 2: §4 관경별 상세 + §5 해석 + §6 계산 근거 + §7 표준
   const page2 = `
 <section class="sheet">
   ${pageHeader(logo, docLabel, docNo, 2, TOTAL_PAGES)}
 
-  ${secHeader('5.', `관경별 상세 (${esc(mat.nameKo)} · ${esc(condLabel)} · ε ${esc(epsStr)} mm)`)}
+  ${secHeader('4.', `관경별 상세 (${esc(mat.nameKo)} · ${esc(condLabel)} · ε ${esc(epsStr)} mm)`)}
   <table class="k">
     <colgroup><col style="width:12%"><col style="width:16%"><col style="width:16%"><col style="width:16%"><col style="width:18%"><col style="width:11%"><col style="width:11%"></colgroup>
     <tr>
@@ -183,7 +177,7 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
   </table>
   <div class="note">하이라이트 = 선정 관경 (허용 ΔP/L 이하가 되는 가장 작은 관경) · f는 관경별 Re에 따라 자동 산출</div>
 
-  ${secHeader('6.', '해석 / 판정')}
+  ${secHeader('5.', '해석 / 판정')}
   ${analysis ? `
   <table class="k">
     <colgroup><col style="width:30%"><col style="width:25%"><col style="width:25%"><col style="width:20%"></colgroup>
@@ -205,6 +199,41 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
     </tr>
   </table>` : '<div class="note">분석값 없음</div>'}
 
+  ${pageFooter(docNo, 2, TOTAL_PAGES)}
+</section>`;
+
+  // 페이지 3: §6 계산 근거 + §7 표준
+  const page3 = `
+<section class="sheet">
+  ${pageHeader(logo, docLabel, docNo, 3, TOTAL_PAGES)}
+
+  ${secHeader('6.', '계산 근거')}
+  <p class="step-title">사용 공식 — Darcy-Weisbach + 영역별 마찰계수</p>
+  <table class="k steps">
+    <colgroup><col style="width:24%"><col style="width:76%"></colgroup>
+    <tr><th>구분</th><th>식</th></tr>
+    <tr><td>단위 마찰손실</td><td class="wrap"><code>ΔP/L = ρ(T) · g · f · (1/D) · V²/(2g)   [Pa/m] → mmAq/m = ΔP/L ÷ 9.80665</code></td></tr>
+    <tr><td>유속</td><td class="wrap"><code>V = Q / (π · D² / 4)   [m/s]</code></td></tr>
+    <tr><td>레이놀즈수</td><td class="wrap"><code>Re = V · D / ν(T)</code></td></tr>
+    <tr><td>마찰계수</td><td class="wrap"><code>층류(Re&lt;2,300) f=64/Re · 천이(≤4,000) 3차 보간 · 난류 Colebrook-White: 1/√f = −2log₁₀(ε/(3.7D)+2.51/(Re√f))</code></td></tr>
+  </table>
+  <table class="k steps">
+    <colgroup><col style="width:24%"><col style="width:76%"></colgroup>
+    <tr><th>기호</th><th>의미</th></tr>
+    <tr><td class="c">f</td><td class="wrap">마찰계수 — 유동 영역별 자동 산출 (관마찰손실 계산기와 동일 엔진)</td></tr>
+    <tr><td class="c">ε</td><td class="wrap">절대조도 [mm] — 재질×신관/노후 (Moody 1944·ASHRAE Ch.22·NFPA 13·KDS 57)</td></tr>
+    <tr><td class="c">ν, ρ</td><td class="wrap">${esc(fluidLabel)} 동점성계수·밀도 — ${fluid === 'air' ? '이상기체식 (온도·압력 반영, 참조 엑셀 공기 물성표)' : '온도별 물성표 선형보간 (물 ν: 참조 엑셀 물성표 / ρ: NIST WebBook)'}</td></tr>
+    <tr><td class="c">D</td><td class="wrap">관 내경 [m] = D[mm] / 1,000</td></tr>
+    <tr><td class="c">g</td><td class="wrap">중력가속도 = ${G} m/s²</td></tr>
+  </table>
+
+  <p class="step-title">대입 과정 (선정 관경)</p>
+  <table class="k steps">
+    <colgroup><col style="width:8%"><col style="width:92%"></colgroup>
+    <tr><th>#</th><th>식 / 대입</th></tr>
+    ${substitutionItems.map((s, i) => `<tr><td class="c">${i + 1}</td><td class="wrap"><code>${s}</code></td></tr>`).join('')}
+  </table>
+
   ${secHeader('7.', '적용 표준')}
   <ul class="refs">
     <li><b>Darcy-Weisbach · Colebrook-White(1939)</b> — 마찰손실·마찰계수 (층류 64/Re · 천이 3차 보간: EPANET 준용)</li>
@@ -219,7 +248,7 @@ export function buildPipeSizingReportHtml(props: ReportProps): string {
     계산 일시: ${esc(makeCalcDateTime())}
   </div>
 
-  ${pageFooter(docNo, 2, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
+  ${pageFooter(docNo, 3, TOTAL_PAGES, '본 산출서는 설계 단계 검토용입니다.')}
 </section>`;
 
   return `<!doctype html>
@@ -237,6 +266,7 @@ ${REPORT_CSS}
 
 ${page1}
 ${page2}
+${page3}
 
 </body>
 </html>`;
