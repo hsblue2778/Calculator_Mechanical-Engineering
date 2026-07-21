@@ -1,7 +1,5 @@
 // HVAC 펌프 시스템 — 폼 소형 컴포넌트들
 
-import { useState } from 'react';
-import { Save, Check } from 'lucide-react';
 import InfoTip from '../../../components/InfoTip';
 import { C, inputStyle, labelStyle, sectionStyle, sectionTitleStyle } from '../styles';
 import { PIPE_SIZE_MATERIALS } from '../../../data/pipeSizes';
@@ -67,27 +65,6 @@ export function UnitBtn({ label, active, onClick }: { label: string; active: boo
   );
 }
 
-export function SaveBtn({ onClick, enabled }: { onClick: () => void; enabled: boolean }) {
-  const [saved, setSaved] = useState(false);
-  function handle() { onClick(); setSaved(true); setTimeout(() => setSaved(false), 1600); }
-  return (
-    <button onClick={handle} disabled={!enabled}
-      title={enabled ? '현재 계산을 기록에 저장' : '계산 결과가 유효할 때 저장할 수 있습니다'}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? 'var(--text-inverse)' : 'var(--border-subtle)',
-        backgroundColor: enabled ? (saved ? 'var(--state-success)' : C.blue) : 'var(--border-default)',
-        border: 'none', borderRadius: 8,
-        cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-        transition: 'background-color 0.15s',
-      }}
-    >
-      {saved ? <Check size={14} /> : <Save size={14} />}
-      {saved ? '저장됨' : '기록 저장'}
-    </button>
-  );
-}
 
 export function PipeSectionBlock({
   title, nominalA, setNominalA, lStr, setLStr, lUnit, setLUnit, matId, setMatId,

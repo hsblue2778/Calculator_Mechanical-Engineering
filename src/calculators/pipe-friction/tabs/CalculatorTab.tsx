@@ -20,15 +20,13 @@ import { useInitialAction } from '../../../utils/useInitialAction';
 
 interface Props {
   pf: PipeFrictionController;
-  onSave?: () => void;
-  canSave?: boolean;
   onChain?: () => void;
   chainedFrom?: string;                // 체이닝 수신 안내 배너 (관경 계산기 역검증 등)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf·chain)
   onInitialActionDone?: () => void;
 }
 
-export default function CalculatorTab({ pf, onSave, canSave, onChain, chainedFrom, initialAction, onInitialActionDone }: Props) {
+export default function CalculatorTab({ pf, onChain, chainedFrom, initialAction, onInitialActionDone }: Props) {
   const { st, patch, res, error } = pf;
   const pressDef = PRESSURE_UNITS.find(u => u.key === st.pressureUnit)!;
   const showError = !!error && error.field !== 'pair';
@@ -57,7 +55,6 @@ export default function CalculatorTab({ pf, onSave, canSave, onChain, chainedFro
   }, onInitialActionDone);
 
   const actionBarProps = {
-    onSave, canSave,
     canExport: !!res,
     onCsv: handleCsv, onWord: handleWord, onPdf: handlePdf,
     onReset: pf.reset,

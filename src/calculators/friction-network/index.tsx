@@ -19,7 +19,6 @@ import CalculatorTab from './tabs/CalculatorTab';
 
 interface Props {
   initialState?: Record<string, any>;
-  onSave?: (ctx: FieldContext) => void;
   onStateChange?: (ctx: FieldContext) => void;   // 자동기록 — 렌더마다 보고 (중복 제거는 App)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
@@ -104,7 +103,7 @@ function isBlankRow(r: FNSegmentState): boolean {
 
 const num = (s: string) => parseFloat(s);
 
-export default function FrictionNetworkCalculator({ initialState, onSave, onStateChange, initialAction, onInitialActionDone }: Props) {
+export default function FrictionNetworkCalculator({ initialState, onStateChange, initialAction, onInitialActionDone }: Props) {
   const [st, setSt] = useState<FNSettingsState>(() => ({
     ...defaultSettings(), ...(initialState?.settings ?? {}),
   }));
@@ -193,7 +192,6 @@ export default function FrictionNetworkCalculator({ initialState, onSave, onStat
     st.designTotalFlow.trim() !== '' && Number.isFinite(num(st.designTotalFlow)) && num(st.designTotalFlow) > 0
       ? num(st.designTotalFlow) / (st.flowUnit === 'LPM' ? 60000 : 3600)
       : null;
-  const canSave = !!net && !net.hasErrors && net.rows.length > 0 && pAvailEntered;
 
   const inputs = { settings: st, segments: rows };
   const outputs = net ? {
@@ -230,8 +228,6 @@ export default function FrictionNetworkCalculator({ initialState, onSave, onStat
         pAvailEntered={pAvailEntered}
         designTotalFlow_m3s={designTotalFlow_m3s}
         onReset={reset}
-        onSave={onSave ? () => onSave({ inputs, outputs }) : undefined}
-        canSave={canSave}
         initialAction={initialAction}
         onInitialActionDone={onInitialActionDone}
       />

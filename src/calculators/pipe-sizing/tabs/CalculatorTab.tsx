@@ -1,7 +1,7 @@
 // 관경 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, AlertTriangle, Save, Check, ArrowRight, ChevronDown } from 'lucide-react';
+import { RotateCcw, AlertTriangle, ArrowRight, ChevronDown } from 'lucide-react';
 import Frac from '../../../components/Frac';
 import FormulaDisclosure from '../../../components/FormulaDisclosure';
 import InfoTip from '../../../components/InfoTip';
@@ -63,8 +63,6 @@ interface Props {
   flowUnit: FlowUnitKey; setFlowUnit: (u: FlowUnitKey) => void;
   pressureUnit: PressureUnitKey; setPressureUnit: (u: PressureUnitKey) => void;
   onReset: () => void;
-  onSave?: () => void;
-  canSave?: boolean;
   chainedFrom?: string;
   chainTargets?: ChainTarget[];
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
@@ -78,7 +76,7 @@ export default function CalculatorTab({
   tempC, setTempC, pressureMmHg, setPressureMmHg, condition, setCondition,
   epsStr, setEpsStr, epsDefault, cond,
   flowUnit, setFlowUnit, pressureUnit, setPressureUnit, onReset,
-  onSave, canSave, chainedFrom, chainTargets, initialAction, onInitialActionDone,
+  chainedFrom, chainTargets, initialAction, onInitialActionDone,
 }: Props) {
   const mat = PIPE_SIZE_MATERIALS[matIdx];
   const pressDef = PRESSURE_UNITS.find(u => u.key === pressureUnit)!;
@@ -307,7 +305,6 @@ export default function CalculatorTab({
       <ActionBar
         className="calc-actions calc-actions-desktop"
         chainTargets={chainTargets}
-        onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
         onWord={() => ok?.selected && handleSizingWordSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
@@ -325,7 +322,6 @@ export default function CalculatorTab({
       <ActionBar
         className="calc-actions calc-actions-mobile"
         chainTargets={chainTargets}
-        onSave={onSave} canSave={canSave}
         canExport={!!ok?.selected}
         onCsv={() => ok?.selected && handleSizingCsvExport(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressDef, tempC, condition, epsStr, fluid, pressureMmHg)}
         onWord={() => ok?.selected && handleSizingWordSave(ok.selected, ok.rows ?? [], ok.analysis ?? null, mat, Q, dP, flowUnit, pressureUnit, tempC, condition, epsStr, fluid, pressureMmHg)}
@@ -383,11 +379,10 @@ function handleSizingPdfPrint(
 }
 
 function ActionBar({
-  className, chainTargets, onSave, canSave, canExport, onCsv, onWord, onPdf, onReset,
+  className, chainTargets, canExport, onCsv, onWord, onPdf, onReset,
 }: {
   className: string;
   chainTargets?: ChainTarget[];
-  onSave?: () => void; canSave?: boolean;
   canExport: boolean;
   onCsv: () => void; onWord: () => void; onPdf: () => void; onReset: () => void;
 }) {
@@ -397,7 +392,6 @@ function ActionBar({
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
       {chainTargets && <ChainMenuBtn targets={chainTargets} />}
-      {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
       <ExportMenu enabled={canExport} onCsv={onCsv} onWord={onWord} onPdf={onPdf} />
       <button
         onClick={onReset}
@@ -476,33 +470,6 @@ function ChainMenuBtn({ targets }: { targets: ChainTarget[] }) {
   );
 }
 
-function SaveBtn({ onClick, enabled }: { onClick: () => void; enabled: boolean }) {
-  const [saved, setSaved] = useState(false);
-  function handle() {
-    onClick();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1600);
-  }
-  return (
-    <button
-      onClick={handle}
-      disabled={!enabled}
-      title={enabled ? '현재 계산을 기록에 저장' : '계산 결과가 유효할 때 저장할 수 있습니다'}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? 'var(--text-inverse)' : 'var(--border-subtle)',
-        backgroundColor: enabled ? (saved ? 'var(--state-success)' : C.blue) : 'var(--border-default)',
-        border: 'none', borderRadius: 8,
-        cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-        transition: 'background-color 0.15s',
-      }}
-    >
-      {saved ? <Check size={14} /> : <Save size={14} />}
-      {saved ? '저장됨' : '기록 저장'}
-    </button>
-  );
-}
 
 function FieldNumber({
   label, value, onChange, min = '0', max, highlight,

@@ -32,7 +32,6 @@ interface WorkspaceInstance {
 
 type CalculatorComponentProps = {
   initialState?: Record<string, any>;
-  onSave?: (ctx: FieldContext) => void;
   // 자동기록 — 렌더마다 현재 입력·결과를 보고 (중복 제거·디바운스는 App 담당)
   onStateChange?: (ctx: FieldContext) => void;
   onChain?: (calculatorId: string, initialState: Record<string, any>) => void;
@@ -85,7 +84,6 @@ export default function App() {
   const [currentEntryByInstance, setCurrentEntryByInstance] = useState<Record<string, string>>({});
   // 인스턴스별 "마운트 직후 실행할 액션" — 기록 ⋯ 메뉴의 내보내기·체이닝 (1회 소비 후 제거)
   const [instanceInitialAction, setInstanceInitialAction] = useState<Record<string, EntryAction>>({});
-  const [saveToast, setSaveToast] = useState<string | null>(null);
 
   const activeInstance = instances.find(i => i.id === activeId) ?? null;
   const activeCalc = activeInstance ? calculators.find(c => c.id === activeInstance.calculatorId) : null;
@@ -299,28 +297,6 @@ export default function App() {
     }
   }
 
-  // 저장 — pump-system 등 calc 내부에서 호출. localStorage history에 저장 + 토스트·기록 패널 갱신.
-  const handleSave = useCallback((ctx: FieldContext) => {
-    if (!activeCalc || !activeInstance) return;
-    const entry = historyStore.save({
-      calculatorId: activeCalc.id,
-      baseTitle: activeCalc.title,
-      inputs: ctx.inputs,
-      outputs: ctx.outputs,
-    });
-    setHistoryRefreshKey(k => k + 1);
-    setSaveToast(`저장됨 — ${entry.title}`);
-    // 방금 저장한 항목이 곧 현재 워크스페이스 상태와 동일 — current로 표시
-    setCurrentEntryByInstance(prev => ({ ...prev, [activeInstance.id]: entry.id }));
-  }, [activeCalc, activeInstance]);
-
-  // 토스트 자동 닫힘 (2.5s)
-  useEffect(() => {
-    if (!saveToast) return;
-    const t = setTimeout(() => setSaveToast(null), 2500);
-    return () => clearTimeout(t);
-  }, [saveToast]);
-
   // 세션 기록은 이어서 갱신(재개), 스냅샷·레거시 기록은 불변 유지 —
   // 첫 편집 시 그 내용을 시드로 새 세션 생성 (parentEntryId 연결)
   const bindSessionForEntry = useCallback((entry: HistoryEntry) => {
@@ -437,7 +413,6 @@ export default function App() {
         <GlobalSidebar
           refreshKey={historyRefreshKey}
           currentEntryId={activeInstance ? currentEntryByInstance[activeInstance.id] : undefined}
-          onNewCalculator={(id) => { openCalculator(id); setMobileSidebarOpen(false); }}
           onOpenEntry={(entry) => { openEntry(entry); setMobileSidebarOpen(false); }}
           onEntryAction={(entry, action) => { handleEntryAction(entry, action); setMobileSidebarOpen(false); }}
           entryActionsByCalc={ENTRY_EXPORT_ACTIONS}
@@ -580,7 +555,6 @@ export default function App() {
                 <ActiveComponent
                   key={`${activeInstance.id}-${unitSystem}-${instanceLoadEpoch[activeInstance.id] ?? 0}`}
                   initialState={instanceInitialStates[activeInstance.id]}
-                  onSave={handleSave}
                   onStateChange={handleStateChange}
                   onChain={openCalculatorWithState}
                   initialAction={instanceInitialAction[activeInstance.id]}
@@ -604,25 +578,6 @@ export default function App() {
             onBack={() => setCompareEntries(null)}
           />
         </Modal>
-      )}
-
-      {/* 저장 토스트 */}
-      {saveToast && (
-        <div
-          style={{
-            position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)',
-            zIndex: 100,
-            padding: '10px 18px',
-            background: 'var(--state-success-bg)',
-            color: 'var(--state-success-text)',
-            border: '1px solid var(--state-success)',
-            borderRadius: 8, fontSize: 13, fontWeight: 600,
-            boxShadow: 'var(--shadow-lg)',
-            pointerEvents: 'none',
-          }}
-        >
-          ✓ {saveToast}
-        </div>
       )}
 
       {showChangelog && (

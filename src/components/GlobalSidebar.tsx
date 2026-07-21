@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Pencil, Trash2, GitCompare, MoreVertical,
   FileDown, FileText, Printer, ArrowRight,
-  Pin, PinOff, SquarePen, Folder, FolderPlus, FolderMinus,
+  Pin, PinOff, Folder, FolderPlus, FolderMinus,
   ChevronRight, ChevronDown,
 } from 'lucide-react';
 import { calculators } from '../config/calculators';
@@ -38,7 +38,6 @@ const CALC_TITLE: Record<string, string> = Object.fromEntries(
 interface Props {
   refreshKey: number;                              // 외부에서 저장·삭제 발생 시 증가시켜 재렌더 유도
   currentEntryId?: string;                         // 현재 워크스페이스에 로드된 항목 ID (시각 강조용)
-  onNewCalculator: (calculatorId: string) => void;
   onOpenEntry: (entry: HistoryEntry) => void;
   onEntryAction: (entry: HistoryEntry, action: EntryAction) => void;
   entryActionsByCalc: Record<string, EntryAction[]>;
@@ -56,7 +55,7 @@ interface Props {
 
 export default function GlobalSidebar({
   refreshKey, currentEntryId,
-  onNewCalculator, onOpenEntry, onEntryAction, entryActionsByCalc, onChanged,
+  onOpenEntry, onEntryAction, entryActionsByCalc, onChanged,
   compareEnabled, selectedIds, onToggleSelect, maxSelect, onCompare, onCompareToggleChange,
   mobileOpen,
 }: Props) {
@@ -64,7 +63,6 @@ export default function GlobalSidebar({
   const entries = useMemo(() => { void refreshKey; return historyStore.listAll(); }, [refreshKey]);
   const projects = useMemo(() => { void refreshKey; return historyStore.listProjects(); }, [refreshKey]);
 
-  const [newOpen, setNewOpen] = useState(false);
   // 행 상태 키 — 같은 기록이 여러 섹션(프로젝트·고정됨·최근)에 나타나므로 `${section}:${id}` 로 구분
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [menuKey, setMenuKey] = useState<string | null>(null);
@@ -222,57 +220,8 @@ export default function GlobalSidebar({
         minHeight: 0,
       }}
     >
-      {/* 새로 생성 */}
-      <button
-        onClick={() => setNewOpen(o => !o)}
-        aria-expanded={newOpen}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          width: '100%',
-          padding: '8px 10px',
-          fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-          color: 'var(--text-primary)',
-          background: newOpen ? 'var(--bg-hover)' : 'transparent',
-          border: '1px solid var(--border-default)', borderRadius: 8,
-          cursor: 'pointer',
-          transition: 'background 0.12s',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
-        onMouseLeave={e => { if (!newOpen) e.currentTarget.style.backgroundColor = 'transparent'; }}
-      >
-        <SquarePen size={15} />
-        새로 생성
-      </button>
-      {newOpen && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
-          {calculators.map(c => (
-            <button
-              key={c.id}
-              onClick={() => { setNewOpen(false); onNewCalculator(c.id); }}
-              title={c.description}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                width: '100%',
-                padding: '7px 10px 7px 14px',
-                fontSize: 12, fontWeight: 500, fontFamily: 'inherit',
-                color: 'var(--text-secondary)',
-                background: 'transparent', border: 'none', borderRadius: 6,
-                cursor: 'pointer', textAlign: 'left',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              <Plus size={12} style={{ flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {c.title}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* 스크롤 영역 — 프로젝트 · 고정됨 · 최근 항목 */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, marginTop: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* 프로젝트 */}
         <div>
           <SectionHeader

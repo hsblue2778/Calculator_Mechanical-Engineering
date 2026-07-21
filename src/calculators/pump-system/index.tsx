@@ -30,7 +30,6 @@ const FITTING_NAME_MAP: Record<string, string> = Object.fromEntries(
 interface Props {
   field: PumpFieldId;          // 신규 필수 prop
   initialState?: Record<string, any>;
-  onSave?: (ctx: FieldContext) => void;
   onStateChange?: (ctx: FieldContext) => void;   // 자동기록 — 렌더마다 보고 (중복 제거는 App)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (html·pdf)
   onInitialActionDone?: () => void;
@@ -69,7 +68,7 @@ export default function PumpSystemCalculator(props: Props) {
   );
 }
 
-function PumpSystemInner({ field, initialState, onSave, onStateChange, initialAction, onInitialActionDone, onReset }: Props & { onReset: () => void }) {
+function PumpSystemInner({ field, initialState, onStateChange, initialAction, onInitialActionDone, onReset }: Props & { onReset: () => void }) {
   const fieldConfig = getPumpFieldConfig(field);
 
   // §1 시스템 기본조건
@@ -165,7 +164,7 @@ function PumpSystemInner({ field, initialState, onSave, onStateChange, initialAc
   // 체이닝으로 들어온 경우 — 발신 계산기 안내 배너 표시 (관경 선정)
   const chainedFrom = typeof initialState?.chainedFrom === 'string' ? initialState.chainedFrom : undefined;
 
-  // 현재 inputs/outputs (onSave용)
+  // 현재 inputs/outputs (자동기록용)
   const inputs = {
     systemMode, fluid, tempC, Q, flowUnit,
     sucPipeRows, disPipeRows, pipeCondition,
@@ -319,8 +318,6 @@ function PumpSystemInner({ field, initialState, onSave, onStateChange, initialAc
         catalogHzStr={catalogHzStr} setCatalogHzStr={setCatalogHzStr}
         operatingHzList={operatingHzList} setOperatingHzList={setOperatingHzList}
         result={result}
-        onSave={onSave ? () => onSave({ inputs, outputs: result }) : undefined}
-        canSave={!!result}
         onReset={onReset}
         chainedFrom={chainedFrom}
         initialAction={initialAction}
