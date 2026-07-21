@@ -3,7 +3,7 @@
 //   f: 층류 64/Re · Re≥2300 전부 Swamee-Jain (pipe-friction 엔진 swameeJain 재사용)
 //   판정: 최대(누적손실+요구압) vs 설계 가용정압 P_avail×(1−α)
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FieldContext } from '../../config/calculators';
 import {
   FN_MAX_ROWS, FN_V_LIMIT_DEFAULTS, FN_TARGET_R_PA_PER_M, fnRUnit, fmtR,
@@ -20,6 +20,7 @@ import CalculatorTab from './tabs/CalculatorTab';
 interface Props {
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  onStateChange?: (ctx: FieldContext) => void;   // 자동기록 — 렌더마다 보고 (중복 제거는 App)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
@@ -103,7 +104,7 @@ function isBlankRow(r: FNSegmentState): boolean {
 
 const num = (s: string) => parseFloat(s);
 
-export default function FrictionNetworkCalculator({ initialState, onSave, initialAction, onInitialActionDone }: Props) {
+export default function FrictionNetworkCalculator({ initialState, onSave, onStateChange, initialAction, onInitialActionDone }: Props) {
   const [st, setSt] = useState<FNSettingsState>(() => ({
     ...defaultSettings(), ...(initialState?.settings ?? {}),
   }));
@@ -204,6 +205,8 @@ export default function FrictionNetworkCalculator({ initialState, onSave, initia
     totalLeafFlow_m3s: net.totalLeafFlow_m3s,
     rho_kgm3: net.rho_kgm3, nu_m2s: net.nu_m2s,
   } : null;
+
+  useEffect(() => { onStateChange?.({ inputs, outputs }); });
 
   function reset() {
     setSt(defaultSettings());

@@ -1,6 +1,6 @@
 // 펌프 시스템 계산기 — 메인 컴포넌트
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PIPE_MATERIALS_V2, getMaterialLabel } from '../../data/pipeSizes';
 import { pfMaterial, type PFMaterialId, type PipeCondition } from '../../data/pipeRoughness.ts';
 import type { PumpFieldId, FluidId } from './configs/types';
@@ -31,6 +31,7 @@ interface Props {
   field: PumpFieldId;          // 신규 필수 prop
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  onStateChange?: (ctx: FieldContext) => void;   // 자동기록 — 렌더마다 보고 (중복 제거는 App)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (html·pdf)
   onInitialActionDone?: () => void;
 }
@@ -68,7 +69,7 @@ export default function PumpSystemCalculator(props: Props) {
   );
 }
 
-function PumpSystemInner({ field, initialState, onSave, initialAction, onInitialActionDone, onReset }: Props & { onReset: () => void }) {
+function PumpSystemInner({ field, initialState, onSave, onStateChange, initialAction, onInitialActionDone, onReset }: Props & { onReset: () => void }) {
   const fieldConfig = getPumpFieldConfig(field);
 
   // §1 시스템 기본조건
@@ -281,6 +282,8 @@ function PumpSystemInner({ field, initialState, onSave, initialAction, onInitial
     HsStr, HdStr, PresStr, presUnit, PatmStr,
     headMarginStr, powerMarginStr, npshMarginStr, npshrStr,
   ]);
+
+  useEffect(() => { onStateChange?.({ inputs, outputs: result }); });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
