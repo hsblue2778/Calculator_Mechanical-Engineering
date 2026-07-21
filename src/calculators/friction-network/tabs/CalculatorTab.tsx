@@ -31,8 +31,6 @@ interface Props {
   pAvailEntered: boolean;
   designTotalFlow_m3s: number | null;
   onReset: () => void;
-  onSave?: () => void;
-  canSave?: boolean;
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
@@ -41,7 +39,7 @@ export default function CalculatorTab({
   st, patchSettings, changeSystemType,
   rows, patchRow, addRow, removeRow,
   activeSegments, settingsError, net, suggestions, pAvailEntered, designTotalFlow_m3s,
-  onReset, onSave, canSave, initialAction, onInitialActionDone,
+  onReset, initialAction, onInitialActionDone,
 }: Props) {
   // 구간별 부속 선택 내역 요약 (구간ID → "90° 엘보 ×4 · 게이트밸브 ×1") — 산출서·CSV 표기용
   function buildFittingSummaries(): Record<string, string> {
@@ -86,7 +84,6 @@ export default function CalculatorTab({
   }, onInitialActionDone);
 
   const actionBarProps = {
-    onSave, canSave,
     canExport: !!net,
     onCsv: handleCsv, onWord: handleWord, onPdf: handlePdf,
     onReset,

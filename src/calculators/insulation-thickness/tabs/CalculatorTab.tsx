@@ -1,7 +1,7 @@
 // 냉수배관 보온 두께 계산기 — 계산 탭
 
 import { useMemo, useState } from 'react';
-import { RotateCcw, AlertTriangle, Save, Check, ChevronDown } from 'lucide-react';
+import { RotateCcw, AlertTriangle, ChevronDown } from 'lucide-react';
 import ExportMenu from '../../../components/ExportMenu';
 import {
   PIPE_OD_TABLE, INSULATION_MATERIALS,
@@ -18,13 +18,11 @@ interface Props {
   state: InsulationInputs;
   setState: (patch: Partial<InsulationInputs>) => void;
   onReset: () => void;
-  onSave?: () => void;
-  canSave: boolean;
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
 }
 
-export default function CalculatorTab({ state, setState, onReset, onSave, canSave, initialAction, onInitialActionDone }: Props) {
+export default function CalculatorTab({ state, setState, onReset, initialAction, onInitialActionDone }: Props) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const validationErr = useMemo(() => {
@@ -199,7 +197,6 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
 
         <ActionBar
           className="calc-actions calc-actions-desktop"
-          onSave={onSave} canSave={canSave}
           canExport={!!result}
           onCsv={handleCsvExport}
           onWord={handleWordSave}
@@ -216,7 +213,6 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
 
       <ActionBar
         className="calc-actions calc-actions-mobile"
-        onSave={onSave} canSave={canSave}
         canExport={!!result}
         onCsv={handleCsvExport}
         onWord={handleWordSave}
@@ -228,10 +224,9 @@ export default function CalculatorTab({ state, setState, onReset, onSave, canSav
 }
 
 function ActionBar({
-  className, onSave, canSave, canExport, onCsv, onWord, onPdf, onReset,
+  className, canExport, onCsv, onWord, onPdf, onReset,
 }: {
   className: string;
-  onSave?: () => void; canSave: boolean;
   canExport: boolean;
   onCsv: () => void; onWord: () => void; onPdf: () => void; onReset: () => void;
 }) {
@@ -240,7 +235,6 @@ function ActionBar({
       className={className}
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
-      {onSave && <SaveBtn onClick={onSave} enabled={canSave} />}
       <ExportMenu enabled={canExport} onCsv={onCsv} onWord={onWord} onPdf={onPdf} />
       <button
         onClick={onReset}
@@ -318,30 +312,3 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-function SaveBtn({ onClick, enabled }: { onClick: () => void; enabled: boolean }) {
-  const [saved, setSaved] = useState(false);
-  function handle() {
-    onClick();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1600);
-  }
-  return (
-    <button
-      onClick={handle}
-      disabled={!enabled}
-      title={enabled ? '현재 계산을 기록에 저장' : '계산 결과가 유효할 때 저장할 수 있습니다'}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? 'var(--text-inverse)' : 'var(--border-subtle)',
-        backgroundColor: enabled ? (saved ? 'var(--state-success)' : C.blue) : 'var(--border-default)',
-        border: 'none', borderRadius: 8,
-        cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-        transition: 'background-color 0.15s',
-      }}
-    >
-      {saved ? <Check size={14} /> : <Save size={14} />}
-      {saved ? '저장됨' : '기록 저장'}
-    </button>
-  );
-}

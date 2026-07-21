@@ -8,7 +8,6 @@ import ChainBanner from '../../../components/ChainBanner';
 import ExportMenu from '../../../components/ExportMenu';
 import InfoTip from '../../../components/InfoTip';
 import NetworkImportButton, { type NetworkImportValues } from './NetworkImportButton';
-import { SaveBtn } from './FormComponents';
 import { PipeMultiTable } from './PipeMultiTable';
 import HeadPressureSection from './HeadPressureSection';
 import SystemConditionSection from './SystemConditionSection';
@@ -149,8 +148,6 @@ interface Props {
   // 화면용·저장용 계산이 갈리지 않도록 내부에서 재계산하지 않는다.
   result: PumpHvacResult | null;
 
-  onSave?: () => void;
-  canSave?: boolean;
   onReset: () => void;
   chainedFrom?: string;                // 체이닝 수신 안내 배너 (관경 선정)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
@@ -180,7 +177,7 @@ export default function CalculatorTab(props: Props) {
     catalogHzStr, setCatalogHzStr,
     operatingHzList, setOperatingHzList,
     result,
-    onSave, canSave, onReset,
+    onReset,
     chainedFrom, initialAction, onInitialActionDone,
   } = props;
 
@@ -710,7 +707,6 @@ export default function CalculatorTab(props: Props) {
 
       {/* §7 버튼 영역 — .calc-actions로 화면 하단 고정(sticky) */}
       <div className="calc-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-        {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
         <ExportMenu
           enabled={!!result}
           onCsv={handlePumpCsv}

@@ -8,7 +8,6 @@ import type { FieldContext } from '../../config/calculators';
 
 interface Props {
   initialState?: Record<string, any>;
-  onSave?: (ctx: FieldContext) => void;
   onStateChange?: (ctx: FieldContext) => void;   // 자동기록 — 렌더마다 보고 (중복 제거는 App)
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf)
   onInitialActionDone?: () => void;
@@ -23,7 +22,7 @@ const DEFAULT_STATE: InsulationInputs = {
 };
 
 export default function InsulationThicknessCalculator({
-  initialState, onSave, onStateChange, initialAction, onInitialActionDone,
+  initialState, onStateChange, initialAction, onInitialActionDone,
 }: Props) {
   const [state, setStateFull] = useState<InsulationInputs>(() => ({
     ...DEFAULT_STATE,
@@ -39,8 +38,6 @@ export default function InsulationThicknessCalculator({
     return calculate(state);
   }, [state]);
 
-  const canSave = !!outputs;
-
   useEffect(() => { onStateChange?.({ inputs: state, outputs }); });
 
   function reset() {
@@ -53,8 +50,6 @@ export default function InsulationThicknessCalculator({
         state={state}
         setState={setState}
         onReset={reset}
-        onSave={onSave ? () => onSave({ inputs: state, outputs }) : undefined}
-        canSave={canSave}
         initialAction={initialAction}
         onInitialActionDone={onInitialActionDone}
       />

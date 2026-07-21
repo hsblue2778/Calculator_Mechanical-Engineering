@@ -13,7 +13,6 @@ import type { FieldContext } from '../../config/calculators';
 
 interface Props {
   initialState?: Record<string, any>;
-  onSave?: (ctx: FieldContext) => void;
   onStateChange?: (ctx: FieldContext) => void;   // 자동기록 — 렌더마다 보고 (중복 제거는 App)
   onChain?: (calculatorId: string, initialState: Record<string, any>) => void;
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf·chain)
@@ -67,7 +66,7 @@ function buildChainPayload(pf: PipeFrictionController): Record<string, any> {
 }
 
 export default function PipeFrictionCalculator({
-  initialState, onSave, onStateChange, onChain, initialAction, onInitialActionDone,
+  initialState, onStateChange, onChain, initialAction, onInitialActionDone,
 }: Props) {
   const pf = usePipeFrictionState(initialState);
   useEffect(() => { onStateChange?.({ inputs: pf.saveInputs(), outputs: pf.res }); });
@@ -78,11 +77,8 @@ export default function PipeFrictionCalculator({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <CalculatorTab
         pf={pf}
-        onSave={onSave ? () => onSave({ inputs: pf.saveInputs(), outputs: pf.res }) : undefined}
-        canSave={!!pf.res}
         onChain={onChain && pf.res ? () => {
-          // 화면이 관경 계산기로 교체되므로 보내기 직전 기록에 자동 저장
-          if (onSave) onSave({ inputs: pf.saveInputs(), outputs: pf.res });
+          // 화면 교체 직전 상태는 자동기록 세션이 플러시하므로 별도 저장 불필요
           onChain('pipe-sizing', buildChainPayload(pf));
         } : undefined}
         chainedFrom={chainedFrom}

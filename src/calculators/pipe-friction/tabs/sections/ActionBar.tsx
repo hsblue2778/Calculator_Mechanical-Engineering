@@ -1,16 +1,14 @@
-// 관마찰손실 — 액션 바 (기록 저장 · 내보내기 ▾ · 초기화)
+// 관마찰손실 — 액션 바 (내보내기 ▾ · 초기화)
 // 기존 CalculatorTab에서 이동 — 동작 동일.
 
-import { useState } from 'react';
-import { RotateCcw, Save, Check, ArrowRight } from 'lucide-react';
+import { RotateCcw, ArrowRight } from 'lucide-react';
 import ExportMenu from '../../../../components/ExportMenu';
 import { C } from '../../styles';
 
 export default function ActionBar({
-  className, onSave, canSave, canExport, onCsv, onWord, onPdf, onReset, onChain,
+  className, canExport, onCsv, onWord, onPdf, onReset, onChain,
 }: {
   className: string;
-  onSave?: () => void; canSave?: boolean;
   canExport: boolean;
   onCsv: () => void; onWord: () => void; onPdf: () => void; onReset: () => void;
   onChain?: () => void;
@@ -21,7 +19,6 @@ export default function ActionBar({
       style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}
     >
       {onChain && <ChainBtn onClick={onChain} />}
-      {onSave && <SaveBtn onClick={onSave} enabled={!!canSave} />}
       <ExportMenu enabled={canExport} onCsv={onCsv} onWord={onWord} onPdf={onPdf} />
       <button
         onClick={onReset}
@@ -53,34 +50,6 @@ function ChainBtn({ onClick }: { onClick: () => void }) {
       }}
     >
       관경 계산기로 보내기 <ArrowRight size={14} />
-    </button>
-  );
-}
-
-function SaveBtn({ onClick, enabled }: { onClick: () => void; enabled: boolean }) {
-  const [saved, setSaved] = useState(false);
-  function handle() {
-    onClick();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1600);
-  }
-  return (
-    <button
-      onClick={handle}
-      disabled={!enabled}
-      title={enabled ? '현재 계산을 기록에 저장' : '계산 결과가 유효할 때 저장할 수 있습니다'}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '10px 16px', fontSize: 13, fontWeight: 500,
-        color: enabled ? 'var(--text-inverse)' : 'var(--border-subtle)',
-        backgroundColor: enabled ? (saved ? 'var(--state-success)' : C.blue) : 'var(--border-default)',
-        border: 'none', borderRadius: 8,
-        cursor: enabled ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-        transition: 'background-color 0.15s',
-      }}
-    >
-      {saved ? <Check size={14} /> : <Save size={14} />}
-      {saved ? '저장됨' : '기록 저장'}
     </button>
   );
 }

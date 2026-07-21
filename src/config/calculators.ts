@@ -1,6 +1,6 @@
 // 계산기 목록 및 메타정보 - 새 계산기 추가 시 여기에 1줄 추가
 
-// onSave 콜백 시그니처용 컨텍스트 타입
+// onStateChange(자동기록) 콜백 시그니처용 컨텍스트 타입
 export interface FieldContext {
   inputs: Record<string, any>;
   outputs: Record<string, any> | null;
