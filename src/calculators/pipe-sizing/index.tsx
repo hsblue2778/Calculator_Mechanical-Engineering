@@ -2,7 +2,7 @@
 // 공식: Darcy-Weisbach + 유동 영역별 마찰계수 (pipe-friction 엔진 공용)
 //   층류 64/Re · 천이 3차 보간 · 난류 Colebrook-White 반복해 · ε: 재질×신관/노후 (수정 가능)
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   FLOW_UNITS, PRESSURE_UNITS,
   type FlowUnitKey,
@@ -20,6 +20,7 @@ import { PA_PER_MM_AQ } from './styles';
 interface Props {
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  onStateChange?: (ctx: FieldContext) => void;   // 자동기록 — 렌더마다 보고 (중복 제거는 App)
   onChain?: (calculatorId: string, initialState: Record<string, unknown>) => void;
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·word·pdf)
   onInitialActionDone?: () => void;
@@ -87,7 +88,7 @@ function buildPfChainPayload(args: {
 }
 
 export default function PipeSizingCalculator({
-  initialState, onSave, onChain, initialAction, onInitialActionDone,
+  initialState, onSave, onStateChange, onChain, initialAction, onInitialActionDone,
 }: Props) {
   const [matIdx, setMatIdx] = useState<number>(() => initialState?.matIdx ?? 0);
   const [Q, setQ] = useState<string>(() => initialState?.Q ?? '');
@@ -159,6 +160,8 @@ export default function PipeSizingCalculator({
     }
     return { rows, selected, analysis };
   }, [Q, dP, flowUnit, pressureUnit, mat, cond]);
+
+  useEffect(() => { onStateChange?.({ inputs, outputs }); });
 
   // 체이닝 — 화면이 대상 계산기로 교체되므로 보내기 직전 기록에 자동 저장 (작업 유실 방지)
   const selected = outputs?.selected ?? null;

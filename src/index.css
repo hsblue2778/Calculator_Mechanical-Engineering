@@ -118,8 +118,8 @@ input[type="number"] {
     left: 0 !important;
     min-width: min(320px, calc(100vw - 28px)) !important;
   }
-  /* 미사용 햄버거는 계속 숨김 */
-  .mobile-menu-btn { display: none !important; }
+  /* 햄버거 — 모바일에서 전역 사이드바 드로어 오프너 (홈·워크스페이스 공통) */
+  .mobile-menu-btn { display: inline-flex !important; }
 
   /* 펌프 시스템 섹션 스테퍼 — 모바일에서 숨김 (좁은 화면에서 본문 가림) */
   .pump-section-stepper { display: none !important; }

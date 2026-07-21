@@ -2,6 +2,7 @@
 // 계산 로직: engine.ts (영역별 마찰계수 + Darcy-Weisbach + Hazen-Williams)
 // 상태 관리: usePipeFrictionState.ts (삼각 입력·ε/C 편집·구기록 정규화)
 
+import { useEffect } from 'react';
 import CalculatorTab from './tabs/CalculatorTab';
 import { usePipeFrictionState, type PipeFrictionController } from './usePipeFrictionState.ts';
 import { pfFlowUnitDef } from './pfUnits.ts';
@@ -13,6 +14,7 @@ import type { FieldContext } from '../../config/calculators';
 interface Props {
   initialState?: Record<string, any>;
   onSave?: (ctx: FieldContext) => void;
+  onStateChange?: (ctx: FieldContext) => void;   // 자동기록 — 렌더마다 보고 (중복 제거는 App)
   onChain?: (calculatorId: string, initialState: Record<string, any>) => void;
   initialAction?: string;              // 기록 ⋯ 메뉴 진입 시 1회 실행 (csv·html·pdf·chain)
   onInitialActionDone?: () => void;
@@ -65,9 +67,10 @@ function buildChainPayload(pf: PipeFrictionController): Record<string, any> {
 }
 
 export default function PipeFrictionCalculator({
-  initialState, onSave, onChain, initialAction, onInitialActionDone,
+  initialState, onSave, onStateChange, onChain, initialAction, onInitialActionDone,
 }: Props) {
   const pf = usePipeFrictionState(initialState);
+  useEffect(() => { onStateChange?.({ inputs: pf.saveInputs(), outputs: pf.res }); });
   // 체이닝으로 들어온 경우 — 발신 계산기 안내 배너 표시 (관경 계산기 역검증 등)
   const chainedFrom = typeof initialState?.chainedFrom === 'string' ? initialState.chainedFrom : undefined;
 
