@@ -501,6 +501,33 @@ export default function App() {
                   <History size={15} /> 기록
                 </button>
               </div>
+              {/* 계산기 식별 헤더 — 어느 계산기에 들어와 있는지 제목·분류·설명으로 표시 */}
+              {activeCalc && (
+                <header
+                  className="workspace-calc-header"
+                  style={{ paddingBottom: 14, marginBottom: 22, borderBottom: '1px solid var(--border-subtle)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span
+                      aria-hidden
+                      style={{ width: 4, height: 20, borderRadius: 2, background: 'var(--accent-primary)', flexShrink: 0 }}
+                    />
+                    <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, letterSpacing: -0.3, wordBreak: 'keep-all' }}>
+                      {activeCalc.title}
+                    </h1>
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999,
+                      color: 'var(--accent-primary-hover)', background: 'var(--accent-primary-bg-soft)',
+                      border: '1px solid var(--accent-primary-bg)', whiteSpace: 'nowrap',
+                    }}>
+                      {activeCalc.category}
+                    </span>
+                  </div>
+                  <p style={{ marginTop: 3, paddingLeft: 14, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'keep-all' }}>
+                    {activeCalc.description}
+                  </p>
+                </header>
+              )}
               <ActiveComponent
                 key={`${activeInstance.id}-${unitSystem}-${instanceLoadEpoch[activeInstance.id] ?? 0}`}
                 initialState={instanceInitialStates[activeInstance.id]}

@@ -108,6 +108,8 @@ input[type="number"] {
     right: 14px;
     margin-bottom: 0;
   }
+  /* 계산기 식별 헤더 — 우상단 절대배치 '기록' 버튼과 겹침 방지 */
+  .workspace-calc-header { padding-right: 92px; }
   /* 펌프 — 계통 불러오기 버튼을 좌측으로 (우상단 기록 버튼과 겹침 방지, 인라인 스타일이라 !important) */
   .pump-import-row { justify-content: flex-start !important; }
   /* 버튼이 좌측이므로 드롭다운도 좌측 기준으로 열고, 좁은 화면에서 폭 캡 */
