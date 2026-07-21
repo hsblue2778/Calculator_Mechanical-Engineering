@@ -10,6 +10,8 @@ import AppHeader from './components/AppHeader';
 import Onboarding from './components/Onboarding';
 import Modal from './components/Modal';
 import GlobalSidebar, { type EntryAction } from './components/GlobalSidebar';
+import ExamplePicker from './components/ExamplePicker';
+import { EXAMPLE_PRESETS, type ExamplePreset } from './config/examples';
 import * as historyStore from './state/historyStore';
 import type { HistoryEntry } from './state/historyStore';
 import PipeFrictionCalculator from './calculators/pipe-friction';
@@ -329,6 +331,21 @@ export default function App() {
       : { sessionId: null, parentEntryId: entry.id };
   }, []);
 
+  // 예시 프리셋 불러오기 — 기록 불러오기와 같은 경로(초기상태 교체 + remount)를 쓰되,
+  // 기록에 바인딩하지 않음: 예시에서 편집을 시작하면 자동기록이 새 세션을 만든다
+  const handleLoadExample = useCallback((preset: ExamplePreset) => {
+    if (!activeInstance) return;
+    pendingSessionRef.current = null;
+    setInstanceInitialStates(prev => ({ ...prev, [activeInstance.id]: structuredClone(preset.state) }));
+    setInstanceLoadEpoch(prev => ({ ...prev, [activeInstance.id]: (prev[activeInstance.id] ?? 0) + 1 }));
+    setCurrentEntryByInstance(prev => {
+      if (!(activeInstance.id in prev)) return prev;
+      const rest = { ...prev };
+      delete rest[activeInstance.id];
+      return rest;
+    });
+  }, [activeInstance]);
+
   // 기록 항목 불러오기 (같은 계산기) — 현재 활성 인스턴스의 상태를 교체 + remount 강제
   const handleLoadEntry = useCallback((entry: HistoryEntry) => {
     if (!activeInstance) return;
@@ -554,27 +571,36 @@ export default function App() {
                 {activeCalc && (
                   <header
                     className="workspace-calc-header"
-                    style={{ paddingBottom: 14, marginBottom: 22, borderBottom: '1px solid var(--border-subtle)' }}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                      gap: 12, flexWrap: 'wrap',
+                      paddingBottom: 14, marginBottom: 22, borderBottom: '1px solid var(--border-subtle)',
+                    }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <span
-                        aria-hidden
-                        style={{ width: 4, height: 20, borderRadius: 2, background: 'var(--accent-primary)', flexShrink: 0 }}
-                      />
-                      <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, letterSpacing: -0.3, wordBreak: 'keep-all' }}>
-                        {activeCalc.title}
-                      </h1>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999,
-                        color: 'var(--accent-primary-hover)', background: 'var(--accent-primary-bg-soft)',
-                        border: '1px solid var(--accent-primary-bg)', whiteSpace: 'nowrap',
-                      }}>
-                        {activeCalc.category}
-                      </span>
+                    <div style={{ flex: 1, minWidth: 240 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span
+                          aria-hidden
+                          style={{ width: 4, height: 20, borderRadius: 2, background: 'var(--accent-primary)', flexShrink: 0 }}
+                        />
+                        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, letterSpacing: -0.3, wordBreak: 'keep-all' }}>
+                          {activeCalc.title}
+                        </h1>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999,
+                          color: 'var(--accent-primary-hover)', background: 'var(--accent-primary-bg-soft)',
+                          border: '1px solid var(--accent-primary-bg)', whiteSpace: 'nowrap',
+                        }}>
+                          {activeCalc.category}
+                        </span>
+                      </div>
+                      <p style={{ marginTop: 3, paddingLeft: 14, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'keep-all' }}>
+                        {activeCalc.description}
+                      </p>
                     </div>
-                    <p style={{ marginTop: 3, paddingLeft: 14, fontSize: 13, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'keep-all' }}>
-                      {activeCalc.description}
-                    </p>
+                    {(EXAMPLE_PRESETS[activeCalc.id] ?? []).length > 0 && (
+                      <ExamplePicker presets={EXAMPLE_PRESETS[activeCalc.id]} onLoad={handleLoadExample} />
+                    )}
                   </header>
                 )}
                 <ActiveComponent
