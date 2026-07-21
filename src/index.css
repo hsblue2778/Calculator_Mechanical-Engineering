@@ -156,6 +156,9 @@ input[type="number"] {
   /* 액션 버튼 — 모바일은 sticky-results 다음(=가장 하단)에 표시 */
   .calc-actions-desktop { display: none !important; }
   .calc-actions-mobile { display: flex !important; margin-top: 16px; }
+
+  /* 문의하기 버튼 — 워크스페이스에서 하단 sticky 액션 바 위로 (인라인 스타일이라 !important) */
+  .contact-fab-lifted { bottom: 84px !important; }
 }
 
 /* ── 인쇄 전용 리포트 뷰 ─────────────────────────────────────────── */
