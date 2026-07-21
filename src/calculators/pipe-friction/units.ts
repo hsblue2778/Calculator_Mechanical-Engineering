@@ -8,6 +8,7 @@ export const PRESSURE_UNITS = [
   { key: 'kPa', label: 'kPa', factor: 1 / 1000, dp: 2, dpM: 3 },
   { key: 'bar', label: 'bar', factor: 1 / 100000, dp: 4, dpM: 5 },
   { key: 'mmAq', label: 'mmAq', factor: 1 / 9.80665, dp: 1, dpM: 2 },
+  { key: 'mAq', label: 'mAq', factor: 1 / 9806.65, dp: 3, dpM: 4 },
   { key: 'kgfcm2', label: 'kg/cm²', factor: 1 / 98066.5, dp: 4, dpM: 5 },
   { key: 'MPa', label: 'MPa', factor: 1 / 1000000, dp: 5, dpM: 6 },
 ] as const;
