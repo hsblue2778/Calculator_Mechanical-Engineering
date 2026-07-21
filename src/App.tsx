@@ -20,6 +20,7 @@ import InsulationThicknessCalculator from './calculators/insulation-thickness';
 import ComparisonView from './calculators/pump-system/tabs/ComparisonView';
 import ChangelogButton from './components/ChangelogButton';
 import ChangelogContent from './components/ChangelogContent';
+import ContactButton from './components/ContactButton';
 import { useTheme } from './state/themeStore';
 import { useUnitSystem } from './state/unitSystemStore';
 import type { UnitSystem } from './state/unitSystemStore';
@@ -630,6 +631,8 @@ export default function App() {
           <ChangelogContent />
         </Modal>
       )}
+      {/* 개발자 문의 — 홈·워크스페이스 공통 우하단 고정 */}
+      <ContactButton mobileLifted={view === 'workspace'} />
       <Onboarding open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
     </div>
   );
