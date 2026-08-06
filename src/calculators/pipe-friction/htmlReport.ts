@@ -62,7 +62,9 @@ export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string 
       ? `ρ = ${res.rho_kgm3} kg/m³ (문헌 표 5 단일값)`
       : st.fluid === 'air'
         ? `ρ = 1.293 × 273.15/(273.15+${esc(st.tempC)}) × (${esc(st.pressureMmHg)}/760) = ${res.rho_kgm3.toFixed(4)} kg/m³ (이상기체)`
-        : `ρ = ${res.rho_kgm3.toFixed(1)} kg/m³ (NIST WebBook 보간)`,
+        : st.fluid === 'steam'
+          ? `ρ = ${res.rho_kgm3.toFixed(4)} kg/m³ (포화증기표 보간)`
+          : `ρ = ${res.rho_kgm3.toFixed(1)} kg/m³ (NIST WebBook 보간)`,
     `A = π × D²/4 = π × (${res.D_m.toFixed(5)})²/4 = ${res.A_m2.toFixed(6)} m²`,
     derivedField === 'Q'
       ? `Q = A × V = ${res.A_m2.toFixed(6)} × ${res.V_ms.toFixed(3)} = ${res.Q_m3s.toFixed(6)} m³/s (자동 산출)`
@@ -202,7 +204,7 @@ export function buildPipeFrictionReportHtml(pf: PipeFrictionController): string 
   <ul class="refs">
     <li><b>Darcy-Weisbach · Colebrook-White(1939) · Swamee-Jain(1976)</b> — 마찰손실·마찰계수</li>
     <li><b>천이역 3차 보간</b> — EPANET 2 천이역 보간 방식 준용 (경계 2,300/4,000)</li>
-    <li><b>물성</b> — 참조 엑셀 '마찰손실 계산기' ν표 · NIST WebBook(물 ρ) · 설비공학 문헌 표 2(공기)·표 5(기타 유체) · 이상기체</li>
+    <li><b>물성</b> — 참조 엑셀 '마찰손실 계산기' ν표 · NIST WebBook(물 ρ) · 설비공학 문헌 표 2(공기)·표 5(기타 유체) · 포화증기표(증기) · 이상기체</li>
     <li><b>ε · C값</b> — Moody(1944) · ASHRAE Fundamentals Ch.22 · NFPA 13 · KDS 57 · GF SYGEF Handbook · PPI(1971)</li>
     <li><b>SAREK 설비편람</b> — 권장 유속 / 단위 마찰손실 범위 (물 배관)</li>
   </ul>

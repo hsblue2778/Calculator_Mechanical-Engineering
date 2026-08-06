@@ -4,7 +4,7 @@
 // 물성: 물 ν·ρ 온도별 (src/data/fluidProperties.ts) · ε: 재질×신관/노후 (src/data/pipeRoughness.ts, 수정 가능)
 
 import { frictionFactor, PF_G, type FMethod } from '../pipe-friction/engine.ts';
-import { RANGES, type Range } from '../pipe-friction/analysis';
+import { RANGES, type Range } from '../pipe-friction/analysis.ts';
 import { pfFluidMeta } from '../../data/fluidProperties.ts';
 import type { PipeMaterialSize, PipeSpec } from '../../data/pipeSizes';
 

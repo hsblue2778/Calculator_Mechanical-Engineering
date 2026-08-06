@@ -19,10 +19,14 @@ export default function ConditionSection({ pf }: { pf: PipeFrictionController })
       }}>유체 · 배관 조건</span>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-        <Field label="유체 종류" tip={isFixed ? '상온·1atm 단일 물성값 (문헌 표 5)' : '온도별 물성표 적용'}>
+        <Field label="유체 종류" tip={isFixed
+          ? '상온·1atm 단일 물성값 (문헌 표 5)'
+          : st.fluid === 'steam'
+            ? '포화증기 물성표 적용 — 온도별 포화압 기준 ρ·ν'
+            : '온도별 물성표 적용'}>
           <select
             value={st.fluid}
-            onChange={e => patch({ fluid: e.target.value as PFFluid })}
+            onChange={e => pf.changeFluid(e.target.value as PFFluid)}
             style={selectStyle}
           >
             {PF_FLUIDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
@@ -31,7 +35,7 @@ export default function ConditionSection({ pf }: { pf: PipeFrictionController })
 
         <Field label="온도 (°C)" tip={isFixed
           ? '고정값 유체 — 온도 입력 미적용'
-          : `유효범위 ${fluidMeta.tempMin}~${fluidMeta.tempMax}°C · 10°C 절점 선형보간`}>
+          : `유효범위 ${fluidMeta.tempMin}~${fluidMeta.tempMax}°C · ${st.fluid === 'steam' ? '20' : '10'}°C 절점 선형보간`}>
           <input
             type="number" step="any"
             value={isFixed ? '' : st.tempC}

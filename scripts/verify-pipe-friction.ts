@@ -41,6 +41,10 @@ check('ρ 공기 20°C/760', pfDensity('air', 20), 1.20479, 0.0001, '(표 2 1.20
 check('ρ 공기 20°C/720', pfDensity('air', 20, 720), 1.14138, 0.001, '(표 2 1.141)');
 check('ν 수은 (표 5)', pfKinematicViscosity('mercury', 20), 1.16e-7, 1e-15);
 check('ρ 글리세린 (표 5)', pfDensity('glycerin', 20), 1260, 1e-9);
+check('ν 증기 100°C', pfKinematicViscosity('steam', 100), 20.53e-6, 1e-12, '(포화증기표 절점)');
+check('ρ 증기 180°C', pfDensity('steam', 180), 5.157, 1e-9, '(포화증기표 절점)');
+check('ν 증기 170°C 보간', pfKinematicViscosity('steam', 170), (4.41 + 2.93) / 2 * 1e-6, 1e-15);
+check('ρ 증기 170°C 보간', pfDensity('steam', 170), (3.259 + 5.157) / 2, 1e-12);
 
 // ── 2. 엑셀 공식 경로 패리티 (물 20°C · D=150mm · V=2m/s · ε=0.045 직접 대입) ──
 const nu20 = pfKinematicViscosity('water', 20);
@@ -145,6 +149,18 @@ check('공기 Re', resAir.Re, 19854.4, 0.5);
 checkTrue('공기 H-W 미적용', resAir.hw === null);
 checkTrue('공기 ΔP/L', Math.abs(resAir.deltaP_per_m_Pa - 0.427) < 0.01,
   `f=${resAir.f.toFixed(6)}, ΔP/L=${resAir.deltaP_per_m_Pa.toFixed(4)} Pa/m`);
+
+// ── 7-1. 증기 (포화 170°C) ────────────────────────────────────────
+const resSteam = computePipeFriction({
+  fluid: 'steam', tempC: 170,
+  eps_mm: steel.eps_mm.new, hazenC: steel.hazenC.new,
+  known: { V: 25, D: 0.1 }, L_m: 100,
+})!;
+check('증기 170°C Re', resSteam.Re, 25 * 0.1 / ((4.41 + 2.93) / 2 * 1e-6), 1);
+checkTrue('증기 Colebrook 수렴·H-W 미적용', resSteam.fMethod === 'colebrook' && resSteam.fConverged && resSteam.hw === null,
+  `f=${resSteam.f.toFixed(6)}, ΔP/L=${resSteam.deltaP_per_m_Pa.toFixed(2)} Pa/m`);
+checkTrue('증기 온도 범위 밖(90°C) → null',
+  computePipeFriction({ ...baseInput, fluid: 'steam', tempC: 90 }) === null);
 
 // ── 8. 고정값 유체 ────────────────────────────────────────────────
 const resGly = computePipeFriction({
