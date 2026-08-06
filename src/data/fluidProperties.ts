@@ -7,6 +7,7 @@
 //   공기 압력 의존: 문헌 표 2 (720~780 mmHg 매트릭스)가 이상기체 스케일링과 일치함을 검산 —
 //            ν(T,P) = ν_1atm(T) × (760/P),  ρ(T,P) = 1.293 × 273.15/(273.15+T) × (P/760)
 //   물 ρ   : NIST WebBook — 기존 glycol-properties.ts 테이블 재사용
+//   증기 ν·ρ: 포화증기표 100~180°C (증기 ρ, μ→ν 환산) — frictionNetworkRef.ts 증기표와 동일 절점
 //   고정값 유체 6종: 동 문헌 1.3-3 표 5 '유체의 동점성계수' (상온·1atm 단일값)
 //
 // 절점 사이는 선형보간 (10°C 절점값은 엑셀 표와 완전 일치).
@@ -14,7 +15,7 @@
 import { getDensity } from './glycol-properties.ts';
 
 export type PFFluid =
-  | 'water' | 'air'
+  | 'water' | 'air' | 'steam'
   | 'hydrogen' | 'gasoline' | 'ethanol' | 'mercury' | 'sae30' | 'glycerin';
 
 export interface PFFluidMeta {
@@ -29,6 +30,7 @@ export interface PFFluidMeta {
 export const PF_FLUIDS: PFFluidMeta[] = [
   { key: 'water',    label: '물',         mode: 'table', tempMin: 0,   tempMax: 100 },
   { key: 'air',      label: '공기',       mode: 'table', tempMin: -10, tempMax: 100, hasPressure: true },
+  { key: 'steam',    label: '증기 (포화)', mode: 'table', tempMin: 100, tempMax: 180 },
   { key: 'hydrogen', label: '수소',       mode: 'fixed' },
   { key: 'gasoline', label: '휘발유',     mode: 'fixed' },
   { key: 'ethanol',  label: '에틸알코올', mode: 'fixed' },
@@ -58,6 +60,14 @@ const AIR_NU_1ATM_E6: [number, number][] = [
   [-10, 12.42],
   [0, 13.3], [10, 14.2], [20, 15.11], [30, 16.04], [40, 16.97],
   [50, 17.95], [60, 18.9], [70, 19.9], [80, 20.92], [90, 21.96], [100, 23.06],
+];
+
+// 포화증기표 100~180°C, 20°C 절점 (온도별 포화압 기준 — 별도 압력 입력 없음)
+const STEAM_NU_E6: [number, number][] = [
+  [100, 20.53], [120, 11.55], [140, 6.94], [160, 4.41], [180, 2.93],
+];
+const STEAM_RHO: [number, number][] = [
+  [100, 0.598], [120, 1.122], [140, 1.967], [160, 3.259], [180, 5.157],
 ];
 
 // ── 고정값 유체 (문헌 표 5 — 상온·1atm) ──────────────────────────
@@ -92,6 +102,7 @@ export function pfKinematicViscosity(
     // 문헌 표 2 검산: ν ∝ 1/P (μ는 압력 무관, ρ ∝ P — 이상기체)
     return interpolate(AIR_NU_1ATM_E6, tempC) * 1e-6 * (760 / pressureMmHg);
   }
+  if (fluid === 'steam') return interpolate(STEAM_NU_E6, tempC) * 1e-6;
   return FIXED_PROPS[fluid].nu_m2s;
 }
 
@@ -100,6 +111,7 @@ export function pfDensity(
   fluid: PFFluid, tempC: number, pressureMmHg: number = PF_PRESSURE_DEFAULT_MMHG,
 ): number {
   if (fluid === 'water') return getDensity('water', 0, tempC); // NIST (glycol-properties.ts)
+  if (fluid === 'steam') return interpolate(STEAM_RHO, tempC); // 포화증기표
   if (fluid === 'air') {
     // 이상기체 (엑셀 참조표 ②와 동일식 + 문헌 표 2의 압력 비례)
     return 1.293 * 273.15 / (273.15 + tempC) * (pressureMmHg / 760);

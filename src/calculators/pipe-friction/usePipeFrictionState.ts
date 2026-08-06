@@ -216,6 +216,21 @@ export function usePipeFrictionState(initialState?: Record<string, any>) {
     });
   }
 
+  // 유체 전환 — 현재 온도가 새 유체 유효범위 밖이면 범위 안으로 클램프 (증기 100~180°C 등)
+  function changeFluid(f: PFFluid) {
+    const m = pfFluidMeta(f);
+    setSt(prev => {
+      let tempC = prev.tempC;
+      if (m.mode === 'table') {
+        const lo = m.tempMin ?? 0, hi = m.tempMax ?? 100;
+        const t = parseFloat(prev.tempC);
+        if (!Number.isFinite(t) || t < lo) tempC = String(lo);
+        else if (t > hi) tempC = String(hi);
+      }
+      return { ...prev, fluid: f, tempC };
+    });
+  }
+
   function changeMaterial(id: PFMaterialId) {
     const m = pfMaterial(id);
     patch({ materialId: id, epsStr: String(m.eps_mm[st.condition]), cStr: String(m.hazenC[st.condition]) });
@@ -247,7 +262,7 @@ export function usePipeFrictionState(initialState?: Record<string, any>) {
     fluidMeta, mat, epsDefault, cDefault, fluidProps,
     triStr, triDisplay, derivedField, editTri,
     engineInput, error, res,
-    changeFlowUnit, changeMaterial, changeCondition, reset, saveInputs,
+    changeFlowUnit, changeFluid, changeMaterial, changeCondition, reset, saveInputs,
   };
 }
 
